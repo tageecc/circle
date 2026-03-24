@@ -6,6 +6,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '../ui/dr
 import { EditorDiagnostic } from './MonacoCodeEditor'
 import { CodebaseIndexStatus } from './CodebaseIndexStatus'
 import { GitBranchSwitcher } from '@/features/ide/components/project-bar/git-branch-switcher'
+import { ProjectSwitcher } from '@/features/ide/components/project-bar/project-switcher'
+import { RecentProject } from '@/features/ide/types'
 
 interface StatusBarProps {
   currentFile?: string | null
@@ -17,7 +19,16 @@ interface StatusBarProps {
   bottomPanel?: 'terminal' | 'problems' | null
   onBottomPanelChange?: (panel: 'terminal' | 'problems' | null) => void
   diagnostics?: EditorDiagnostic[]
-  /** 分支切换（参考 Codex：放到底部 status bar） */
+  /** Project switcher (bottom bar). */
+  projectSwitcher?: {
+    workspaceRoot: string
+    recentProjects: RecentProject[]
+    onNewProject: () => void
+    onOpenProject: () => void
+    onCloneRepository: () => void
+    onOpenRecentProject: (path: string) => void
+  } | null
+  /** Git branch switcher. */
   gitBranch?: {
     workspaceRoot: string
     currentBranch: string
@@ -42,6 +53,7 @@ export function StatusBar({
   bottomPanel = null,
   onBottomPanelChange,
   diagnostics = [],
+  projectSwitcher = null,
   gitBranch = null
 }: StatusBarProps) {
   const errorCount = useMemo(
@@ -84,21 +96,51 @@ export function StatusBar({
   }
 
   return (
-    <div className="flex h-6 items-center justify-between border-t border-border/50 bg-muted/30 px-2 text-xs select-none">
-      {/* 左侧信息 */}
-      <div className="flex items-center gap-2">
-        {/* 问题面板按钮 */}
+    <div className="flex items-center justify-between gap-2 border-t border-border/50 bg-muted/30 px-3 py-2 text-xs select-none">
+      <div className="flex min-h-0 flex-1 items-center gap-2 overflow-hidden">
+        {projectSwitcher && (
+          <div className="shrink-0 [&_button]:text-xs">
+            <ProjectSwitcher
+              workspaceRoot={projectSwitcher.workspaceRoot}
+              recentProjects={projectSwitcher.recentProjects}
+              onNewProject={projectSwitcher.onNewProject}
+              onOpenProject={projectSwitcher.onOpenProject}
+              onCloneRepository={projectSwitcher.onCloneRepository}
+              onOpenRecentProject={projectSwitcher.onOpenRecentProject}
+            />
+          </div>
+        )}
+
+        {gitBranch && (
+          <div className="shrink-0 [&_button]:text-xs">
+            <GitBranchSwitcher
+              workspaceRoot={gitBranch.workspaceRoot}
+              currentBranch={gitBranch.currentBranch}
+              onUpdate={gitBranch.onUpdate}
+              onCommit={gitBranch.onCommit}
+              onPush={gitBranch.onPush}
+              onPull={gitBranch.onPull}
+              onFetch={gitBranch.onFetch}
+              onNewBranch={gitBranch.onNewBranch}
+              onCheckoutBranch={gitBranch.onCheckoutBranch}
+              onRefresh={gitBranch.onRefresh}
+            />
+          </div>
+        )}
+
+        {(projectSwitcher || gitBranch) && <div className="h-4 w-px shrink-0 bg-border/50" />}
+
         <Button
           variant="ghost"
           size="sm"
           className={cn(
-            'h-5 gap-1.5 px-1.5 text-xs hover:bg-accent/50',
+            'h-6 gap-1.5 px-2 text-xs hover:bg-accent/50',
             bottomPanel === 'problems' && 'bg-accent'
           )}
           onClick={() => handleTogglePanel('problems')}
           title="切换问题面板"
         >
-          <AlertCircle className="size-3" />
+          <AlertCircle className="size-3.5" />
           {errorCount > 0 && (
             <div className="flex items-center gap-0.5 text-red-500">
               <span>{errorCount}</span>
@@ -112,32 +154,30 @@ export function StatusBar({
           )}
         </Button>
 
-        {/* 终端面板按钮 */}
         <Button
           variant="ghost"
           size="sm"
           className={cn(
-            'h-5 gap-1 px-1.5 text-xs hover:bg-accent/50',
+            'h-6 gap-1.5 px-2 text-xs hover:bg-accent/50',
             bottomPanel === 'terminal' && 'bg-accent'
           )}
           onClick={() => handleTogglePanel('terminal')}
           title="切换终端面板"
         >
-          <Terminal className="size-3" />
+          <Terminal className="size-3.5" />
           <span>终端</span>
         </Button>
 
-        {/* Language Services 状态 */}
         {currentFile && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-5 gap-1 px-1.5 text-xs hover:bg-accent/50"
+                className="h-6 gap-1.5 px-2 text-xs hover:bg-accent/50"
                 title="语言服务"
               >
-                <Circle className="size-2 fill-green-500 text-green-500" />
+                <Circle className="size-2.5 fill-green-500 text-green-500" />
                 <span className="text-muted-foreground">Language Services</span>
               </Button>
             </DropdownMenuTrigger>
@@ -199,48 +239,22 @@ export function StatusBar({
         )}
       </div>
 
-      {/* 右侧信息 */}
-      <div className="flex items-center gap-3">
-        {/* 代码库索引状态 */}
+      <div className="flex shrink-0 items-center gap-3 pl-2">
         <CodebaseIndexStatus projectPath={projectPath ?? null} />
 
-        {/* 分支切换（底部 status bar，参考 Codex） */}
-        {gitBranch && (
-          <div className="[&_button]:h-5 [&_button]:min-h-5 [&_button]:text-xs">
-            <GitBranchSwitcher
-              workspaceRoot={gitBranch.workspaceRoot}
-              currentBranch={gitBranch.currentBranch}
-              onUpdate={gitBranch.onUpdate}
-              onCommit={gitBranch.onCommit}
-              onPush={gitBranch.onPush}
-              onPull={gitBranch.onPull}
-              onFetch={gitBranch.onFetch}
-              onNewBranch={gitBranch.onNewBranch}
-              onCheckoutBranch={gitBranch.onCheckoutBranch}
-              onRefresh={gitBranch.onRefresh}
-            />
-          </div>
-        )}
-
-        {/* 语言模式 */}
         {currentFile && (
-          <div className="px-1.5 text-xs text-muted-foreground">
-            {languageDisplayName(language)}
-          </div>
+          <div className="px-1 text-xs text-muted-foreground">{languageDisplayName(language)}</div>
         )}
 
-        {/* 文件编码 */}
-        {currentFile && <div className="px-1.5 text-xs text-muted-foreground">{fileEncoding}</div>}
+        {currentFile && <div className="px-1 text-xs text-muted-foreground">{fileEncoding}</div>}
 
-        {/* 行尾符 */}
-        {currentFile && <div className="px-1.5 text-xs text-muted-foreground">{lineEnding}</div>}
+        {currentFile && <div className="px-1 text-xs text-muted-foreground">{lineEnding}</div>}
 
-        {/* 光标位置 */}
         {currentFile && (
           <Button
             variant="ghost"
             size="sm"
-            className="h-5 px-1.5 text-xs font-mono hover:bg-accent/50"
+            className="h-6 px-2 text-xs font-mono hover:bg-accent/50"
             disabled
           >
             Ln {cursorPosition.line}, Col {cursorPosition.column}

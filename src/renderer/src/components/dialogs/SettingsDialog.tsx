@@ -251,20 +251,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         }
       )
       .catch(console.error)
-
-    window.api.auth
-      .getCurrentUser()
-      .then((res) => {
-        if (!res.success || !res.user?.preferences) return
-        try {
-          const p = JSON.parse(res.user.preferences) as Record<string, unknown>
-          const raw = p.aiUserRules
-          setLocalAiUserRules(typeof raw === 'string' ? raw : '')
-        } catch {
-          setLocalAiUserRules('')
-        }
-      })
-      .catch(() => setLocalAiUserRules(''))
   }, [open])
 
   // 获取系统字体列表（仅在对话框打开时加载）
@@ -357,13 +343,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           model: localModelSettings.model,
           instructions: localModelSettings.instructions || null
         })
-      }
-
-      const prefResult = await window.api.auth.updatePreferences({
-        aiUserRules: localAiUserRules.trim() || ''
-      })
-      if (!prefResult.success) {
-        console.warn('[Settings] auth.updatePreferences failed:', prefResult.error)
       }
 
       // 更新 Context 状态（不保存，因为已经保存过了）

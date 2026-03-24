@@ -2,7 +2,6 @@ import os from 'os'
 import path from 'path'
 import { FileService } from './file.service'
 import { MemoryService } from './memory.service'
-import { UserService } from './user.service'
 import type { ConfigService } from './config.service'
 
 export class ContextEnrichmentService {
@@ -105,22 +104,7 @@ Note: Prefer using absolute paths over relative paths as tool call args when pos
    */
   private async getUserRulesAndMemories(): Promise<string | null> {
     try {
-      let dbRules = ''
-      const user = UserService.getInstance().getCurrentUser()
-      if (user?.preferences) {
-        try {
-          const prefs = JSON.parse(user.preferences) as Record<string, unknown>
-          const raw = prefs.aiUserRules
-          if (typeof raw === 'string' && raw.trim()) {
-            dbRules = raw.trim()
-          }
-        } catch {
-          /* ignore invalid JSON */
-        }
-      }
-
       const defaultRule = '- Always respond in 中文'
-      const userRulesBody = dbRules ? `${defaultRule}\n${dbRules}` : defaultRule
 
       let rulesContent = `<rules>
 The rules section has a number of possible rules/memories/context that you should consider. In each subsection, we provide instructions about what information the subsection contains and how you should consider/follow the contents of the subsection.
@@ -128,7 +112,7 @@ The rules section has a number of possible rules/memories/context that you shoul
 
 
 <user_rules description="These are rules set by the user that you should follow if appropriate.">
-${userRulesBody}
+${defaultRule}
 </user_rules>`
 
       // 获取 memories

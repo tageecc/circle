@@ -3,22 +3,6 @@ import { randomUUID } from 'crypto'
 
 const now = () => new Date().toISOString()
 
-// Users（先定义，sessions/projects 引用）
-export const users = sqliteTable('users', {
-  id: text('id')
-    .primaryKey()
-    .$defaultFn(() => randomUUID()),
-  username: text('username').notNull().unique(),
-  email: text('email').unique(),
-  displayName: text('display_name'),
-  avatar: text('avatar'),
-  preferences: text('preferences').default('{}'),
-  metadata: text('metadata'),
-  createdAt: text('created_at').notNull().$defaultFn(now),
-  updatedAt: text('updated_at').notNull().$defaultFn(now),
-  lastLoginAt: text('last_login_at')
-})
-
 export const agents = sqliteTable('agents', {
   id: text('id')
     .primaryKey()
@@ -109,7 +93,6 @@ export const sessions = sqliteTable('sessions', {
   id: text('id')
     .primaryKey()
     .$defaultFn(() => randomUUID()),
-  userId: text('user_id').notNull(),
   projectPath: text('project_path'),
   title: text('title').default('New Chat'),
   agentId: text('agent_id'),
@@ -129,7 +112,6 @@ export const projects = sqliteTable('projects', {
   id: text('id')
     .primaryKey()
     .$defaultFn(() => randomUUID()),
-  userId: text('user_id').notNull(),
   path: text('path').notNull(),
   name: text('name').notNull(),
   description: text('description'),
@@ -153,10 +135,9 @@ export const agentMemories = sqliteTable('agent_memories', {
     .$defaultFn(() => randomUUID()),
   title: text('title').notNull(),
   content: text('content').notNull(),
-  userId: text('user_id').notNull(),
   projectId: text('project_id'),
   agentId: text('agent_id'),
-  scope: text('scope').notNull().default('user'),
+  scope: text('scope').notNull().default('global'),
   importance: integer('importance').default(5),
   accessCount: integer('access_count').default(0),
   lastAccessedAt: text('last_accessed_at'),
@@ -171,7 +152,6 @@ export const agentTodos = sqliteTable('agent_todos', {
     .primaryKey()
     .$defaultFn(() => randomUUID()),
   sessionId: text('session_id').notNull(),
-  userId: text('user_id').notNull(),
   projectId: text('project_id'),
   agentId: text('agent_id'),
   todoId: text('todo_id').notNull(),
@@ -218,8 +198,6 @@ export const codebaseFiles = sqliteTable('codebase_files', {
 
 // 向量已迁移至 circle-vectors.db（sqlite-vec），此处不再使用
 
-export type User = typeof users.$inferSelect
-export type NewUser = typeof users.$inferInsert
 export type Agent = typeof agents.$inferSelect
 export type NewAgent = typeof agents.$inferInsert
 export type MCPServer = typeof mcpServers.$inferSelect

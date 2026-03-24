@@ -106,12 +106,6 @@ const api = {
     delete: (threadId: string) => ipcRenderer.invoke('threads:delete', threadId)
   },
 
-  auth: {
-    getCurrentUser: () => ipcRenderer.invoke('auth:getCurrentUser'),
-    updatePreferences: (partial: Record<string, unknown>) =>
-      ipcRenderer.invoke('auth:updatePreferences', partial)
-  },
-
   completion: {
     generate: (request: {
       filePath: string

@@ -56,18 +56,14 @@ Rules:
           }
           const ctx = (
             this as unknown as {
-              context?: { userId?: string; projectId?: string; agentId?: string }
+              context?: { projectId?: string; agentId?: string }
             }
           ).context
-          if (!ctx?.userId) {
-            throw new Error('User context is required to create memories')
-          }
           const created = await memoryService.createMemory({
             title,
             content: knowledge_to_store,
-            userId: ctx.userId,
-            projectId: ctx.projectId,
-            agentId: ctx.agentId
+            projectId: ctx?.projectId,
+            agentId: ctx?.agentId
           })
           return {
             success: true,

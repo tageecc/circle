@@ -28,7 +28,6 @@ export class MemoryService {
   async createMemory(data: {
     title: string
     content: string
-    userId: string // 必需
     projectId?: string | null
     agentId?: string | null
     scope?: string
@@ -39,10 +38,9 @@ export class MemoryService {
       .values({
         title: data.title,
         content: data.content,
-        userId: data.userId,
         projectId: data.projectId ?? null,
         agentId: data.agentId ?? null,
-        scope: data.scope ?? 'user',
+        scope: data.scope ?? 'global',
         importance: data.importance ?? 5,
         accessCount: 0,
         metadata: null
@@ -126,16 +124,12 @@ export class MemoryService {
    */
   async getAllMemories(filters?: {
     agentId?: string
-    userId?: string
     projectId?: string
     minImportance?: number
   }): Promise<AgentMemory[]> {
     // 构建查询条件
     const conditions: any[] = []
 
-    if (filters?.userId) {
-      conditions.push(eq(agentMemories.userId, filters.userId))
-    }
     if (filters?.agentId) {
       conditions.push(eq(agentMemories.agentId, filters.agentId))
     }

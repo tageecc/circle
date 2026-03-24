@@ -64,24 +64,6 @@ declare global {
         getWithMessages: (threadId: string) => Promise<any>
         delete: (threadId: string) => Promise<void>
       }
-      auth: {
-        getCurrentUser: () => Promise<{
-          success: boolean
-          user?: {
-            id: string
-            username: string
-            email?: string | null
-            displayName?: string | null
-            preferences?: string | null
-          }
-          error?: string
-        }>
-        updatePreferences: (partial: Record<string, unknown>) => Promise<{
-          success: boolean
-          preferences?: string
-          error?: string
-        }>
-      }
       completion: {
         generate: (request: {
           filePath: string

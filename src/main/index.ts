@@ -177,28 +177,10 @@ async function initializeBackend() {
         console.error('❌ Failed to initialize MCP Client Manager:', error)
       })
 
-    // Initialize user system
-    console.log('🔄 Initializing user system...')
-    try {
-      const { UserService } = await import('./services/user.service')
-      const userService = UserService.getInstance()
-      await userService.initialize()
-      console.log('✅ User system initialized')
-    } catch (userError) {
-      console.error('❌ User system initialization failed:', userError)
-      // 继续执行，不阻止应用启动
-    }
-
     // Register IPC handlers (must be after configService is initialized)
     console.log('🔄 Registering IPC handlers...')
     registerIpcHandlers()
     console.log('✅ Main IPC handlers registered')
-
-    // Register auth handlers
-    console.log('🔄 Registering auth handlers...')
-    const { registerAuthHandlers } = await import('./ipc/auth.handlers')
-    registerAuthHandlers()
-    console.log('✅ Auth handlers registered')
 
     console.log('✅ Backend initialized successfully')
     return true

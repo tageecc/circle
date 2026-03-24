@@ -1,6 +1,6 @@
 import { getDatabase } from '../database/client'
 import { projects, type Project } from '../database/schema.sqlite'
-import { eq, and } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import * as path from 'path'
 import { promises as fs } from 'fs'
 import { dialog } from 'electron'
@@ -102,12 +102,12 @@ export class ProjectService {
   /**
    * 获取或创建项目
    */
-  async getOrCreateProject(userId: string, projectPath: string): Promise<Project> {
+  async getOrCreateProject(projectPath: string): Promise<Project> {
     // 检查项目是否已存在
     const [existing] = await getDb()
       .select()
       .from(projects)
-      .where(and(eq(projects.userId, userId), eq(projects.path, projectPath)))
+      .where(eq(projects.path, projectPath))
       .limit(1)
 
     if (existing) {
@@ -128,7 +128,6 @@ export class ProjectService {
     const [project] = await getDb()
       .insert(projects)
       .values({
-        userId,
         path: projectPath,
         name: projectName,
         projectType: projectInfo.type,
@@ -228,26 +227,25 @@ export class ProjectService {
   }
 
   /**
-   * 获取用户的所有项目
+   * 获取所有项目
    */
-  async getUserProjects(userId: string): Promise<Project[]> {
-    const userProjects = await getDb()
+  async getAllProjects(): Promise<Project[]> {
+    const allProjects = await getDb()
       .select()
       .from(projects)
-      .where(eq(projects.userId, userId))
       .orderBy(projects.lastOpenedAt)
 
-    return userProjects
+    return allProjects
   }
 
   /**
    * 通过路径获取项目
    */
-  async getProjectByPath(userId: string, projectPath: string): Promise<Project | null> {
+  async getProjectByPath(projectPath: string): Promise<Project | null> {
     const [project] = await getDb()
       .select()
       .from(projects)
-      .where(and(eq(projects.userId, userId), eq(projects.path, projectPath)))
+      .where(eq(projects.path, projectPath))
       .limit(1)
 
     return project || null

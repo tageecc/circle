@@ -83,7 +83,6 @@ CREATE TABLE IF NOT EXISTS workflows (
 );
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
   project_path TEXT,
   title TEXT DEFAULT 'New Chat',
   agent_id TEXT,
@@ -99,7 +98,6 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 CREATE TABLE IF NOT EXISTS projects (
   id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
   path TEXT NOT NULL,
   name TEXT NOT NULL,
   description TEXT,
@@ -119,10 +117,9 @@ CREATE TABLE IF NOT EXISTS agent_memories (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   content TEXT NOT NULL,
-  user_id TEXT NOT NULL,
   project_id TEXT,
   agent_id TEXT,
-  scope TEXT NOT NULL DEFAULT 'user',
+  scope TEXT NOT NULL DEFAULT 'global',
   importance INTEGER DEFAULT 5,
   access_count INTEGER DEFAULT 0,
   last_accessed_at TEXT,
@@ -133,13 +130,12 @@ CREATE TABLE IF NOT EXISTS agent_memories (
 CREATE TABLE IF NOT EXISTS agent_todos (
   id TEXT PRIMARY KEY,
   session_id TEXT NOT NULL,
-  user_id TEXT NOT NULL,
   project_id TEXT,
   agent_id TEXT,
   todo_id TEXT NOT NULL,
   content TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending',
-  order INTEGER DEFAULT 0,
+  "order" INTEGER DEFAULT 0,
   metadata TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))

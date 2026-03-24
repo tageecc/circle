@@ -65,20 +65,19 @@ Task States:
       // 从 context 获取必要信息（由调用方注入）
       const ctx = (
         this as {
-          context?: { userId?: string; sessionId?: string; projectId?: string; agentId?: string }
+          context?: { sessionId?: string; projectId?: string; agentId?: string }
         }
       ).context
-      if (!ctx?.userId || !ctx?.sessionId) {
-        throw new Error('User context and session ID are required to manage todos')
+      if (!ctx?.sessionId) {
+        throw new Error('Session ID is required to manage todos')
       }
 
-      const { userId, sessionId, projectId, agentId } = ctx
+      const { sessionId, projectId, agentId } = ctx
 
       if (merge) {
         // 合并模式：更新现有 todos
         const updated = await todoService.mergeTodos(
           sessionId,
-          userId,
           projectId || null,
           agentId || null,
           todos
@@ -93,7 +92,6 @@ Task States:
         // 替换模式：替换所有 todos
         const replaced = await todoService.replaceTodos(
           sessionId,
-          userId,
           projectId || null,
           agentId || null,
           todos

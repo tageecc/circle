@@ -27,7 +27,6 @@ export class TodoService {
    */
   async mergeTodos(
     sessionId: string,
-    userId: string,
     projectId: string | null,
     agentId: string | null,
     todos: Array<{
@@ -68,7 +67,6 @@ export class TodoService {
           .insert(agentTodos)
           .values({
             sessionId,
-            userId,
             projectId,
             agentId,
             todoId: todo.id,
@@ -92,7 +90,6 @@ export class TodoService {
    */
   async replaceTodos(
     sessionId: string,
-    userId: string,
     projectId: string | null,
     agentId: string | null,
     todos: Array<{
@@ -107,7 +104,6 @@ export class TodoService {
     // 创建新 todos
     const newTodos: NewAgentTodo[] = todos.map((todo, index) => ({
       sessionId,
-      userId,
       projectId,
       agentId,
       todoId: todo.id,

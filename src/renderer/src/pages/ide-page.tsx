@@ -21,7 +21,6 @@ import {
   getFileNameFromPath
 } from '@/features/ide/utils/file-helpers'
 import { MenuBar } from '@/features/ide/components/menu-bar'
-import { ProjectBar } from '@/features/ide/components/project-bar'
 import { EditorArea } from '@/features/ide/components/editor'
 import { FileTree } from '@/components/code/FileTree'
 import { ChatSidebar } from '@/components/code/ChatSidebar'
@@ -42,7 +41,6 @@ import {
   GitBranchCompareDialog
 } from '@/components/git'
 import { CollapsiblePanel } from '@/components/shared/CollapsiblePanel'
-import { UserMenu } from '@/components/layout/UserMenu'
 
 interface IDEPageProps {
   onOpenSettings?: () => void
@@ -682,15 +680,6 @@ export function IDEPage({ onOpenSettings }: IDEPageProps) {
           />
         )}
 
-        <ProjectBar
-          workspaceRoot={workspaceRoot}
-          recentProjects={recentProjects}
-          onNewProject={() => setShowNewProjectDialog(true)}
-          onOpenProject={handleOpenProject}
-          onCloneRepository={() => setShowCloneDialog(true)}
-          onOpenRecentProject={handleOpenRecentProject}
-        />
-
         <div className="ml-auto flex items-center gap-1 pr-2">
           <Button
             variant="ghost"
@@ -723,8 +712,6 @@ export function IDEPage({ onOpenSettings }: IDEPageProps) {
               <Settings className="size-4" />
             </Button>
           )}
-
-          <UserMenu collapsed />
         </div>
       </div>
 
@@ -945,6 +932,18 @@ export function IDEPage({ onOpenSettings }: IDEPageProps) {
         bottomPanel={bottomPanel}
         onBottomPanelChange={setBottomPanel}
         diagnostics={allDiagnostics}
+        projectSwitcher={
+          workspaceRoot
+            ? {
+                workspaceRoot,
+                recentProjects,
+                onNewProject: () => setShowNewProjectDialog(true),
+                onOpenProject: openProject,
+                onCloneRepository: () => setShowCloneDialog(true),
+                onOpenRecentProject: openRecentProject
+              }
+            : null
+        }
         gitBranch={
           isGitRepo && workspaceRoot && currentBranch
             ? {
