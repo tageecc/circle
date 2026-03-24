@@ -39,10 +39,7 @@
     "build:unpack": "pnpm run build && electron-builder --dir",
     "build:win": "pnpm run build && electron-builder --win",
     "build:mac": "electron-vite build && electron-builder --mac",
-    "build:linux": "electron-vite build && electron-builder --linux",
-    "db:seed": "tsx src/main/database/seed.ts seed",
-    "db:clear": "tsx src/main/database/seed.ts clear",
-    "db:reset": "tsx src/main/database/seed.ts reset"
+    "build:linux": "electron-vite build && electron-builder --linux"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.42",
@@ -87,7 +84,6 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
-    "dotenv": "^17.2.3",
     "drizzle-orm": "^0.44.7",
     "electron-updater": "^6.3.9",
     "font-list": "^2.0.1",
@@ -133,7 +129,6 @@
     "prettier": "^3.6.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "tsx": "^4.20.6",
     "tw-animate-css": "^1.4.0",
     "typescript": "^5.9.2",
     "vite": "^7.1.6",

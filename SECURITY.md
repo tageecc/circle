@@ -30,5 +30,5 @@ Out of scope (unless they directly affect this app’s shipped code):
 
 ## Secure development notes
 
-- API keys belong in user configuration or `.env` (never committed). See `.gitignore`.
+- API keys belong in **应用内设置**与本地用户数据目录（勿提交仓库）。
 - Review IPC handlers for path traversal and unsafe `shell` usage when changing file or terminal features.

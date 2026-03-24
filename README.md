@@ -1,68 +1,110 @@
+<div align="center">
+
 # Circle
+
+**本地优先的 AI 原生桌面 IDE**
+
+在单一窗口内完成编码、Git、终端与 AI 协作
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![pnpm](https://img.shields.io/badge/maintained%20with-pnpm-f69220.svg)](https://pnpm.io)
 [![CI](https://github.com/tageecc/circle/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/tageecc/circle/actions/workflows/ci.yml)
 
-> **本地优先的 AI 原生桌面 IDE** — 在单一窗口内完成打开工程、编辑、终端、Git 与 AI 对话。
+[快速开始](#快速开始) · [核心特性](#核心特性) · [技术栈](#技术栈) · [路线图](#路线图)
 
-Circle 基于 **Electron**，数据与向量索引默认落在本机 **SQLite / LibSQL**，无需自建后端即可使用。
+</div>
 
 ---
 
-## Vibe coding IDE 能力清单
+## 简介
 
-以下为「AI 辅助写代码的桌面 IDE」常见能力；**已实现的打勾**，部分实现或未做的已注明。
+Circle 是一个基于 Electron 的本地桌面 IDE，将代码编辑、Git 工作流、终端与 AI 对话深度集成在同一界面。所有数据与向量索引存储在本地 SQLite / LibSQL，无需自建后端即可使用。
+
+---
+
+## 核心特性
+
+### 🤖 AI 原生开发体验
+
+- **自然语言生成工程**：欢迎页输入需求描述，AI 自动生成完整项目结构并落盘
+- **行内幽灵补全**：支持专用模型配置、TS/JS Shadow 诊断、与列表补全分层
+- **代码库语义索引**：Embedding 模型为对话提供精准上下文检索
+- **Human-in-the-loop 确认**：AI 修改文件前双栏 Diff 对比，可接受或拒绝每处改动
+
+### 🔧 完整的开发工具链
+
+- **Monaco 编辑器**：TypeScript/JavaScript 语言服务、Markdown 预览、多标签管理
+- **集成 Git**：工作区状态、提交、推送、分支切换、Diff、历史、Blame 可视化
+- **真实终端**：node-pty 驱动的多 Tab Shell，支持 AI 工具注入命令并回传输出
+- **问题面板**：汇总工作区诊断，语言服务实时反馈
+
+### 🧩 可扩展的 AI 工具生态
+
+- **MCP 协议**：配置外部 MCP 服务器，自动同步工具到对话
+- **自定义脚本**：创建本地工具脚本并绑定到 Agent
+- **内置工具集**：语义搜索、grep、文件操作、终端命令、网页搜索、任务列表等
+
+### 🏠 本地优先与隐私
+
+- **本地存储**：SQLite / LibSQL 保存业务数据与向量索引，无需云端依赖
+- **多模型支持**：配置任意提供商（OpenAI / Anthropic / Google 等）的 API Key
+- **离线可用**：编辑、Git、终端等核心功能无需网络
+
+---
+
+## 路线图
+
+**[x]** 已完成 · **[ ]** 规划中
 
 ### 工程与工作区
 
 - [x] 打开本地文件夹、最近项目列表
 - [x] 从 Git 克隆仓库
 - [x] 新建空文件夹项目
-- [x] 欢迎页：用自然语言描述需求，**AI 生成并落盘完整工程**后自动打开
+- [x] 欢迎页：用自然语言描述需求，AI 生成并落盘完整工程后自动打开
 - [x] 多标签页编辑、关闭未保存提示
 - [ ] 多根工作区（单窗口多文件夹）
 
 ### 编辑器
 
-- [x] **Monaco** 代码编辑（主题、字体、缩进等与设置联动）
-- [x] **TypeScript / JavaScript** 语言服务（诊断、补全、跳转等，随工程）
-- [x] **Markdown** 与 **图片** 预览
-- [x] **Diff** 视图（含 AI 修改文件时的对比确认流）
-- [x] **AI 行内幽灵补全**（可关、可配专用模型；TS/JS 可选 Shadow 诊断）
-- [x] 与列表补全分层：`quickSuggestions` 关闭，减少与行内建议冲突
-- [x] **Git Blame** 行内装饰（可配）
+- [x] Monaco 代码编辑（主题、字体、缩进等与设置联动）
+- [x] TypeScript / JavaScript 语言服务（诊断、补全、跳转等，随工程）
+- [x] Markdown 与 图片 预览
+- [x] Diff 视图（含 AI 修改文件时的对比确认流）
+- [x] AI 行内幽灵补全（可关、可配专用模型；TS/JS 可选 Shadow 诊断）
+- [x] 与列表补全分层：quickSuggestions 关闭，减少与行内建议冲突
+- [x] Git Blame 行内装饰（可配）
 
 ### AI 与自动化
 
-- [x] 侧栏 **流式对话**、工具调用、文件编辑 **Human-in-the-loop** 确认
-- [x] **默认助手**：设置 → 模型（提供商、模型 ID、系统提示）
-- [x] 对话输入框可 **切换 Agent**（取决于本地库中的 Agent 记录；`pnpm db:seed` 会写入多条示例）
-- [x] **代码库语义索引**（Embedding + 状态栏进度；设置中配置）
-- [x] **MCP** 与 **自定义工具**（设置 → MCP & Tools）
+- [x] 侧栏 流式对话、工具调用、文件编辑 Human-in-the-loop 确认
+- [x] 默认助手：设置 → 模型（提供商、模型 ID、系统提示）
+- [x] 对话输入框可 切换 Agent（取决于本地库中的 Agent 记录）
+- [x] 代码库语义索引（Embedding + 状态栏进度；设置中配置）
+- [x] MCP 与 自定义工具（设置 → MCP & Tools）
 - [ ] 独立的「Agents 列表 / 创建 / 删除」全屏管理页（相关组件在仓库中尚未挂到主导航）
 
 ### 终端与诊断
 
-- [x] 集成 **终端**（node-pty）
-- [x] **问题**面板汇总诊断
-- [x] 从 AI 工具流 **注入终端命令** 等（随工具实现）
+- [x] 集成 终端（node-pty）
+- [x] 问题面板汇总诊断
+- [x] 从 AI 工具流 注入终端命令 等（随工具实现）
 
 ### Git
 
-- [x] 工作区状态、**提交**、**推送**、**拉取/获取**、**切换分支**、新建分支
-- [x] **Diff**、**文件历史**、**Blame**、**分支对比**
+- [x] 工作区状态、提交、推送、拉取/获取、切换分支、新建分支
+- [x] Diff、文件历史、Blame、分支对比
 
 ### 账户与设置
 
-- [x] 本地用户 **登录 / 登出**（用户菜单）
-- [x] 设置：**通用、模型、MCP & Tools、外观、编辑器、终端、快捷键**
-- [x] **全局 AI 用户规则**、Embedding、网页搜索 Key、**行内补全** 等
+- [x] 本地用户 登录 / 登出（用户菜单）
+- [x] 设置：通用、模型、MCP & Tools、外观、编辑器、终端、快捷键
+- [x] 全局 AI 用户规则、Embedding、网页搜索 Key、行内补全 等
 - [ ] 帮助菜单内「欢迎 / 文档 / 关于」仍为占位
 
 ### 其他
 
-- [x] **`circle://` URL Scheme** 唤起应用（主进程协议注册）
+- [x] `circle://` URL Scheme 唤起应用（主进程协议注册）
 - [ ] 远程 SSH 工作区
 - [ ] 语言级调试器（断点、单步）
 
@@ -70,21 +112,32 @@ Circle 基于 **Electron**，数据与向量索引默认落在本机 **SQLite / 
 
 ## 快速开始
 
-### 环境
+### 前置要求
 
-- Node.js **18+**
-- **pnpm**（版本与 `package.json` 中 `packageManager` 一致）
+- **Node.js** 18+
+- **pnpm**（与 `package.json` 中 `packageManager` 字段一致）
 
-### 安装与开发
+### 安装与运行
 
 ```bash
+# 克隆仓库
+git clone https://github.com/tageecc/circle.git
+cd circle
+
+# 安装依赖
 pnpm install
+
+# 启动开发模式
 pnpm dev
 ```
 
-可选：复制 `.env.example` 为 `.env`（按需）。**主路径**是在应用内 **设置** 里配置模型与 API Key；索引、Apply Edit、搜索等也在设置中完成。
+### 首次使用
 
-### 构建
+1. **配置模型**：打开 **设置 → 模型**，输入 API Key 并选择提供商与模型 ID
+2. **生成工程**：在欢迎页输入项目描述，AI 生成完整工程后自动打开
+3. **日常开发**：左侧文件树、中间编辑器、右侧 AI 对话；底部终端与问题面板
+
+### 构建打包
 
 ```bash
 pnpm build:win    # Windows
@@ -92,63 +145,42 @@ pnpm build:mac    # macOS
 pnpm build:linux  # Linux
 ```
 
-### 示例数据
-
-首次可填充本地示例 Agent / MCP 等：
-
-```bash
-pnpm db:seed
-```
-
----
-
-## 使用提示
-
-1. **用 AI 从零建项目**：无打开工程时，在欢迎页输入描述 → 选目录 → 等待生成 → 自动打开。
-2. **日常开发**：打开文件夹 → 左侧文件树 + 中间编辑区 + 右侧对话；底部可开终端与问题面板。
-3. **默认模型**：**设置 → 模型**；若执行过 `db:seed`，对话里还可切换其他本地 Agent 记录。
-
----
-
-## 文档与协作
-
-| 文档                                  | 说明         |
-| ------------------------------------- | ------------ |
-| [CHANGELOG](CHANGELOG.md)             | 版本记录     |
-| [CONTRIBUTING](CONTRIBUTING.md)       | 开发、PR、CI |
-| [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md) | 行为准则     |
-| [SECURITY](SECURITY.md)               | 安全披露     |
-| [SUPPORT](SUPPORT.md)                 | 获取帮助     |
-
-### 建议：保护 `main` 分支
-
-在 GitHub：**Settings → Rules → Rulesets**（或 **Branches → Branch protection rules**）中为 `main` 开启：
-
-- Require a pull request before merging
-- Require status checks to pass（至少包含 **CI / validate** 与 **build** 任务）
-
-避免直接推主分支破坏 CI。
-
 ---
 
 ## 技术栈
 
-- **UI**：React 19、TypeScript、Tailwind CSS、Radix / shadcn 风格组件
-- **桌面**：Electron、electron-vite
-- **数据**：SQLite / LibSQL、Drizzle ORM
-- **AI**：Mastra、Vercel AI SDK、多模型提供商 SDK
-- **编辑器**：Monaco Editor
+| 领域   | 技术                                                  |
+| ------ | ----------------------------------------------------- |
+| 前端   | React 19、TypeScript、Tailwind CSS、Radix / shadcn   |
+| 桌面   | Electron、electron-vite                               |
+| 编辑器 | Monaco Editor                                         |
+| AI     | Mastra、Vercel AI SDK、多模型提供商 SDK、MCP 协议    |
+| 数据   | SQLite / LibSQL、Drizzle ORM                          |
+| 终端   | node-pty                                              |
 
 ---
 
-## 贡献与许可
+## 贡献
 
-贡献前请阅读 **[CONTRIBUTING.md](CONTRIBUTING.md)** 与 **[CODE_OF_CONDUCT](CODE_OF_CONDUCT.md)**。
+我们欢迎各种形式的贡献！请阅读 [CONTRIBUTING.md](CONTRIBUTING.md) 了解开发流程与 PR 规范。
 
-本项目以 **[MIT License](LICENSE)** 发布。
+- **Bug 报告**：[提交 Issue](../../issues)
+- **功能建议**：[提交 Feature Request](../../issues)
+- **代码贡献**：Fork → 开分支 → PR
+- **文档改进**：直接提 PR 或 Issue
 
-## 致谢
+请遵守我们的 [行为准则](CODE_OF_CONDUCT.md)。安全问题请参阅 [SECURITY.md](SECURITY.md)。
 
-- [Mastra](https://mastra.ai/) — Agent / 工具编排
-- [shadcn/ui](https://ui.shadcn.com/) — UI 组件实践
-- [Monaco Editor](https://microsoft.github.io/monaco-editor/) — 编辑器内核
+---
+
+## 许可证
+
+[MIT License](LICENSE) © 2025 Circle
+
+---
+
+## 链接
+
+- [版本记录](CHANGELOG.md)
+- [安全政策](SECURITY.md)
+- [获取帮助](SUPPORT.md)

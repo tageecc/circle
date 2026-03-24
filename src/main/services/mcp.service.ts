@@ -63,12 +63,6 @@ export class MCPService {
     return this.updateServer(id, { tools: JSON.stringify(tools) })
   }
 
-  /**
-   * 初始化默认 MCP 服务器（已废弃，请使用 npm run db:seed）
-   */
-  static async initializeDefaultServers(): Promise<void> {
-    // 不再自动创建默认服务器
-    // 使用 npm run db:seed 来创建示例数据
-    console.log('ℹ️  MCP Servers: Use "npm run db:seed" to initialize sample servers')
-  }
+  /** MCP 由用户在设置中自行添加，不注入示例服务 */
+  static async initializeDefaultServers(): Promise<void> {}
 }

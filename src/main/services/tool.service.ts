@@ -7,14 +7,8 @@ import { getMCPClientManager } from '../index'
  * 工具服务 - 支持 MCP 和 Custom 两种来源
  */
 export class ToolService {
-  /**
-   * 初始化默认工具
-   * 注意：工具通过 MCP Server 导入或用户自定义创建
-   * 请使用 `npm run db:seed` 创建示例 MCP Server
-   */
-  static async initializeDefaultTools(): Promise<void> {
-    console.log('ℹ️  Tools: No default tools to initialize')
-  }
+  /** 工具来自 MCP 导入或自定义创建，无内置示例数据 */
+  static async initializeDefaultTools(): Promise<void> {}
 
   /**
    * 获取所有工具（带使用统计）

@@ -16,7 +16,7 @@
 - [ ] `pnpm run lint` passes locally
 - [ ] `pnpm run format:check` passes locally
 - [ ] I have searched for duplicate issues / PRs
-- [ ] I have not committed secrets (API keys, tokens, `.env`)
+- [ ] I have not committed secrets (API keys, tokens, or local user data)
 
 ## Screenshots / recordings (UI changes)
 

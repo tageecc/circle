@@ -5,11 +5,6 @@ out
 .eslintcache
 *.log*
 
-# 本地环境与密钥（勿提交）
-.env
-.env.*
-!.env.example
-
 # 第三方/历史资源（已移除 MasterGo，目录勿再纳入）
 mastergo.mastergo-0.0.4/
 

@@ -28,7 +28,6 @@ Do **not** open public issues for security vulnerabilities. Follow **[SECURITY.m
 
 ```bash
 pnpm install
-cp .env.example .env   # optional; see README
 pnpm dev
 ```
 

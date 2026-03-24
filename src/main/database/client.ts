@@ -1,11 +1,8 @@
 import { createClient } from '@libsql/client/node'
 import { drizzle } from 'drizzle-orm/libsql/node'
 import * as path from 'path'
-import dotenv from 'dotenv'
 import * as schema from './schema.sqlite'
 import { initVectorStore, closeVectorStore } from './vector-store'
-
-dotenv.config()
 
 let db: ReturnType<typeof drizzle<typeof schema>> | null = null
 
