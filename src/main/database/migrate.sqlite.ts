@@ -1,16 +1,4 @@
 const SQL = `
-CREATE TABLE IF NOT EXISTS users (
-  id TEXT PRIMARY KEY,
-  username TEXT NOT NULL UNIQUE,
-  email TEXT UNIQUE,
-  display_name TEXT,
-  avatar TEXT,
-  preferences TEXT DEFAULT '{}',
-  metadata TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-  last_login_at TEXT
-);
 CREATE TABLE IF NOT EXISTS agents (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,

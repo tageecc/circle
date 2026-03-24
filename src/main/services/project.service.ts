@@ -230,10 +230,7 @@ export class ProjectService {
    * 获取所有项目
    */
   async getAllProjects(): Promise<Project[]> {
-    const allProjects = await getDb()
-      .select()
-      .from(projects)
-      .orderBy(projects.lastOpenedAt)
+    const allProjects = await getDb().select().from(projects).orderBy(projects.lastOpenedAt)
 
     return allProjects
   }

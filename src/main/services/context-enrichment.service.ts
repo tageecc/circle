@@ -42,8 +42,8 @@ export class ContextEnrichmentService {
     const systemInfo = this.getSystemInfo(workspaceRoot, configService)
     contextParts.push(systemInfo)
 
-    // 2. 用户规则和 Memories（合并在 rules 标签内）
-    const rulesAndMemories = await this.getUserRulesAndMemories()
+    // 2. 规则和 Memories（合并在 rules 标签内）
+    const rulesAndMemories = await this.getRulesAndMemories()
     if (rulesAndMemories) {
       contextParts.push(rulesAndMemories)
     }
@@ -100,9 +100,9 @@ Note: Prefer using absolute paths over relative paths as tool call args when pos
   }
 
   /**
-   * 获取用户规则和 Memories(完整的 rules 部分)
+   * 获取规则和 Memories(完整的 rules 部分)
    */
-  private async getUserRulesAndMemories(): Promise<string | null> {
+  private async getRulesAndMemories(): Promise<string | null> {
     try {
       const defaultRule = '- Always respond in 中文'
 
@@ -111,9 +111,9 @@ The rules section has a number of possible rules/memories/context that you shoul
 
 
 
-<user_rules description="These are rules set by the user that you should follow if appropriate.">
+<agent_rules description="These are rules that the agent should follow if appropriate.">
 ${defaultRule}
-</user_rules>`
+</agent_rules>`
 
       // 获取 memories
       const memoryService = MemoryService.getInstance()
@@ -140,7 +140,7 @@ ${memoriesText}
 
       return rulesContent
     } catch (error) {
-      console.error('Failed to get user rules:', error)
+      console.error('Failed to get rules and memories:', error)
       return null
     }
   }

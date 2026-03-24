@@ -178,9 +178,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     model: '',
     apiKey: ''
   })
-  /** 存于用户表 preferences.aiUserRules，注入 Agent 上下文的 &lt;user_rules&gt; */
-  const [localAiUserRules, setLocalAiUserRules] = useState('')
-
   // 系统字体列表
   const [systemFonts, setSystemFonts] = useState<string[]>([])
   // 重置确认 Popover 状态
@@ -425,19 +422,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               settings={localCompletionSettings}
               onChange={setLocalCompletionSettings}
             />
-            <Separator />
-            <div className="space-y-3">
-              <h4 className="text-sm font-medium">全局 AI 用户规则</h4>
-              <p className="text-xs text-muted-foreground">
-                写入本地用户数据，随每次对话注入上下文中的 user_rules（与默认助手指令叠加）。
-              </p>
-              <Textarea
-                value={localAiUserRules}
-                onChange={(e) => setLocalAiUserRules(e.target.value)}
-                placeholder="例如：优先使用 TypeScript 严格模式；提交前运行 lint。"
-                className="min-h-[140px] resize-y font-mono text-sm"
-              />
-            </div>
             <Separator />
             <EmbeddingSettingsContent
               settings={localEmbeddingSettings}
