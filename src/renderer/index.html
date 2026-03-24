@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Circle - AI Agent Platform</title>
+    <script>
+      ;(function () {
+        try {
+          // 默认主题
+          let theme = 'dark'
+
+          // 尝试从 localStorage 读取主题（如果之前有缓存）
+          const cachedTheme = localStorage.getItem('circle-theme')
+          if (cachedTheme) {
+            theme = cachedTheme
+          }
+
+          // 立即应用主题
+          document.documentElement.classList.add(theme)
+        } catch (e) {
+          // 如果出错，使用默认的 dark 主题
+          document.documentElement.classList.add('dark')
+        }
+      })()
+    </script>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,25 @@
+node_modules
+dist
+out
+.DS_Store
+.eslintcache
+*.log*
+
+# 本地环境与密钥（勿提交）
+.env
+.env.*
+!.env.example
+
+# 第三方/历史资源（已移除 MasterGo，目录勿再纳入）
+mastergo.mastergo-0.0.4/
+
+# AI Tracing 数据库（本地调试数据）
+circle-traces.db
+circle-traces.db-shm
+circle-traces.db-wal
+
+# 代码库向量库（sqlite-vec，通常在 userDataPath 下）
+circle-vectors.db
+
+# 日志与请求数据（勿提交）
+cursor-request-data.json

@@ -1,0 +1,24 @@
+name: Documentation
+description: Report unclear, missing, or incorrect documentation
+title: '[docs] '
+labels: [documentation, triage]
+body:
+  - type: textarea
+    id: page
+    attributes:
+      label: Which document or URL?
+      description: File path in the repo, README section, or in-app text.
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong or missing?
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested improvement (optional)
