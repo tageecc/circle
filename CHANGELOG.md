@@ -17,3 +17,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `electron-builder.yml`: stable `appId`; auto-update publish config removed until a release CDN is configured
+- CI: `pnpm/action-setup@v4` 不再写死 `version`，与 `package.json` 的 `packageManager` 对齐
+- README：重写为与当前 IDE 一致的能力清单；移除对外产品对标表述
+- 种子数据默认 Agent 名称由「Cursor Agent」改为「Circle Coding」

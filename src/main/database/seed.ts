@@ -12,7 +12,7 @@ export async function seedDatabase(): Promise<{ agents: number; mcpServers: numb
     console.log('📦 创建示例 Agents...')
     const agentsData: Array<Record<string, unknown>> = [
       {
-        name: 'Cursor Agent',
+        name: 'Circle Coding',
         description: 'AI 编程助手，可自动创建项目、编写代码、操作文件系统',
         model: 'gpt-4o',
         provider: 'openai',

@@ -1,7 +1,7 @@
 {
   "name": "circle",
   "version": "1.0.0",
-  "description": "A multi-agent platform for AI development",
+  "description": "Circle — local-first AI-native desktop IDE (Electron + Monaco)",
   "main": "./out/main/index.js",
   "author": "Circle",
   "license": "MIT",
