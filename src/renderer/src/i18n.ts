@@ -49,7 +49,18 @@ async function initializeI18n() {
     lng: savedLanguage,
     fallbackLng: 'en',
     defaultNS,
-    ns: ['common', 'git', 'settings', 'chat', 'editor', 'terminal', 'dialogs', 'tools', 'agent'],
+    ns: [
+      'common',
+      'project',
+      'git',
+      'settings',
+      'chat',
+      'editor',
+      'terminal',
+      'dialogs',
+      'tools',
+      'agent'
+    ],
     interpolation: {
       escapeValue: false // React 已经处理了 XSS
     },

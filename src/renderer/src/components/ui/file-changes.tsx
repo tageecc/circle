@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from './button'
 import { ChevronDown, ChevronUp, X, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -22,6 +23,7 @@ interface FileChangesReviewProps {
 
 // 文件修改清单组件 - 显示在对话末尾
 export function FileChangesReview({ files, onOpenFile }: FileChangesReviewProps) {
+  const { t } = useTranslation('common')
   const [isExpanded, setIsExpanded] = useState(false)
 
   if (files.length === 0) return null
@@ -61,7 +63,7 @@ export function FileChangesReview({ files, onOpenFile }: FileChangesReviewProps)
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Review</span>
+          <span className="text-xs text-muted-foreground">{t('fileChanges.review')}</span>
           {isExpanded ? (
             <ChevronUp className="size-4 text-muted-foreground" />
           ) : (

@@ -18,6 +18,18 @@
     "failed": "Failed to clone",
     "invalidUrl": "Please enter a valid repository URL"
   },
+  "newProjectDialog": {
+    "title": "New Project",
+    "description": "Create a new project folder with a basic structure",
+    "projectNameLabel": "Project name",
+    "projectNamePlaceholder": "my-awesome-project",
+    "projectNameHint": "Enter a name for your new project",
+    "locationLabel": "Location",
+    "parentDirectoryPlaceholder": "Select parent directory...",
+    "willCreate": "Will create: {{path}}",
+    "createProject": "Create project",
+    "failedToCreate": "Failed to create project"
+  },
   "cloneRepositoryDialog": {
     "title": "Clone repository",
     "description": "Clone a Git repository from a remote URL",

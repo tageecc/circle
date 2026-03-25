@@ -795,7 +795,7 @@ export function IDEPage({ onOpenSettings }: IDEPageProps) {
                       )}
                     >
                       <CollapsiblePanel
-                        title="Source Control"
+                        title={t('panels.sourceControl')}
                         isExpanded={expandedLeftPanel === 'commit'}
                         onToggle={() => toggleLeftPanel('commit')}
                         actions={
@@ -1025,9 +1025,9 @@ export function IDEPage({ onOpenSettings }: IDEPageProps) {
       <InputDialog
         open={showNewFileDialog}
         onOpenChange={setShowNewFileDialog}
-        title="New File"
-        description="Enter the name of the new file"
-        label="File name"
+        title={t('dialog.newFileTitle')}
+        description={t('dialog.newFileDescription')}
+        label={t('dialog.fileName')}
         placeholder="example.tsx"
         onConfirm={handleFileTreeOperation.confirmNewFile}
       />
@@ -1035,9 +1035,9 @@ export function IDEPage({ onOpenSettings }: IDEPageProps) {
       <InputDialog
         open={showNewFolderDialog}
         onOpenChange={setShowNewFolderDialog}
-        title="New Folder"
-        description="Enter the name of the new folder"
-        label="Folder name"
+        title={t('dialog.newFolderTitle')}
+        description={t('dialog.newFolderDescription')}
+        label={t('dialog.folderName')}
         placeholder="my-folder"
         onConfirm={handleFileTreeOperation.confirmNewFolder}
       />
@@ -1045,9 +1045,9 @@ export function IDEPage({ onOpenSettings }: IDEPageProps) {
       <InputDialog
         open={showRenameDialog}
         onOpenChange={setShowRenameDialog}
-        title="Rename"
-        description="Enter the new name"
-        label="New name"
+        title={t('dialog.renameTitle')}
+        description={t('dialog.renameDescription')}
+        label={t('dialog.newName')}
         defaultValue={currentOperationName}
         onConfirm={handleFileTreeOperation.confirmRename}
       />

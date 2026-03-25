@@ -129,5 +129,8 @@
   "toolCall": {
     "create": "创建",
     "edit": "编辑"
+  },
+  "fileChanges": {
+    "review": "审查"
   }
 }

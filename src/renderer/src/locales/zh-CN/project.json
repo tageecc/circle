@@ -18,6 +18,18 @@
     "failed": "克隆失败",
     "invalidUrl": "请输入有效的仓库 URL"
   },
+  "newProjectDialog": {
+    "title": "新建项目",
+    "description": "创建包含基础结构的新项目文件夹",
+    "projectNameLabel": "项目名称",
+    "projectNamePlaceholder": "my-awesome-project",
+    "projectNameHint": "为新项目输入名称",
+    "locationLabel": "位置",
+    "parentDirectoryPlaceholder": "选择父目录...",
+    "willCreate": "将创建：{{path}}",
+    "createProject": "创建项目",
+    "failedToCreate": "创建项目失败"
+  },
   "aiCreate": {
     "title": "AI 辅助创建项目",
     "description": "描述你想创建的项目",

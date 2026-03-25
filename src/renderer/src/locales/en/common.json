@@ -129,5 +129,8 @@
   "toolCall": {
     "create": "Create",
     "edit": "Edit"
+  },
+  "fileChanges": {
+    "review": "Review"
   }
 }

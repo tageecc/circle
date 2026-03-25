@@ -166,5 +166,19 @@
   "emptyState": {
     "noFileOpen": "No file open",
     "selectFileToEdit": "Select a file to start editing"
+  },
+  "panels": {
+    "sourceControl": "Source Control"
+  },
+  "dialog": {
+    "newFileTitle": "New File",
+    "newFileDescription": "Enter the name of the new file",
+    "fileName": "File name",
+    "newFolderTitle": "New Folder",
+    "newFolderDescription": "Enter the name of the new folder",
+    "folderName": "Folder name",
+    "renameTitle": "Rename",
+    "renameDescription": "Enter the new name",
+    "newName": "New name"
   }
 }

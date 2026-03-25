@@ -7,9 +7,11 @@ import terminal from './terminal.json'
 import dialogs from './dialogs.json'
 import tools from './tools.json'
 import agent from './agent.json'
+import project from './project.json'
 
 export default {
   common,
+  project,
   git,
   settings,
   chat,

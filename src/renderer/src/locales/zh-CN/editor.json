@@ -166,5 +166,19 @@
   "emptyState": {
     "noFileOpen": "未打开文件",
     "selectFileToEdit": "请选择文件开始编辑"
+  },
+  "panels": {
+    "sourceControl": "源代码管理"
+  },
+  "dialog": {
+    "newFileTitle": "新建文件",
+    "newFileDescription": "输入新文件的名称",
+    "fileName": "文件名",
+    "newFolderTitle": "新建文件夹",
+    "newFolderDescription": "输入新文件夹的名称",
+    "folderName": "文件夹名",
+    "renameTitle": "重命名",
+    "renameDescription": "输入新名称",
+    "newName": "新名称"
   }
 }

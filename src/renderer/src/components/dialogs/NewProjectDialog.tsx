@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -19,6 +20,8 @@ interface NewProjectDialogProps {
 }
 
 export function NewProjectDialog({ open, onClose, onSuccess }: NewProjectDialogProps) {
+  const { t } = useTranslation('project')
+  const tc = useTranslation('common').t
   const [parentDir, setParentDir] = useState('')
   const [projectName, setProjectName] = useState('')
   const [error, setError] = useState('')
@@ -44,7 +47,7 @@ export function NewProjectDialog({ open, onClose, onSuccess }: NewProjectDialogP
       onSuccess(projectPath)
       handleClose()
     } catch (error: any) {
-      setError(error.message || 'Failed to create project')
+      setError(error.message || t('newProjectDialog.failedToCreate'))
     } finally {
       setLoading(false)
     }
@@ -65,33 +68,33 @@ export function NewProjectDialog({ open, onClose, onSuccess }: NewProjectDialogP
     <Dialog open={open} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>New Project</DialogTitle>
-          <DialogDescription>Create a new project folder with a basic structure</DialogDescription>
+          <DialogTitle>{t('newProjectDialog.title')}</DialogTitle>
+          <DialogDescription>{t('newProjectDialog.description')}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           {/* Project Name */}
           <div className="space-y-2">
-            <Label htmlFor="project-name">Project Name</Label>
+            <Label htmlFor="project-name">{t('newProjectDialog.projectNameLabel')}</Label>
             <Input
               id="project-name"
-              placeholder="my-awesome-project"
+              placeholder={t('newProjectDialog.projectNamePlaceholder')}
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
               disabled={loading}
               className={error && projectName ? 'border-destructive' : ''}
               autoFocus
             />
-            <p className="text-xs text-muted-foreground">Enter a name for your new project</p>
+            <p className="text-xs text-muted-foreground">{t('newProjectDialog.projectNameHint')}</p>
           </div>
 
           {/* Parent Directory */}
           <div className="space-y-2">
-            <Label htmlFor="parent-dir">Location</Label>
+            <Label htmlFor="parent-dir">{t('newProjectDialog.locationLabel')}</Label>
             <div className="flex gap-2">
               <Input
                 id="parent-dir"
-                placeholder="Select parent directory..."
+                placeholder={t('newProjectDialog.parentDirectoryPlaceholder')}
                 value={parentDir}
                 readOnly
                 disabled={loading}
@@ -109,7 +112,7 @@ export function NewProjectDialog({ open, onClose, onSuccess }: NewProjectDialogP
             </div>
             {parentDir && projectName && (
               <p className="text-xs text-muted-foreground">
-                Will create: {parentDir}/{projectName}
+                {t('newProjectDialog.willCreate', { path: `${parentDir}/${projectName}` })}
               </p>
             )}
           </div>
@@ -125,11 +128,11 @@ export function NewProjectDialog({ open, onClose, onSuccess }: NewProjectDialogP
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose} disabled={loading}>
-            Cancel
+            {tc('button.cancel')}
           </Button>
           <Button onClick={handleCreate} disabled={!canCreate}>
             {loading && <Loader2 className="mr-2 size-4 animate-spin" />}
-            Create Project
+            {t('newProjectDialog.createProject')}
           </Button>
         </DialogFooter>
       </DialogContent>
