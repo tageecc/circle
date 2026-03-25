@@ -685,30 +685,42 @@ export function IDEPage({ onOpenSettings }: IDEPageProps) {
 
   return (
     <div className="flex h-full w-full flex-col">
-      <div className="flex items-center border-b border-border/30 bg-background px-2 py-1.5">
+      {/* 顶部工具栏 */}
+      <div
+        className="flex items-center border-b border-border/30 bg-background px-2 py-1.5"
+        style={isMac ? ({ WebkitAppRegion: 'drag' } as React.CSSProperties) : undefined}
+      >
+        {/* Mac 系统显示窗口控制按钮占位 */}
+        {isMac && <div className="w-[70px]" />}
+
         {!isMac && (
-          <MenuBar
-            activeFile={fileManager.activeFile}
-            hasOpenFiles={fileManager.openFiles.length > 0}
-            workspaceRoot={workspaceRoot}
-            recentProjects={recentProjects}
-            autoSave={generalSettings.autoSave}
-            onOpenProject={handleOpenProject}
-            onOpenRecentProject={handleOpenRecentProject}
-            onSaveFile={() =>
-              fileManager.activeFile &&
-              fileManager.saveFile(fileManager.activeFile, undefined, checkGitStatus)
-            }
-            onCloseFile={() =>
-              fileManager.activeFile && fileManager.closeFile(fileManager.activeFile)
-            }
-            onCloseWorkspace={handleCloseWorkspace}
-            onToggleAutoSave={(checked) => updateGeneralSettings({ autoSave: checked })}
-            onDebugConfig={handleDebugConfig}
-          />
+          <div style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+            <MenuBar
+              activeFile={fileManager.activeFile}
+              hasOpenFiles={fileManager.openFiles.length > 0}
+              workspaceRoot={workspaceRoot}
+              recentProjects={recentProjects}
+              autoSave={generalSettings.autoSave}
+              onOpenProject={handleOpenProject}
+              onOpenRecentProject={handleOpenRecentProject}
+              onSaveFile={() =>
+                fileManager.activeFile &&
+                fileManager.saveFile(fileManager.activeFile, undefined, checkGitStatus)
+              }
+              onCloseFile={() =>
+                fileManager.activeFile && fileManager.closeFile(fileManager.activeFile)
+              }
+              onCloseWorkspace={handleCloseWorkspace}
+              onToggleAutoSave={(checked) => updateGeneralSettings({ autoSave: checked })}
+              onDebugConfig={handleDebugConfig}
+            />
+          </div>
         )}
 
-        <div className="ml-auto flex items-center gap-1 pr-2">
+        <div
+          className="ml-auto flex items-center gap-1 pr-2"
+          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+        >
           <Button
             variant="ghost"
             size="sm"

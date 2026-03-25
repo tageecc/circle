@@ -1,14 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '../ui/button'
-import { Badge } from '../ui/badge'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from '../ui/dropdown-menu'
-import { MessageSquare, Clock, MoreHorizontal, Plus, Bot, Loader2 } from 'lucide-react'
+import { Bot, Loader2 } from 'lucide-react'
 import { ChatInput, type PastedImage } from './ChatInput'
 import { Reasoning, ReasoningTrigger, ReasoningContent } from '../ui/reasoning'
 import { ChatContainerRoot, ChatContainerContent } from '../ui/chat-container'
@@ -76,7 +68,7 @@ export function ChatSidebar({
   const { t } = useTranslation('chat')
   const [sessions, setSessions] = useState<Session[]>([])
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
-  const [defaultAgent, setDefaultAgent] = useState<DefaultAgent | null>(null)
+  const [_defaultAgent, setDefaultAgent] = useState<DefaultAgent | null>(null)
   const [inputValue, setInputValue] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [pastedImages, setPastedImages] = useState<PastedImage[]>([])
@@ -126,23 +118,6 @@ export function ChatSidebar({
   }
 
   const currentSession = sessions.find((s) => s.id === currentSessionId)
-
-  const handleNewSession = () => {
-    if (!defaultAgent) {
-      toast.error(t('toast.waitLoadingDefaultModel'))
-      return
-    }
-    const newSession: Session = {
-      id: `session-${Date.now()}`,
-      title: t('session.new'),
-      agentId: defaultAgent.id,
-      messages: [],
-      fileChanges: [],
-      createdAt: new Date()
-    }
-    setSessions((prev) => [newSession, ...prev])
-    setCurrentSessionId(newSession.id)
-  }
 
   // 停止流式响应
   const handleStopStreaming = () => {
@@ -635,87 +610,6 @@ export function ChatSidebar({
 
   return (
     <div className="flex h-full w-full flex-col border-l border-sidebar-border/50 bg-sidebar">
-      {/* Compact Header - Cursor Style */}
-      <div className="flex items-center justify-between border-b border-sidebar-border/50 px-3 py-2">
-        {/* Session Title + Model */}
-        <div className="flex flex-1 items-center gap-2 overflow-hidden">
-          {currentSession && (
-            <div className="flex flex-1 min-w-0 items-center gap-2">
-              <MessageSquare className="size-3.5 shrink-0 text-muted-foreground" />
-              <span className="truncate text-sm font-medium">{currentSession.title}</span>
-              {defaultAgent && (
-                <Badge variant="secondary" className="shrink-0 text-[10px] font-normal">
-                  {defaultAgent.model}
-                </Badge>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Right: Action Buttons */}
-        <div className="flex items-center gap-0.5">
-          {/* New Chat Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-8 hover:bg-sidebar-accent"
-            onClick={handleNewSession}
-            title={t('header.newChat')}
-          >
-            <Plus className="size-4" />
-          </Button>
-
-          {/* History Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8 hover:bg-sidebar-accent"
-                title={t('header.sessionHistory')}
-              >
-                <Clock className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[280px]">
-              {sessions.length === 0 ? (
-                <div className="p-3 text-center text-xs text-muted-foreground">
-                  {t('session.emptyHistory')}
-                </div>
-              ) : (
-                sessions.map((session) => (
-                  <DropdownMenuItem
-                    key={session.id}
-                    onClick={() => setCurrentSessionId(session.id)}
-                    className="flex cursor-pointer items-center gap-2"
-                  >
-                    <MessageSquare className="size-3 shrink-0 text-muted-foreground" />
-                    <span className="flex-1 truncate text-sm">{session.title}</span>
-                    <Badge variant="outline" className="text-xs">
-                      {session.messages.length}
-                    </Badge>
-                    {currentSessionId === session.id && (
-                      <span className="size-1.5 rounded-full bg-primary" />
-                    )}
-                  </DropdownMenuItem>
-                ))
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* More Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-8 hover:bg-sidebar-accent"
-            title={t('header.more')}
-            disabled
-          >
-            <MoreHorizontal className="size-4" />
-          </Button>
-        </div>
-      </div>
-
       {/* Messages */}
       <ChatContainerRoot className="flex-1 overflow-x-hidden">
         {currentSession ? (
@@ -848,31 +742,15 @@ export function ChatSidebar({
         ) : (
           <ChatContainerContent>
             <div className="flex h-full items-center justify-center px-6 py-12">
-              <div className="text-center space-y-6 max-w-xs">
-                {/* 图标容器 */}
-                <div className="relative mx-auto w-20 h-20 mb-4">
-                  <div className="absolute inset-0 rounded-full bg-linear-to-br from-muted-foreground/10 via-muted-foreground/5 to-transparent blur-xl" />
+              <div className="text-center space-y-4 max-w-xs">
+                <div className="relative mx-auto w-16 h-16 mb-2">
                   <div className="relative flex items-center justify-center w-full h-full rounded-2xl bg-linear-to-br from-muted/30 to-muted/10 border border-border/30">
-                    <MessageSquare className="size-9 text-muted-foreground" strokeWidth={1.5} />
+                    <Bot className="size-8 text-muted-foreground" strokeWidth={1.5} />
                   </div>
                 </div>
 
-                {/* 主标题 */}
                 <div className="space-y-2">
-                  <h3 className="text-base font-semibold text-foreground">
-                    {t('empty.createNewTitle')}
-                  </h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {t('empty.createNewHintBefore')}
-                    <span className="font-medium text-foreground">+</span>
-                    {t('empty.createNewHintAfter')}
-                  </p>
-                </div>
-
-                {/* 提示 */}
-                <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground/60">
-                  <Clock className="size-3.5" />
-                  <span>{t('empty.orPickFromHistory')}</span>
+                  <p className="text-sm text-muted-foreground">{t('panel.emptyPrompt')}</p>
                 </div>
               </div>
             </div>

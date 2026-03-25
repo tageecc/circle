@@ -76,6 +76,7 @@ function createWindow(): void {
     minWidth: 800,
     minHeight: 600,
     backgroundColor: getWindowBackgroundColor(isDark),
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
