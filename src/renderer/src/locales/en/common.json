@@ -125,5 +125,9 @@
       "detail5": "Medium projects: about 3–5 minutes to index",
       "notIndexed": "Not indexed yet"
     }
+  },
+  "toolCall": {
+    "create": "Create",
+    "edit": "Edit"
   }
 }

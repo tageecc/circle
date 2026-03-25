@@ -102,5 +102,69 @@
     "reset": "重置",
     "loading": "正在加载图片...",
     "alt": "预览"
+  },
+  "fileOperation": {
+    "createFileSuccess": "文件创建成功",
+    "createFileSuccessDesc": "已创建文件 {{name}}",
+    "createFileFailed": "文件创建失败",
+    "createFolderSuccess": "文件夹创建成功",
+    "createFolderSuccessDesc": "已创建文件夹 {{name}}",
+    "createFolderFailed": "文件夹创建失败",
+    "renameSuccess": "重命名成功",
+    "renameSuccessDesc": "已将 {{oldName}} 重命名为 {{newName}}",
+    "renameFailed": "重命名失败",
+    "deleteSuccess": "删除成功",
+    "deleteSuccessDesc": "已删除 {{name}}",
+    "deleteFailed": "删除失败",
+    "cutSuccess": "已剪切",
+    "cutSuccessDesc": "已剪切 {{name}}",
+    "copySuccess": "已复制",
+    "copySuccessDesc": "已复制 {{name}}",
+    "pasteSuccess": "粘贴成功",
+    "pasteSuccessCopyDesc": "已复制 {{name}}",
+    "pasteSuccessMoveDesc": "已移动 {{name}}",
+    "pasteFailed": "粘贴失败",
+    "copyPathSuccess": "已复制路径",
+    "revealInFinderFailed": "无法打开文件管理器",
+    "refreshSuccess": "已刷新",
+    "refreshSuccessDesc": "文件树已更新"
+  },
+  "gitFileActions": {
+    "revertSuccess": "文件已回滚",
+    "revertFailed": "回滚失败",
+    "noDiff": "无差异",
+    "noDiffDesc": "该文件相对 HEAD 没有未提交的更改",
+    "getDiffFailed": "获取差异失败"
+  },
+  "panels": {
+    "toggleFileTree": "切换文件树",
+    "toggleChatSidebar": "切换 AI 对话面板",
+    "settingsShortcut": "设置 (⌘,)"
+  },
+  "pendingEdit": {
+    "revertedToast": "已撤销编辑",
+    "revertFailed": "撤销失败"
+  },
+  "workingDiff": {
+    "title": "未提交变更 — {{fileName}}"
+  },
+  "debugConfig": {
+    "alert": "配置文件路径: {{path}}\n\n当前项目: {{currentProject}}\n最近项目数量: {{recentCount}}\n\n详情请查看控制台",
+    "noProject": "无"
+  },
+  "fileManager": {
+    "openFailed": "无法打开文件",
+    "saveFailed": "保存失败"
+  },
+  "tabBar": {
+    "deletedSuffix": "(已删除)",
+    "closeToRight": "关闭右侧",
+    "markdownEditOnly": "仅编辑",
+    "markdownSplit": "分屏",
+    "markdownPreviewOnly": "仅预览"
+  },
+  "emptyState": {
+    "noFileOpen": "未打开文件",
+    "selectFileToEdit": "请选择文件开始编辑"
   }
 }

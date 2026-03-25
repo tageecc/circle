@@ -12,6 +12,7 @@ import { TerminalService } from '../services/terminal.service'
 import { getConfigService, getMCPClientManager } from '../index'
 import { CompletionService } from '../services/completion.service'
 import { updateRecentProjectsMenu } from '../menu'
+import { t } from '../utils/i18n'
 import * as fontList from 'font-list'
 
 const agentService = new AgentService()
@@ -132,7 +133,7 @@ export function registerIpcHandlers() {
     } catch (error) {
       console.error('Stream chat error:', error)
       if (error instanceof Error && error.name === 'AbortError') {
-        event.reply('chat:stream:error', '流式响应已停止')
+        event.reply('chat:stream:error', t('notification.streamStopped'))
       } else {
         event.reply('chat:stream:error', error instanceof Error ? error.message : 'Unknown error')
       }
@@ -907,10 +908,10 @@ export function registerIpcHandlers() {
       if (!window) throw new Error('No active window')
 
       const result = await dialog.showOpenDialog(window, {
-        title: '选择项目文件夹',
-        message: '请选择一个文件夹来创建您的项目',
+        title: t('dialog.selectProjectFolderTitle'),
+        message: t('dialog.selectProjectFolderMessage'),
         properties: ['openDirectory', 'createDirectory'],
-        buttonLabel: '选择此文件夹'
+        buttonLabel: t('dialog.selectProjectFolderButton')
       })
 
       if (result.canceled || result.filePaths.length === 0) {

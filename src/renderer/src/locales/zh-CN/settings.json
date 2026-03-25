@@ -176,7 +176,71 @@
     "recordDialogHint": "按 Esc 取消，点击确认保存。",
     "recordKeyHint": "按下键盘组合键...",
     "confirm": "确认",
-    "cancel": "取消"
+    "cancel": "取消",
+    "categories": {
+      "file": "文件",
+      "editor": "编辑",
+      "navigate": "导航",
+      "view": "视图",
+      "debug": "调试"
+    },
+    "presets": {
+      "vscode": "VS Code",
+      "eclipse": "Eclipse（macOS）",
+      "intellij": "IntelliJ IDEA 经典（macOS）"
+    },
+    "commands": {
+      "file": {
+        "save": "保存",
+        "saveAll": "全部保存",
+        "new": "新建文件",
+        "open": "打开文件",
+        "close": "关闭文件"
+      },
+      "editor": {
+        "undo": "撤销",
+        "redo": "重做",
+        "cut": "剪切",
+        "copy": "复制",
+        "paste": "粘贴",
+        "find": "查找",
+        "replace": "替换",
+        "findInFiles": "在文件中查找",
+        "toggleLineComment": "切换行注释",
+        "toggleBlockComment": "切换块注释",
+        "duplicateLine": "复制当前行",
+        "moveLineUp": "向上移动行",
+        "moveLineDown": "向下移动行",
+        "deleteLine": "删除行",
+        "formatDocument": "格式化文档"
+      },
+      "navigate": {
+        "back": "后退",
+        "forward": "前进",
+        "goToLine": "跳转到行",
+        "goToDefinition": "跳转到定义",
+        "goToImplementation": "跳转到实现",
+        "findUsages": "查找引用",
+        "searchEverything": "随处搜索",
+        "quickOpen": "快速打开"
+      },
+      "view": {
+        "toggleSidebar": "切换侧边栏",
+        "toggleTerminal": "切换终端",
+        "zoomIn": "放大",
+        "zoomOut": "缩小",
+        "resetZoom": "重置缩放",
+        "nextTab": "下一个标签页",
+        "previousTab": "上一个标签页"
+      },
+      "debug": {
+        "start": "开始调试",
+        "stop": "停止调试",
+        "stepOver": "单步跳过",
+        "stepInto": "单步进入",
+        "toggleBreakpoint": "切换断点"
+      }
+    }
   },
   "select": {
     "providerPlaceholder": "选择提供商...",

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { Button } from '@/components/ui/button'
 import { PanelLeft, PanelRight, Settings, RefreshCw } from 'lucide-react'
@@ -47,6 +48,9 @@ interface IDEPageProps {
 }
 
 export function IDEPage({ onOpenSettings }: IDEPageProps) {
+  const { t } = useTranslation('editor')
+  const tc = useTranslation('common').t
+  const td = useTranslation('dialogs').t
   const { generalSettings, updateGeneralSettings } = useSettings()
   const confirm = useConfirm()
 
@@ -360,10 +364,11 @@ export function IDEPage({ onOpenSettings }: IDEPageProps) {
       const result = await (window.api as any).config.debug?.()
       if (result) {
         alert(
-          `配置文件路径: ${result.path}\n\n` +
-            `当前项目: ${result.config.currentProject || '无'}\n` +
-            `最近项目数量: ${result.config.recentProjects?.length || 0}\n\n` +
-            `详情请查看控制台`
+          t('debugConfig.alert', {
+            path: result.path,
+            currentProject: result.config.currentProject || t('debugConfig.noProject'),
+            recentCount: result.config.recentProjects?.length || 0
+          })
         )
       }
     } catch (error) {
@@ -433,12 +438,14 @@ export function IDEPage({ onOpenSettings }: IDEPageProps) {
       try {
         const filePath = `${currentOperationPath}/${fileName}`
         await window.api.files.createFile(filePath, '')
-        toast.success('文件创建成功', { description: `已创建文件 ${fileName}` })
+        toast.success(t('fileOperation.createFileSuccess'), {
+          description: t('fileOperation.createFileSuccessDesc', { name: fileName })
+        })
         setFileTreeRefreshKey((prev) => prev + 1)
         setTimeout(() => fileManager.openFile(filePath), 100)
       } catch (error) {
-        toast.error('文件创建失败', {
-          description: error instanceof Error ? error.message : '未知错误'
+        toast.error(t('fileOperation.createFileFailed'), {
+          description: error instanceof Error ? error.message : tc('message.unknownError')
         })
       }
     },
@@ -452,11 +459,13 @@ export function IDEPage({ onOpenSettings }: IDEPageProps) {
       try {
         const folderPath = `${currentOperationPath}/${folderName}`
         await window.api.files.createDirectory(folderPath)
-        toast.success('文件夹创建成功', { description: `已创建文件夹 ${folderName}` })
+        toast.success(t('fileOperation.createFolderSuccess'), {
+          description: t('fileOperation.createFolderSuccessDesc', { name: folderName })
+        })
         setFileTreeRefreshKey((prev) => prev + 1)
       } catch (error) {
-        toast.error('文件夹创建失败', {
-          description: error instanceof Error ? error.message : '未知错误'
+        toast.error(t('fileOperation.createFolderFailed'), {
+          description: error instanceof Error ? error.message : tc('message.unknownError')
         })
       }
     },
@@ -474,13 +483,16 @@ export function IDEPage({ onOpenSettings }: IDEPageProps) {
         const newPath = `${parentPath}/${newName}`
         await window.api.files.rename(currentOperationPath, newPath)
         fileManager.updateFilePathAfterRename(currentOperationPath, newPath, newName)
-        toast.success('重命名成功', {
-          description: `已将 ${currentOperationName} 重命名为 ${newName}`
+        toast.success(t('fileOperation.renameSuccess'), {
+          description: t('fileOperation.renameSuccessDesc', {
+            oldName: currentOperationName,
+            newName
+          })
         })
         setFileTreeRefreshKey((prev) => prev + 1)
       } catch (error) {
-        toast.error('重命名失败', {
-          description: error instanceof Error ? error.message : '未知错误'
+        toast.error(t('fileOperation.renameFailed'), {
+          description: error instanceof Error ? error.message : tc('message.unknownError')
         })
       }
     },
@@ -489,10 +501,10 @@ export function IDEPage({ onOpenSettings }: IDEPageProps) {
       const name = getFileNameFromPath(path)
 
       const confirmed = await confirm({
-        title: '确认删除',
-        description: `确定要删除"${name}"吗？此操作不可撤销。`,
-        confirmText: '删除',
-        cancelText: '取消',
+        title: td('idePage.confirmDelete.title'),
+        description: td('idePage.confirmDelete.description', { name }),
+        confirmText: td('idePage.confirmDelete.confirm'),
+        cancelText: td('confirm.cancel'),
         variant: 'destructive'
       })
 
@@ -500,11 +512,13 @@ export function IDEPage({ onOpenSettings }: IDEPageProps) {
         try {
           await window.api.files.delete(path)
           fileManager.removeDeletedFiles(path)
-          toast.success('删除成功', { description: `已删除 ${name}` })
+          toast.success(t('fileOperation.deleteSuccess'), {
+            description: t('fileOperation.deleteSuccessDesc', { name })
+          })
           setFileTreeRefreshKey((prev) => prev + 1)
         } catch (error) {
-          toast.error('删除失败', {
-            description: error instanceof Error ? error.message : '未知错误'
+          toast.error(t('fileOperation.deleteFailed'), {
+            description: error instanceof Error ? error.message : tc('message.unknownError')
           })
         }
       }
@@ -512,12 +526,18 @@ export function IDEPage({ onOpenSettings }: IDEPageProps) {
 
     cut: (path: string) => {
       setClipboard({ path, type: 'cut' })
-      toast.success('已剪切', { description: `已剪切 ${getFileNameFromPath(path)}` })
+      const baseName = getFileNameFromPath(path)
+      toast.success(t('fileOperation.cutSuccess'), {
+        description: t('fileOperation.cutSuccessDesc', { name: baseName })
+      })
     },
 
     copy: (path: string) => {
       setClipboard({ path, type: 'copy' })
-      toast.success('已复制', { description: `已复制 ${getFileNameFromPath(path)}` })
+      const baseName = getFileNameFromPath(path)
+      toast.success(t('fileOperation.copySuccess'), {
+        description: t('fileOperation.copySuccessDesc', { name: baseName })
+      })
     },
 
     paste: async (targetPath: string) => {
@@ -530,57 +550,63 @@ export function IDEPage({ onOpenSettings }: IDEPageProps) {
         if (clipboard.type === 'copy') {
           const content = await window.api.files.read(clipboard.path)
           await window.api.files.createFile(destPath, content)
-          toast.success('粘贴成功', { description: `已复制 ${sourceName}` })
+          toast.success(t('fileOperation.pasteSuccess'), {
+            description: t('fileOperation.pasteSuccessCopyDesc', { name: sourceName })
+          })
         } else {
           await window.api.files.rename(clipboard.path, destPath)
           fileManager.updateFilePathAfterRename(clipboard.path, destPath, sourceName)
-          toast.success('粘贴成功', { description: `已移动 ${sourceName}` })
+          toast.success(t('fileOperation.pasteSuccess'), {
+            description: t('fileOperation.pasteSuccessMoveDesc', { name: sourceName })
+          })
           setClipboard(null)
         }
 
         setFileTreeRefreshKey((prev) => prev + 1)
       } catch (error) {
-        toast.error('粘贴失败', {
-          description: error instanceof Error ? error.message : '未知错误'
+        toast.error(t('fileOperation.pasteFailed'), {
+          description: error instanceof Error ? error.message : tc('message.unknownError')
         })
       }
     },
 
     copyPath: (path: string) => {
       navigator.clipboard.writeText(path)
-      toast.success('已复制路径', { description: path })
+      toast.success(t('fileOperation.copyPathSuccess'), { description: path })
     },
 
     revealInFinder: async (path: string) => {
       try {
         await window.api.files.revealInFinder?.(path)
       } catch (error) {
-        toast.error('无法打开文件管理器', {
-          description: error instanceof Error ? error.message : '未知错误'
+        toast.error(t('fileOperation.revealInFinderFailed'), {
+          description: error instanceof Error ? error.message : tc('message.unknownError')
         })
       }
     },
 
     refresh: () => {
       setFileTreeRefreshKey((prev) => prev + 1)
-      toast.success('已刷新', { description: '文件树已更新' })
+      toast.success(t('fileOperation.refreshSuccess'), {
+        description: t('fileOperation.refreshSuccessDesc')
+      })
     },
 
     gitRevert: async (path: string) => {
       if (!workspaceRoot) return
 
       const confirmed = await confirm({
-        title: '回滚文件',
-        description: '确定要回滚此文件的更改吗？所有未提交的更改将会丢失，此操作不可撤销。',
-        confirmText: '回滚',
-        cancelText: '取消',
+        title: td('idePage.gitRevert.title'),
+        description: td('idePage.gitRevert.description'),
+        confirmText: td('idePage.gitRevert.confirm'),
+        cancelText: td('confirm.cancel'),
         variant: 'destructive'
       })
 
       if (confirmed) {
         try {
           await window.api.git.revertFile(workspaceRoot, path)
-          toast.success('文件已回滚', { description: path })
+          toast.success(t('gitFileActions.revertSuccess'), { description: path })
           setFileTreeRefreshKey((prev) => prev + 1)
           checkGitStatus()
           // 如果文件已打开，重新加载
@@ -589,8 +615,8 @@ export function IDEPage({ onOpenSettings }: IDEPageProps) {
             fileManager.updateContent(path, content)
           }
         } catch (error) {
-          toast.error('回滚失败', {
-            description: error instanceof Error ? error.message : '未知错误'
+          toast.error(t('gitFileActions.revertFailed'), {
+            description: error instanceof Error ? error.message : tc('message.unknownError')
           })
         }
       }
@@ -607,14 +633,16 @@ export function IDEPage({ onOpenSettings }: IDEPageProps) {
       try {
         const diff = await window.api.git.getWorkingDiff(workspaceRoot, path)
         if (!diff?.trim()) {
-          toast.info('无差异', { description: '该文件相对 HEAD 没有未提交的更改' })
+          toast.info(t('gitFileActions.noDiff'), {
+            description: t('gitFileActions.noDiffDesc')
+          })
           setGitWorkingDiff({ open: false, path: '', text: '', loading: false })
           return
         }
         setGitWorkingDiff({ open: true, path, text: diff, loading: false })
       } catch (error) {
-        toast.error('获取差异失败', {
-          description: error instanceof Error ? error.message : '未知错误'
+        toast.error(t('gitFileActions.getDiffFailed'), {
+          description: error instanceof Error ? error.message : tc('message.unknownError')
         })
         setGitWorkingDiff({ open: false, path: '', text: '', loading: false })
       }
@@ -638,7 +666,7 @@ export function IDEPage({ onOpenSettings }: IDEPageProps) {
   if (loading) {
     return (
       <div className="flex h-full w-full items-center justify-center">
-        <div className="text-muted-foreground">Loading...</div>
+        <div className="text-muted-foreground">{t('loading')}</div>
       </div>
     )
   }
@@ -686,7 +714,7 @@ export function IDEPage({ onOpenSettings }: IDEPageProps) {
             size="sm"
             className={cn('h-7 w-7 p-0 hover:bg-accent', !showFileTree && 'bg-accent')}
             onClick={toggleFileTree}
-            title="切换文件树"
+            title={t('panels.toggleFileTree')}
           >
             <PanelLeft className="size-4" />
           </Button>
@@ -696,7 +724,7 @@ export function IDEPage({ onOpenSettings }: IDEPageProps) {
             size="sm"
             className={cn('h-7 w-7 p-0 hover:bg-accent', !showChatSidebar && 'bg-accent')}
             onClick={toggleChatSidebar}
-            title="切换 AI 对话面板"
+            title={t('panels.toggleChatSidebar')}
           >
             <PanelRight className="size-4" />
           </Button>
@@ -707,7 +735,7 @@ export function IDEPage({ onOpenSettings }: IDEPageProps) {
               size="sm"
               className="h-7 w-7 p-0 hover:bg-accent"
               onClick={onOpenSettings}
-              title="设置 (⌘,)"
+              title={t('panels.settingsShortcut')}
             >
               <Settings className="size-4" />
             </Button>
@@ -779,7 +807,7 @@ export function IDEPage({ onOpenSettings }: IDEPageProps) {
                               e.stopPropagation()
                               setGitRefreshKey((prev) => prev + 1)
                             }}
-                            title="刷新"
+                            title={tc('button.refresh')}
                           >
                             <RefreshCw className="size-3.5" />
                           </Button>
@@ -850,10 +878,10 @@ export function IDEPage({ onOpenSettings }: IDEPageProps) {
                         const content = await window.api.files.read(pendingFileEdit.absolutePath)
                         fileManager.updateContent(pendingFileEdit.absolutePath, content)
                       }
-                      toast.info('已撤销编辑')
+                      toast.info(t('pendingEdit.revertedToast'))
                     } catch (error) {
                       console.error('Failed to revert file:', error)
-                      toast.error('撤销失败')
+                      toast.error(t('pendingEdit.revertFailed'))
                     }
                   }}
                 />
@@ -1062,7 +1090,9 @@ export function IDEPage({ onOpenSettings }: IDEPageProps) {
         onOpenChange={(open) => {
           if (!open) setGitWorkingDiff({ open: false, path: '', text: '', loading: false })
         }}
-        title={`未提交变更 — ${gitWorkingDiff.path ? getFileNameFromPath(gitWorkingDiff.path) : ''}`}
+        title={t('workingDiff.title', {
+          fileName: gitWorkingDiff.path ? getFileNameFromPath(gitWorkingDiff.path) : ''
+        })}
         diffText={gitWorkingDiff.text}
         loading={gitWorkingDiff.loading}
       />

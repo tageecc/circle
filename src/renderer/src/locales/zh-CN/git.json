@@ -116,5 +116,14 @@
     "sectionStaged": "已暂存",
     "sectionChanges": "更改",
     "sectionUntracked": "未跟踪文件"
+  },
+  "operations": {
+    "pullSuccess": "拉取成功",
+    "pullFailed": "拉取失败",
+    "fetchSuccess": "获取成功",
+    "fetchFailed": "获取失败",
+    "checkoutSuccess": "切换分支成功",
+    "checkoutSuccessDesc": "已切换到分支 {{branch}}",
+    "checkoutFailed": "切换分支失败"
   }
 }

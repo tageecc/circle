@@ -5,6 +5,7 @@ import { getMastra, getSharedMemory } from '../mastra.config'
 import type { Agent as DBAgent } from '../database/schema.sqlite'
 import type { ConfigService } from './config.service'
 import type { CoreMessage } from 'ai'
+import { t } from '../utils/i18n'
 
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
@@ -189,7 +190,7 @@ export class ChatService {
       for await (const chunk of stream.fullStream) {
         // 检查是否被中止
         if (abortSignal?.aborted) {
-          const abortError = new Error('流式响应被用户停止')
+          const abortError = new Error(t('error.chat.streamAbortedByUser'))
           abortError.name = 'AbortError'
           throw abortError
         }

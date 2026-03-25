@@ -176,7 +176,71 @@
     "recordDialogHint": "Press Esc to cancel. Click Confirm to save.",
     "recordKeyHint": "Press a key combination…",
     "confirm": "Confirm",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "categories": {
+      "file": "File",
+      "editor": "Edit",
+      "navigate": "Navigate",
+      "view": "View",
+      "debug": "Debug"
+    },
+    "presets": {
+      "vscode": "VS Code",
+      "eclipse": "Eclipse (macOS)",
+      "intellij": "IntelliJ IDEA Classic (macOS)"
+    },
+    "commands": {
+      "file": {
+        "save": "Save",
+        "saveAll": "Save All",
+        "new": "New File",
+        "open": "Open File",
+        "close": "Close Editor"
+      },
+      "editor": {
+        "undo": "Undo",
+        "redo": "Redo",
+        "cut": "Cut",
+        "copy": "Copy",
+        "paste": "Paste",
+        "find": "Find",
+        "replace": "Replace",
+        "findInFiles": "Find in Files",
+        "toggleLineComment": "Toggle Line Comment",
+        "toggleBlockComment": "Toggle Block Comment",
+        "duplicateLine": "Copy Line Down",
+        "moveLineUp": "Move Line Up",
+        "moveLineDown": "Move Line Down",
+        "deleteLine": "Delete Line",
+        "formatDocument": "Format Document"
+      },
+      "navigate": {
+        "back": "Back",
+        "forward": "Forward",
+        "goToLine": "Go to Line",
+        "goToDefinition": "Go to Definition",
+        "goToImplementation": "Go to Implementation",
+        "findUsages": "Find All References",
+        "searchEverything": "Search Everywhere",
+        "quickOpen": "Quick Open"
+      },
+      "view": {
+        "toggleSidebar": "Toggle Sidebar",
+        "toggleTerminal": "Toggle Terminal",
+        "zoomIn": "Zoom In",
+        "zoomOut": "Zoom Out",
+        "resetZoom": "Reset Zoom",
+        "nextTab": "Next Editor Tab",
+        "previousTab": "Previous Editor Tab"
+      },
+      "debug": {
+        "start": "Start Debugging",
+        "stop": "Stop Debugging",
+        "stepOver": "Step Over",
+        "stepInto": "Step Into",
+        "toggleBreakpoint": "Toggle Breakpoint"
+      }
+    }
   },
   "select": {
     "providerPlaceholder": "Select provider…",

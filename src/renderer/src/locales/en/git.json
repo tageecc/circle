@@ -116,5 +116,14 @@
     "sectionStaged": "Staged changes",
     "sectionChanges": "Changes",
     "sectionUntracked": "Untracked files"
+  },
+  "operations": {
+    "pullSuccess": "Pulled successfully",
+    "pullFailed": "Failed to pull",
+    "fetchSuccess": "Fetched successfully",
+    "fetchFailed": "Failed to fetch",
+    "checkoutSuccess": "Switched branch successfully",
+    "checkoutSuccessDesc": "Switched to branch {{branch}}",
+    "checkoutFailed": "Failed to switch branch"
   }
 }

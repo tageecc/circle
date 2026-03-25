@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { toast } from 'sonner'
+import i18n from '@/i18n'
 import { FileTab, GitStatus } from '../types'
 import { getLanguageFromFileName, isImageFile } from '../utils/file-helpers'
 
@@ -33,8 +34,9 @@ export function useFileManager(workspaceRoot: string | null) {
         setActiveFile(path)
       } catch (error) {
         console.error('Failed to open file:', error)
-        toast.error('无法打开文件', {
-          description: error instanceof Error ? error.message : '未知错误'
+        toast.error(i18n.t('editor:fileManager.openFailed'), {
+          description:
+            error instanceof Error ? error.message : i18n.t('common:message.unknownError')
         })
       }
     },
@@ -117,8 +119,9 @@ export function useFileManager(workspaceRoot: string | null) {
         onSuccess?.()
       } catch (error) {
         console.error('Failed to save file:', error)
-        toast.error('保存失败', {
-          description: error instanceof Error ? error.message : '未知错误'
+        toast.error(i18n.t('editor:fileManager.saveFailed'), {
+          description:
+            error instanceof Error ? error.message : i18n.t('common:message.unknownError')
         })
         setSavingFile(null)
       }

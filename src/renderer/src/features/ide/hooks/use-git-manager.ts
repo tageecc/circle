@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
+import i18n from '@/i18n'
 import { GitFileStatus } from '../types'
 
 export function useGitManager(workspaceRoot: string | null) {
@@ -80,10 +81,10 @@ export function useGitManager(workspaceRoot: string | null) {
     try {
       await window.api.git.pull(workspaceRoot, 'origin')
       await checkGitStatus(true) // 立即检查
-      toast.success('拉取成功')
+      toast.success(i18n.t('git:operations.pullSuccess'))
     } catch (error) {
-      const message = error instanceof Error ? error.message : '未知错误'
-      toast.error('拉取失败', { description: message })
+      const message = error instanceof Error ? error.message : i18n.t('common:message.unknownError')
+      toast.error(i18n.t('git:operations.pullFailed'), { description: message })
     }
   }, [workspaceRoot, checkGitStatus])
 
@@ -91,10 +92,10 @@ export function useGitManager(workspaceRoot: string | null) {
     if (!workspaceRoot) return
     try {
       await window.api.git.fetch(workspaceRoot, 'origin')
-      toast.success('获取成功')
+      toast.success(i18n.t('git:operations.fetchSuccess'))
     } catch (error) {
-      const message = error instanceof Error ? error.message : '未知错误'
-      toast.error('获取失败', { description: message })
+      const message = error instanceof Error ? error.message : i18n.t('common:message.unknownError')
+      toast.error(i18n.t('git:operations.fetchFailed'), { description: message })
     }
   }, [workspaceRoot])
 
@@ -104,10 +105,13 @@ export function useGitManager(workspaceRoot: string | null) {
       try {
         await window.api.git.checkoutBranch(workspaceRoot, branchName)
         await checkGitStatus(true) // 立即检查
-        toast.success('切换分支成功', { description: `已切换到分支 ${branchName}` })
+        toast.success(i18n.t('git:operations.checkoutSuccess'), {
+          description: i18n.t('git:operations.checkoutSuccessDesc', { branch: branchName })
+        })
       } catch (error) {
-        const message = error instanceof Error ? error.message : '未知错误'
-        toast.error('切换分支失败', { description: message })
+        const message =
+          error instanceof Error ? error.message : i18n.t('common:message.unknownError')
+        toast.error(i18n.t('git:operations.checkoutFailed'), { description: message })
       }
     },
     [workspaceRoot, checkGitStatus]

@@ -25,5 +25,17 @@
   },
   "confirmProvider": {
     "useConfirmError": "useConfirm must be used within a ConfirmProvider"
+  },
+  "idePage": {
+    "confirmDelete": {
+      "title": "Confirm delete",
+      "description": "Delete “{{name}}”? This cannot be undone.",
+      "confirm": "Delete"
+    },
+    "gitRevert": {
+      "title": "Revert file",
+      "description": "Revert changes to this file? All uncommitted changes will be lost. This cannot be undone.",
+      "confirm": "Revert"
+    }
   }
 }

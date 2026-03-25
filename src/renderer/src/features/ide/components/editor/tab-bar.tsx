@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { FileTab, MarkdownMode, GitStatus } from '../../types'
 import { File, Code, Columns, Eye, Circle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -73,6 +74,8 @@ export function TabBar({
   onCloseAll,
   onMarkdownModeChange
 }: TabBarProps) {
+  const { t } = useTranslation('editor')
+
   return (
     <div className="flex min-h-[42px] items-center justify-between border-b border-border/30 bg-background shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1)] dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.3)]">
       <div className="tab-scroll flex min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
@@ -101,7 +104,7 @@ export function TabBar({
                     <File className="size-3 shrink-0" />
                     <span className={`whitespace-nowrap ${file.isDeleted ? 'line-through' : ''}`}>
                       {file.name}
-                      {file.isDeleted && ' (已删除)'}
+                      {file.isDeleted && ` ${t('tabBar.deletedSuffix')}`}
                     </span>
 
                     {/* Git状态徽章 (M/U/A/C) */}
@@ -135,21 +138,23 @@ export function TabBar({
                   </button>
                 </ContextMenuTrigger>
                 <ContextMenuContent>
-                  <ContextMenuItem onClick={() => onTabClose(file.path)}>关闭</ContextMenuItem>
+                  <ContextMenuItem onClick={() => onTabClose(file.path)}>
+                    {t('file.close')}
+                  </ContextMenuItem>
                   <ContextMenuItem
                     onClick={() => onCloseOthers(file.path)}
                     disabled={openFiles.length === 1}
                   >
-                    关闭其他
+                    {t('file.closeOthers')}
                   </ContextMenuItem>
                   <ContextMenuItem
                     onClick={() => onCloseToRight(file.path)}
                     disabled={index === openFiles.length - 1}
                   >
-                    关闭右侧
+                    {t('tabBar.closeToRight')}
                   </ContextMenuItem>
                   <ContextMenuSeparator />
-                  <ContextMenuItem onClick={onCloseAll}>关闭所有</ContextMenuItem>
+                  <ContextMenuItem onClick={onCloseAll}>{t('file.closeAll')}</ContextMenuItem>
                 </ContextMenuContent>
               </ContextMenu>
             )
@@ -164,7 +169,7 @@ export function TabBar({
             size="sm"
             className="h-7 w-7 p-0"
             onClick={() => onMarkdownModeChange('edit')}
-            title="仅编辑"
+            title={t('tabBar.markdownEditOnly')}
           >
             <Code className="size-4" />
           </Button>
@@ -173,7 +178,7 @@ export function TabBar({
             size="sm"
             className="h-7 w-7 p-0"
             onClick={() => onMarkdownModeChange('split')}
-            title="分屏"
+            title={t('tabBar.markdownSplit')}
           >
             <Columns className="size-4" />
           </Button>
@@ -182,7 +187,7 @@ export function TabBar({
             size="sm"
             className="h-7 w-7 p-0"
             onClick={() => onMarkdownModeChange('preview')}
-            title="仅预览"
+            title={t('tabBar.markdownPreviewOnly')}
           >
             <Eye className="size-4" />
           </Button>

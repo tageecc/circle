@@ -8,6 +8,7 @@ import type { ConfigService } from './config.service'
 import { AgentService } from './agent.service'
 import { COMPLETION } from '../constants/completion.constants'
 import { getProjectRootForFile, getShadowWorkspace } from './shadow-workspace.service'
+import { t } from '../utils/i18n'
 
 export interface CompletionRequest {
   filePath: string
@@ -62,7 +63,7 @@ export class CompletionService {
       attempts = attempt
       const text = await this.generateText(request, previousErrors)
       if (!text) {
-        return { type: 'error', error: '模型未返回补全内容' }
+        return { type: 'error', error: t('error.completion.modelEmpty') }
       }
       lastText = text
 
@@ -97,7 +98,7 @@ export class CompletionService {
     try {
       const text = await this.generateText(request, undefined)
       if (!text) {
-        return { type: 'error', error: '模型未返回补全内容' }
+        return { type: 'error', error: t('error.completion.modelEmpty') }
       }
       return {
         type: 'done',
@@ -220,26 +221,26 @@ async function buildLanguageModel(
   const key = apiKey?.trim()
 
   if (p === 'openai') {
-    if (!key) throw new Error('OpenAI API Key 未配置')
+    if (!key) throw new Error(t('error.completion.openaiKeyMissing'))
     return createOpenAI({ apiKey: key })(m)
   }
   if (p === 'anthropic') {
-    if (!key) throw new Error('Anthropic API Key 未配置')
+    if (!key) throw new Error(t('error.completion.anthropicKeyMissing'))
     return createAnthropic({ apiKey: key })(m)
   }
   if (p === 'google') {
-    if (!key) throw new Error('Google API Key 未配置')
+    if (!key) throw new Error(t('error.completion.googleKeyMissing'))
     return createGoogleGenerativeAI({ apiKey: key })(m)
   }
   if (p === 'dashscope') {
-    if (!key) throw new Error('DashScope API Key 未配置')
+    if (!key) throw new Error(t('error.completion.dashscopeKeyMissing'))
     return createOpenAI({
       baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
       apiKey: key
     })(m)
   }
 
-  throw new Error(`不支持的补全提供商: ${provider}（请用 openai / anthropic / google / dashscope）`)
+  throw new Error(t('error.completion.unsupportedProvider', { provider }))
 }
 
 function finalizeCompletionOutput(text: string, request: CompletionRequest): string {

@@ -212,12 +212,12 @@ export function ChatSidebar({
       setSessions((prev) =>
         prev.map((s) => (s.id === currentSessionId ? { ...s, fileChanges: [] } : s))
       )
-      toast.success('已撤销本会话中的文件修改', {
-        description: `已处理 ${restoredPaths.length} 个文件`
+      toast.success(t('toast.undoSessionChanges'), {
+        description: t('toast.filesProcessedCount', { count: restoredPaths.length })
       })
       onSessionFilesRestored?.(restoredPaths)
     } catch (error) {
-      toast.error('撤销失败', {
+      toast.error(t('toast.undoFailed'), {
         description: error instanceof Error ? error.message : String(error)
       })
     }
@@ -593,7 +593,7 @@ export function ChatSidebar({
         // onError
         (error) => {
           console.error('Stream error:', error)
-          toast.error('消息发送失败', {
+          toast.error(t('toast.messageSendFailed'), {
             description: error
           })
           // 出错时也需要将 reasoning blocks 的 isStreaming 设置为 false
@@ -625,8 +625,8 @@ export function ChatSidebar({
       setStreamControls(controls)
     } catch (error) {
       console.error('Failed to send message:', error)
-      toast.error('发送消息失败', {
-        description: error instanceof Error ? error.message : '未知错误'
+      toast.error(t('toast.sendMessageFailed'), {
+        description: error instanceof Error ? error.message : t('common:message.unknownError')
       })
       setIsSending(false)
       setStreamControls(null)

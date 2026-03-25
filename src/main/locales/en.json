@@ -24,11 +24,42 @@
   "dialog": {
     "openFolder": "Select a folder",
     "selectFolder": "Select Folder",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "selectProjectFolderTitle": "Select project folder",
+    "selectProjectFolderMessage": "Choose a folder to create your project in",
+    "selectProjectFolderButton": "Choose this folder",
+    "selectProject": "Select",
+    "selectAvatarTitle": "Choose avatar",
+    "imageFilesFilter": "Images"
+  },
+  "error": {
+    "unknown": "Unknown error",
+    "avatar": {
+      "fileTooLarge": "Image is too large. Please choose an image under 5 MB.",
+      "unsupportedFormat": "Unsupported image format"
+    },
+    "mcp": {
+      "connectionClosed": "Connection closed: the command may be missing or exited immediately. Check command and args.",
+      "commandNotFound": "Command not found: verify the path is correct and the program is installed.",
+      "spawnFailed": "Could not start process: check permissions and the command path.",
+      "timeout": "Connection timed out: the server took too long to respond."
+    },
+    "chat": {
+      "streamAbortedByUser": "Streaming was stopped by the user"
+    },
+    "completion": {
+      "modelEmpty": "The model returned no completion",
+      "openaiKeyMissing": "OpenAI API key is not configured",
+      "anthropicKeyMissing": "Anthropic API key is not configured",
+      "googleKeyMissing": "Google API key is not configured",
+      "dashscopeKeyMissing": "DashScope API key is not configured",
+      "unsupportedProvider": "Unsupported completion provider: {{provider}} (use openai / anthropic / google / dashscope)"
+    }
   },
   "notification": {
     "updateAvailable": "Update Available",
     "updateDownloaded": "Update Downloaded",
-    "restartToUpdate": "Restart to Update"
+    "restartToUpdate": "Restart to Update",
+    "streamStopped": "Streaming response stopped"
   }
 }

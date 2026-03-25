@@ -7,7 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { ScrollArea } from '../ui/scroll-area'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog'
 import { cn } from '../../lib/utils'
-import { KEYMAP_PRESETS, COMMANDS } from '../../config/keymaps'
+import {
+  KEYMAP_PRESETS,
+  COMMANDS,
+  keymapCommandLabelKey,
+  keymapCategoryLabelKey,
+  keymapPresetLabelKey,
+  type KeymapCategoryId
+} from '../../config/keymaps'
 import { useSettings } from '../../contexts/SettingsContext'
 
 interface KeyRecorderProps {
@@ -134,13 +141,14 @@ export function KeymapSettingsContent() {
     const query = searchQuery.toLowerCase()
     return COMMANDS.filter((cmd) => {
       const binding = keymapSettings.bindings[cmd.id] || ''
+      const label = t(keymapCommandLabelKey(cmd.id))
       return (
-        cmd.label.toLowerCase().includes(query) ||
+        label.toLowerCase().includes(query) ||
         cmd.id.toLowerCase().includes(query) ||
         binding.toLowerCase().includes(query)
       )
     })
-  }, [searchQuery, keymapSettings.bindings])
+  }, [searchQuery, keymapSettings.bindings, t])
 
   // Group by category
   const groupedCommands = useMemo(() => {
@@ -187,9 +195,9 @@ export function KeymapSettingsContent() {
               <SelectValue placeholder={t('keymap.selectPreset')} />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(KEYMAP_PRESETS).map(([key, preset]) => (
+              {Object.entries(KEYMAP_PRESETS).map(([key]) => (
                 <SelectItem key={key} value={key}>
-                  {preset.name}
+                  {t(keymapPresetLabelKey(key))}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -215,10 +223,10 @@ export function KeymapSettingsContent() {
                 <p>{t('keymap.noCommandsFound')}</p>
               </div>
             ) : (
-              Object.entries(groupedCommands).map(([category, commands]) => (
-                <div key={category}>
+              Object.entries(groupedCommands).map(([categoryId, commands]) => (
+                <div key={categoryId}>
                   <div className="sticky top-0 bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground backdrop-blur-sm border-y border-border first:border-t-0">
-                    {category}
+                    {t(keymapCategoryLabelKey(categoryId as KeymapCategoryId))}
                   </div>
                   <div className="divide-y divide-border">
                     {commands.map((cmd) => {
@@ -229,7 +237,9 @@ export function KeymapSettingsContent() {
                           className="flex items-center justify-between px-4 py-3 hover:bg-accent/50 group transition-colors"
                         >
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-sm font-medium">{cmd.label}</span>
+                            <span className="text-sm font-medium">
+                              {t(keymapCommandLabelKey(cmd.id))}
+                            </span>
                             <span className="text-xs text-muted-foreground font-mono">
                               {cmd.id}
                             </span>
@@ -290,7 +300,7 @@ export function KeymapSettingsContent() {
             <DialogDescription className="space-y-1">
               <div>{t('keymap.recordDialogIntro')}</div>
               <div className="font-medium text-foreground">
-                {COMMANDS.find((c) => c.id === editingCommand)?.label}
+                {editingCommand ? t(keymapCommandLabelKey(editingCommand)) : ''}
               </div>
               <div>{t('keymap.recordDialogHint')}</div>
             </DialogDescription>

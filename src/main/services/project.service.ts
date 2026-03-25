@@ -5,6 +5,7 @@ import * as path from 'path'
 import { promises as fs } from 'fs'
 import { dialog } from 'electron'
 import type { ConfigService } from './config.service'
+import { t } from '../utils/i18n'
 
 function getDb() {
   return getDatabase()
@@ -86,8 +87,8 @@ export class ProjectService {
   static async openProjectDialog(): Promise<string | null> {
     const result = await dialog.showOpenDialog({
       properties: ['openDirectory'],
-      title: '选择项目文件夹',
-      buttonLabel: '选择项目'
+      title: t('dialog.selectProjectFolderTitle'),
+      buttonLabel: t('dialog.selectProject')
     })
 
     if (result.canceled || result.filePaths.length === 0) {

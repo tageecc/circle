@@ -125,5 +125,9 @@
       "detail5": "• 中型项目 3-5分钟索引完成",
       "notIndexed": "尚未索引"
     }
+  },
+  "toolCall": {
+    "create": "创建",
+    "edit": "编辑"
   }
 }

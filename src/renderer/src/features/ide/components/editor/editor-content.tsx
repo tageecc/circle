@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { FileTab, MarkdownMode } from '../../types'
 import { MonacoCodeEditor, EditorDiagnostic } from '@/components/code/MonacoCodeEditor'
 import { MonacoDiffEditor } from '@/components/code/MonacoDiffEditor'
@@ -42,6 +43,8 @@ export function EditorContent({
   onAcceptFileEdit,
   onRejectFileEdit
 }: EditorContentProps) {
+  const { t } = useTranslation('editor')
+
   // 检查当前文件是否有 pending edit
   const hasPendingEdit =
     pendingFileEdit &&
@@ -67,8 +70,8 @@ export function EditorContent({
           showNavigation: true,
           showAccept: true,
           showReject: true,
-          acceptLabel: '接受',
-          rejectLabel: '拒绝',
+          acceptLabel: t('diff.accept'),
+          rejectLabel: t('diff.reject'),
           position: 'bottom'
         }}
         onAccept={onAcceptFileEdit}
@@ -85,8 +88,8 @@ export function EditorContent({
       <div className="flex h-full items-center justify-center text-muted-foreground">
         <div className="text-center">
           <File className="mx-auto mb-2 size-12 opacity-20" />
-          <p className="text-sm">No file open</p>
-          <p className="mt-1 text-xs">Select a file to start editing</p>
+          <p className="text-sm">{t('emptyState.noFileOpen')}</p>
+          <p className="mt-1 text-xs">{t('emptyState.selectFileToEdit')}</p>
         </div>
       </div>
     )

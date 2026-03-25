@@ -1,6 +1,7 @@
 import { MCPClient } from '@mastra/mcp'
 import { MCPService } from './mcp.service'
 import type { MCPServer } from '../database/schema.sqlite'
+import { t } from '../utils/i18n'
 
 function parseMcpServerConfig(config: MCPServer['config']): {
   command: string
@@ -166,23 +167,23 @@ export class MCPClientManager {
 
       // 常见错误模式
       if (message.includes('Connection closed')) {
-        return '连接关闭：命令可能不存在或立即退出。请检查 command 和 args 是否正确。'
+        return t('error.mcp.connectionClosed')
       }
       if (message.includes('ENOENT')) {
-        return '命令未找到：请确认命令路径正确且已安装。'
+        return t('error.mcp.commandNotFound')
       }
       if (message.includes('spawn')) {
-        return '无法启动进程：请检查命令权限和路径。'
+        return t('error.mcp.spawnFailed')
       }
       if (message.includes('timeout')) {
-        return '连接超时：服务器响应时间过长。'
+        return t('error.mcp.timeout')
       }
 
       // 返回原始错误信息（截取前200字符）
       return message.length > 200 ? message.substring(0, 200) + '...' : message
     }
 
-    return '未知错误'
+    return t('error.unknown')
   }
 
   /**

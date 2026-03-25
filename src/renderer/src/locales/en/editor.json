@@ -102,5 +102,69 @@
     "reset": "Reset",
     "loading": "Loading image...",
     "alt": "Preview"
+  },
+  "fileOperation": {
+    "createFileSuccess": "File created",
+    "createFileSuccessDesc": "Created file {{name}}",
+    "createFileFailed": "Failed to create file",
+    "createFolderSuccess": "Folder created",
+    "createFolderSuccessDesc": "Created folder {{name}}",
+    "createFolderFailed": "Failed to create folder",
+    "renameSuccess": "Renamed",
+    "renameSuccessDesc": "Renamed {{oldName}} to {{newName}}",
+    "renameFailed": "Rename failed",
+    "deleteSuccess": "Deleted",
+    "deleteSuccessDesc": "Deleted {{name}}",
+    "deleteFailed": "Delete failed",
+    "cutSuccess": "Cut",
+    "cutSuccessDesc": "Cut {{name}}",
+    "copySuccess": "Copied",
+    "copySuccessDesc": "Copied {{name}}",
+    "pasteSuccess": "Pasted",
+    "pasteSuccessCopyDesc": "Copied {{name}}",
+    "pasteSuccessMoveDesc": "Moved {{name}}",
+    "pasteFailed": "Paste failed",
+    "copyPathSuccess": "Path copied",
+    "revealInFinderFailed": "Could not open file manager",
+    "refreshSuccess": "Refreshed",
+    "refreshSuccessDesc": "File tree updated"
+  },
+  "gitFileActions": {
+    "revertSuccess": "File reverted",
+    "revertFailed": "Revert failed",
+    "noDiff": "No changes",
+    "noDiffDesc": "No uncommitted changes vs HEAD for this file",
+    "getDiffFailed": "Failed to load diff"
+  },
+  "panels": {
+    "toggleFileTree": "Toggle file tree",
+    "toggleChatSidebar": "Toggle AI chat panel",
+    "settingsShortcut": "Settings (⌘,)"
+  },
+  "pendingEdit": {
+    "revertedToast": "Edit discarded",
+    "revertFailed": "Failed to discard edit"
+  },
+  "workingDiff": {
+    "title": "Uncommitted changes — {{fileName}}"
+  },
+  "debugConfig": {
+    "alert": "Config file path: {{path}}\n\nCurrent project: {{currentProject}}\nRecent projects: {{recentCount}}\n\nSee console for details",
+    "noProject": "None"
+  },
+  "fileManager": {
+    "openFailed": "Failed to open file",
+    "saveFailed": "Failed to save file"
+  },
+  "tabBar": {
+    "deletedSuffix": "(deleted)",
+    "closeToRight": "Close Tabs to the Right",
+    "markdownEditOnly": "Edit only",
+    "markdownSplit": "Split view",
+    "markdownPreviewOnly": "Preview only"
+  },
+  "emptyState": {
+    "noFileOpen": "No file open",
+    "selectFileToEdit": "Select a file to start editing"
   }
 }

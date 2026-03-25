@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronRight, CheckCircle2, XCircle, Loader2, FileText, Terminal } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CodeDisplay } from './code-display'
@@ -33,6 +34,7 @@ interface ToolCallProps {
 }
 
 export function ToolCall({ tool, className, onOpenFile, isLatest = false }: ToolCallProps) {
+  const { t } = useTranslation('common')
   // 最新的工具默认展开
   const [isExpanded, setIsExpanded] = useState(isLatest)
 
@@ -239,7 +241,9 @@ export function ToolCall({ tool, className, onOpenFile, isLatest = false }: Tool
           )}
           {!hasDiff && <FileText className="size-3.5 shrink-0 text-muted-foreground" />}
           <span className="flex-1 text-xs">
-            <span className="text-muted-foreground">{isNewFile ? '创建' : '编辑'}</span>
+            <span className="text-muted-foreground">
+              {isNewFile ? t('toolCall.create') : t('toolCall.edit')}
+            </span>
             <span className="text-foreground font-medium ml-1">{fileName}</span>
             {stats.linesAdded > 0 && (
               <span className="text-green-600 dark:text-green-400 ml-2">+{stats.linesAdded}</span>
