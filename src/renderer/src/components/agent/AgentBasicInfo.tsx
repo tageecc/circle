@@ -6,6 +6,7 @@ import { Button } from '../ui/button'
 import { Separator } from '../ui/separator'
 import { Bot, Upload, Trash } from 'lucide-react'
 import { AgentFormData } from '@/hooks/useAgent'
+import { useTranslation } from 'react-i18next'
 
 interface AgentBasicInfoProps {
   agent: any
@@ -26,12 +27,14 @@ export function AgentBasicInfo({
   onSelectAvatar,
   onRemoveAvatar
 }: AgentBasicInfoProps) {
+  const { t } = useTranslation('agent')
+
   return (
     <div className="space-y-4">
       {editing && (
         <>
           <div className="space-y-2">
-            <Label>头像</Label>
+            <Label>{t('form.avatar')}</Label>
             <div className="flex items-center gap-3">
               <Avatar className="size-16">
                 {avatarPreview ? <AvatarImage src={avatarPreview} alt={agent.name} /> : null}
@@ -42,26 +45,24 @@ export function AgentBasicInfo({
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" onClick={onSelectAvatar} className="gap-2">
                   <Upload className="size-3" />
-                  上传头像
+                  {t('form.uploadAvatar')}
                 </Button>
                 {avatarPreview && (
                   <Button size="sm" variant="outline" onClick={onRemoveAvatar} className="gap-2">
                     <Trash className="size-3" />
-                    删除
+                    {t('form.removeAvatar')}
                   </Button>
                 )}
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              支持 JPG、PNG、GIF、WebP、SVG 格式，大小不超过 5MB
-            </p>
+            <p className="text-xs text-muted-foreground">{t('form.avatarTipFull')}</p>
           </div>
           <Separator />
         </>
       )}
 
       <div className="space-y-2">
-        <Label>名称</Label>
+        <Label>{t('form.name')}</Label>
         {editing ? (
           <Input
             value={formData.name}
@@ -73,7 +74,7 @@ export function AgentBasicInfo({
       </div>
 
       <div className="space-y-2">
-        <Label>描述</Label>
+        <Label>{t('form.description')}</Label>
         {editing ? (
           <Textarea
             value={formData.description}
@@ -81,23 +82,25 @@ export function AgentBasicInfo({
             className="min-h-[80px]"
           />
         ) : (
-          <p className="text-sm text-muted-foreground">{agent.description || '暂无描述'}</p>
+          <p className="text-sm text-muted-foreground">
+            {agent.description || t('form.noDescription')}
+          </p>
         )}
       </div>
 
       <div className="space-y-2">
-        <Label>系统指令</Label>
+        <Label>{t('form.instructions')}</Label>
         {editing ? (
           <Textarea
             value={formData.instructions}
             onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
             className="min-h-[200px] font-mono text-xs"
-            placeholder="你是一个有用的 AI 助手..."
+            placeholder={t('form.instructionsPlaceholder')}
           />
         ) : (
           <div className="rounded-md border border-border bg-muted/50 p-3">
             <p className="whitespace-pre-wrap text-xs font-mono">
-              {agent.instructions || '暂无系统指令'}
+              {agent.instructions || t('form.noInstructions')}
             </p>
           </div>
         )}

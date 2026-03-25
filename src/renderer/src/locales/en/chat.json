@@ -1,0 +1,57 @@
+{
+  "title": "Chat",
+  "input": {
+    "placeholder": "Enter your question or idea, and the AI assistant will help you",
+    "placeholderAsk": "Ask, search, or chat…",
+    "send": "Send",
+    "stop": "Stop",
+    "generating": "Generating...",
+    "removeImage": "Remove image",
+    "selectAgent": "Select agent",
+    "systemBadge": "System",
+    "stopGeneratingTitle": "Stop generating",
+    "sendMessageTitle": "Send message",
+    "pastedImageFileName": "pasted-image-{{ts}}.png"
+  },
+  "panel": {
+    "agentsLabel": "Agents",
+    "chatTab": "Chat",
+    "tracesTab": "Traces",
+    "evalsTab": "Evals",
+    "newChat": "New Chat",
+    "chatFrom": "Chat from",
+    "emptyPrompt": "Start a conversation by typing a message below",
+    "inputPlaceholder": "Enter your message...",
+    "defaultThreadTitle": "New Chat",
+    "agentFallback": "Agent"
+  },
+  "welcome": {
+    "title": "Start AI Conversation",
+    "subtitle": "Enter your question or idea, and the AI assistant will help you",
+    "features": {
+      "codeAnalysis": "Smart Code Analysis",
+      "problemSolving": "Problem Solving",
+      "codeGeneration": "Code Generation"
+    }
+  },
+  "reasoning": {
+    "title": "Thinking Process"
+  },
+  "message": {
+    "copy": "Copy",
+    "copied": "Copied",
+    "regenerate": "Regenerate",
+    "delete": "Delete"
+  },
+  "session": {
+    "new": "New Chat",
+    "rename": "Rename",
+    "delete": "Delete",
+    "deleteConfirm": "Are you sure you want to delete this conversation?",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "clear": "Clear History",
+    "clearConfirm": "Are you sure you want to clear all conversation history?",
+    "empty": "No conversations"
+  }
+}

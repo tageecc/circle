@@ -104,8 +104,8 @@ export const defaultToolbarConfig: Required<ToolbarConfig> = {
   showNavigation: true,
   showAccept: true,
   showReject: true,
-  acceptLabel: '接受',
-  rejectLabel: '拒绝',
+  acceptLabel: 'Accept',
+  rejectLabel: 'Reject',
   position: 'bottom',
   className: ''
 }

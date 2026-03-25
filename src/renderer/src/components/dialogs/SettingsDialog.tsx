@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Settings, Palette, Monitor, Keyboard, Code, Bot, Wrench } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../ui/dialog'
 import {
@@ -52,16 +53,6 @@ interface SettingsDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-const NAV_ITEMS = [
-  { name: '通用', icon: Settings, key: 'general' },
-  { name: '模型', icon: Bot, key: 'model' },
-  { name: 'MCP & Tools', icon: Wrench, key: 'mcp-tools' },
-  { name: '外观', icon: Palette, key: 'appearance' },
-  { name: '编辑器', icon: Code, key: 'editor' },
-  { name: '终端', icon: Monitor, key: 'terminal' },
-  { name: '快捷键', icon: Keyboard, key: 'keyboard' }
-]
-
 // 字体选择器组件
 function FontSelector({
   value,
@@ -72,6 +63,7 @@ function FontSelector({
   onValueChange: (value: string) => void
   fonts: string[]
 }) {
+  const { t } = useTranslation('settings')
   // 内置字体（已打包到应用中，始终可用）
   const builtInFonts = ['JetBrains Mono', 'Source Code Pro']
 
@@ -102,17 +94,17 @@ function FontSelector({
   return (
     <Select value={value} onValueChange={onValueChange}>
       <SelectTrigger className="w-full">
-        <SelectValue placeholder="选择字体">{value}</SelectValue>
+        <SelectValue placeholder={t('font.selectPlaceholder')}>{value}</SelectValue>
       </SelectTrigger>
       <SelectContent>
         {popularFonts.length > 0 && (
           <SelectGroup>
-            <SelectLabel>推荐等宽字体</SelectLabel>
+            <SelectLabel>{t('font.recommendedMono')}</SelectLabel>
             {popularFonts.map((font) => (
               <SelectItem key={font} value={font}>
                 {font}
                 {builtInFonts.includes(font) && (
-                  <span className="ml-2 text-xs text-muted-foreground">• 内置</span>
+                  <span className="ml-2 text-xs text-muted-foreground">• {t('font.builtIn')}</span>
                 )}
               </SelectItem>
             ))}
@@ -120,7 +112,7 @@ function FontSelector({
         )}
         {otherFonts.length > 0 && (
           <SelectGroup>
-            <SelectLabel>其他字体</SelectLabel>
+            <SelectLabel>{t('font.otherFonts')}</SelectLabel>
             {otherFonts.map((font) => (
               <SelectItem key={font} value={font}>
                 {font}
@@ -134,8 +126,23 @@ function FontSelector({
 }
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
+  const { t } = useTranslation('settings')
+  const { t: tc } = useTranslation('common')
   const [activeSection, setActiveSection] = useState('general')
   const settings = useSettings()
+
+  const NAV_ITEMS = useMemo(
+    () => [
+      { name: t('tabs.general'), icon: Settings, key: 'general' },
+      { name: t('tabs.model'), icon: Bot, key: 'model' },
+      { name: t('tabs.mcpTools'), icon: Wrench, key: 'mcp-tools' },
+      { name: t('tabs.appearance'), icon: Palette, key: 'appearance' },
+      { name: t('tabs.editor'), icon: Code, key: 'editor' },
+      { name: t('tabs.terminal'), icon: Monitor, key: 'terminal' },
+      { name: t('tabs.keymap'), icon: Keyboard, key: 'keyboard' }
+    ],
+    [t]
+  )
 
   // 本地状态用于编辑
   const [localEditorSettings, setLocalEditorSettings] = useState<EditorSettings>(
@@ -345,12 +352,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       // 更新 Context 状态（不保存，因为已经保存过了）
       await settings.reloadSettings()
 
-      toast.success('设置已保存')
+      toast.success(t('toast.saved'))
       // 保存成功后关闭弹窗
       onOpenChange(false)
     } catch (error) {
       console.error('Failed to save settings:', error)
-      toast.error('保存设置失败')
+      toast.error(t('toast.saveFailed'))
     }
   }
 
@@ -397,10 +404,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         settings.updateGeneralSettings(defaultGeneral)
       ])
       setResetPopoverOpen(false)
-      toast.success('设置已重置')
+      toast.success(t('toast.resetSuccess'))
     } catch (error) {
       console.error('Failed to reset settings:', error)
-      toast.error('重置设置失败')
+      toast.error(t('toast.resetFailed'))
     }
   }
 
@@ -482,8 +489,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="overflow-hidden p-0 md:max-h-[750px] md:max-w-[1100px] lg:max-w-[1200px]">
-        <DialogTitle className="sr-only">设置</DialogTitle>
-        <DialogDescription className="sr-only">自定义您的应用设置</DialogDescription>
+        <DialogTitle className="sr-only">{t('dialog.title')}</DialogTitle>
+        <DialogDescription className="sr-only">{t('dialog.description')}</DialogDescription>
         <SidebarProvider className="items-start">
           <Sidebar collapsible="none" className="hidden md:flex">
             <SidebarContent>
@@ -511,7 +518,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               <Breadcrumb>
                 <BreadcrumbList>
                   <BreadcrumbItem className="hidden md:block">
-                    <BreadcrumbLink href="#">设置</BreadcrumbLink>
+                    <BreadcrumbLink href="#">{t('dialog.breadcrumb')}</BreadcrumbLink>
                   </BreadcrumbItem>
                   <BreadcrumbSeparator className="hidden md:block" />
                   <BreadcrumbItem>
@@ -531,16 +538,14 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     size="sm"
                     className="text-muted-foreground hover:text-destructive"
                   >
-                    重置为默认
+                    {t('reset.button')}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-80" side="top" align="start">
                   <div className="space-y-3">
                     <div className="space-y-2">
-                      <h4 className="font-medium text-sm">确认重置设置？</h4>
-                      <p className="text-sm text-muted-foreground">
-                        此操作将重置所有设置为默认值，包括外观、编辑器、终端等所有配置。
-                      </p>
+                      <h4 className="font-medium text-sm">{t('reset.title')}</h4>
+                      <p className="text-sm text-muted-foreground">{t('reset.description')}</p>
                     </div>
                     <div className="flex justify-end gap-2">
                       <Button
@@ -548,10 +553,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                         size="sm"
                         onClick={() => setResetPopoverOpen(false)}
                       >
-                        取消
+                        {tc('button.cancel')}
                       </Button>
                       <Button variant="destructive" size="sm" onClick={resetSettings}>
-                        确认重置
+                        {t('reset.confirm')}
                       </Button>
                     </div>
                   </div>
@@ -559,9 +564,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               </Popover>
               <div className="flex items-center gap-2">
                 <Button variant="outline" onClick={() => onOpenChange(false)}>
-                  取消
+                  {tc('button.cancel')}
                 </Button>
-                <Button onClick={saveSettings}>保存设置</Button>
+                <Button onClick={saveSettings}>{t('actions.save')}</Button>
               </div>
             </div>
           </main>
@@ -579,22 +584,31 @@ function GeneralSettingsContent({
   settings: GeneralSettings
   onChange: (settings: GeneralSettings) => void
 }) {
+  const { t } = useTranslation('settings')
   const languageOptions = [
-    { value: 'zh-CN', label: '简体中文' },
-    { value: 'en-US', label: 'English' }
+    { value: 'zh-CN', label: t('general.zhCN') },
+    { value: 'en', label: t('general.en') }
   ]
+
+  const handleLanguageChange = async (value: string) => {
+    onChange({ ...settings, language: value })
+    // 立即切换界面语言
+    const { default: i18n } = await import('../../i18n')
+    await i18n.changeLanguage(value)
+
+    // 通知主进程更新菜单语言
+    window.electron.ipcRenderer.send('language:changed', value)
+  }
 
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label>界面语言</Label>
-        <Select
-          value={settings.language}
-          onValueChange={(value) => onChange({ ...settings, language: value })}
-        >
+        <Label>{t('general.uiLanguage')}</Label>
+        <Select value={settings.language} onValueChange={handleLanguageChange}>
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="选择语言">
-              {languageOptions.find((opt) => opt.value === settings.language)?.label || '简体中文'}
+            <SelectValue placeholder={t('general.selectLanguage')}>
+              {languageOptions.find((opt) => opt.value === settings.language)?.label ||
+                t('general.zhCN')}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
@@ -608,8 +622,8 @@ function GeneralSettingsContent({
       </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Label>自动保存</Label>
-          <span className="text-xs text-muted-foreground">自动保存文件更改</span>
+          <Label>{t('general.autoSave')}</Label>
+          <span className="text-xs text-muted-foreground">{t('general.autoSaveHint')}</span>
         </div>
         <Switch
           checked={settings.autoSave}
@@ -628,19 +642,17 @@ function EmbeddingSettingsContent({
   settings: { provider: 'openai' | 'dashscope'; model: string; apiKey: string }
   onChange: (v: { provider: 'openai' | 'dashscope'; model: string; apiKey: string }) => void
 }) {
+  const { t } = useTranslation('settings')
   const providerOptions = [
-    { value: 'dashscope', label: '阿里云百炼 (DashScope)' },
-    { value: 'openai', label: 'OpenAI' }
+    { value: 'dashscope', label: t('embedding.dashscope') },
+    { value: 'openai', label: t('embedding.openai') }
   ]
   return (
     <div className="space-y-4">
-      <h4 className="text-sm font-medium">代码库语义索引 (Embedding)</h4>
-      <p className="text-xs text-muted-foreground">
-        用于代码库索引与语义搜索。选择 DashScope 并填写 API Key 时，也会用于 AI 编辑文件时的 Apply
-        Edit 小模型。
-      </p>
+      <h4 className="text-sm font-medium">{t('embedding.title')}</h4>
+      <p className="text-xs text-muted-foreground">{t('embedding.description')}</p>
       <div className="space-y-2">
-        <Label>提供商</Label>
+        <Label>{t('embedding.provider')}</Label>
         <Select
           value={settings.provider}
           onValueChange={(value) =>
@@ -660,7 +672,7 @@ function EmbeddingSettingsContent({
         </Select>
       </div>
       <div className="space-y-2">
-        <Label>模型 ID</Label>
+        <Label>{t('embedding.modelId')}</Label>
         <Input
           value={settings.model}
           onChange={(e) => onChange({ ...settings, model: e.target.value })}
@@ -670,12 +682,12 @@ function EmbeddingSettingsContent({
         />
       </div>
       <div className="space-y-2">
-        <Label>API Key（可选）</Label>
+        <Label>{t('embedding.apiKeyOptional')}</Label>
         <Input
           type="password"
           value={settings.apiKey}
           onChange={(e) => onChange({ ...settings, apiKey: e.target.value })}
-          placeholder="留空则使用环境变量"
+          placeholder={t('embedding.apiKeyEnvHint')}
         />
       </div>
     </div>
@@ -690,19 +702,18 @@ function SearchSettingsContent({
   settings: { bingApiKey: string }
   onChange: (v: { bingApiKey: string }) => void
 }) {
+  const { t } = useTranslation('settings')
   return (
     <div className="space-y-4">
-      <h4 className="text-sm font-medium">网页搜索 (Bing)</h4>
-      <p className="text-xs text-muted-foreground">
-        用于 AI 联网搜索。填写 Bing Search API Key 后，工具可查询实时信息。
-      </p>
+      <h4 className="text-sm font-medium">{t('bing.title')}</h4>
+      <p className="text-xs text-muted-foreground">{t('bing.description')}</p>
       <div className="space-y-2">
-        <Label>Bing Search API Key（可选）</Label>
+        <Label>{t('bing.apiKeyOptional')}</Label>
         <Input
           type="password"
           value={settings.bingApiKey}
           onChange={(e) => onChange({ ...settings, bingApiKey: e.target.value })}
-          placeholder="留空则禁用网页搜索"
+          placeholder={t('bing.disabledHint')}
         />
       </div>
     </div>
@@ -717,15 +728,16 @@ function ModelSettingsContent({
   settings: { provider: string; model: string; instructions: string }
   onChange: (v: { provider: string; model: string; instructions: string }) => void
 }) {
+  const { t } = useTranslation('settings')
   const providerOptions = [
-    { value: 'openai', label: 'OpenAI (GPT)' },
-    { value: 'anthropic', label: 'Anthropic (Claude)' },
-    { value: 'google', label: 'Google (Gemini)' }
+    { value: 'openai', label: t('defaultModel.openaiGpt') },
+    { value: 'anthropic', label: t('defaultModel.anthropic') },
+    { value: 'google', label: t('defaultModel.googleGemini') }
   ]
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label>默认模型提供商</Label>
+        <Label>{t('defaultModel.provider')}</Label>
         <Select
           value={settings.provider}
           onValueChange={(value) => onChange({ ...settings, provider: value })}
@@ -743,19 +755,19 @@ function ModelSettingsContent({
         </Select>
       </div>
       <div className="space-y-2">
-        <Label>模型 ID</Label>
+        <Label>{t('defaultModel.modelId')}</Label>
         <Input
           value={settings.model}
           onChange={(e) => onChange({ ...settings, model: e.target.value })}
-          placeholder="例如 gpt-4o、claude-3-5-sonnet-20241022"
+          placeholder={t('defaultModel.modelIdPlaceholder')}
         />
       </div>
       <div className="space-y-2">
-        <Label>自定义指令（可选）</Label>
+        <Label>{t('defaultModel.customInstructions')}</Label>
         <Textarea
           value={settings.instructions}
           onChange={(e) => onChange({ ...settings, instructions: e.target.value })}
-          placeholder="例如：你是一位专业的代码助手，优先使用简洁的实现。"
+          placeholder={t('defaultModel.instructionsPlaceholder')}
           className="min-h-[120px] resize-y"
         />
       </div>
@@ -782,19 +794,18 @@ function CompletionSettingsContent({
     apiKey: string
   }) => void
 }) {
+  const { t } = useTranslation('settings')
   const dedicated = settings.provider.trim().length > 0
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <h4 className="text-sm font-medium">行内 AI 补全（Copilot 式）</h4>
-        <p className="text-xs text-muted-foreground">
-          在编辑器中输入时显示灰色幽灵建议；可单独指定模型，否则使用上方默认助手。保存后需重新打开代码标签页或重载应用后生效。
-        </p>
+        <h4 className="text-sm font-medium">{t('completion.title')}</h4>
+        <p className="text-xs text-muted-foreground">{t('completion.description')}</p>
       </div>
       <div className="flex items-center justify-between border rounded-md px-3 py-2">
         <div>
-          <Label className="text-sm">启用行内补全</Label>
-          <p className="text-xs text-muted-foreground">关闭后不再请求行内建议</p>
+          <Label className="text-sm">{t('completion.enable')}</Label>
+          <p className="text-xs text-muted-foreground">{t('completion.enableHint')}</p>
         </div>
         <Switch
           checked={settings.enabled}
@@ -803,8 +814,8 @@ function CompletionSettingsContent({
       </div>
       <div className="flex items-center justify-between border rounded-md px-3 py-2">
         <div>
-          <Label className="text-sm">Shadow 诊断校验</Label>
-          <p className="text-xs text-muted-foreground">对 TS/JS 补全结果做轻量诊断（较慢）</p>
+          <Label className="text-sm">{t('completion.shadowValidation')}</Label>
+          <p className="text-xs text-muted-foreground">{t('completion.shadowValidationHint')}</p>
         </div>
         <Switch
           checked={settings.enableValidation}
@@ -813,7 +824,7 @@ function CompletionSettingsContent({
         />
       </div>
       <div className="space-y-2">
-        <Label>补全专用提供商（可选）</Label>
+        <Label>{t('completion.dedicatedProvider')}</Label>
         <Select
           value={dedicated ? settings.provider : '__default__'}
           onValueChange={(value) =>
@@ -828,31 +839,31 @@ function CompletionSettingsContent({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__default__">与默认助手相同（推荐）</SelectItem>
+            <SelectItem value="__default__">{t('completion.sameAsDefault')}</SelectItem>
             <SelectItem value="openai">OpenAI</SelectItem>
             <SelectItem value="anthropic">Anthropic</SelectItem>
             <SelectItem value="google">Google (Gemini)</SelectItem>
-            <SelectItem value="dashscope">DashScope（通义）</SelectItem>
+            <SelectItem value="dashscope">{t('completion.dashscope')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
       {dedicated && (
         <>
           <div className="space-y-2">
-            <Label>补全模型 ID</Label>
+            <Label>{t('completion.completionModelId')}</Label>
             <Input
               value={settings.model}
               onChange={(e) => onChange({ ...settings, model: e.target.value })}
-              placeholder="例如 gpt-4o-mini"
+              placeholder={t('completion.completionModelPlaceholder')}
             />
           </div>
           <div className="space-y-2">
-            <Label>补全 API Key（可选）</Label>
+            <Label>{t('completion.completionApiKey')}</Label>
             <Input
               type="password"
               value={settings.apiKey}
               onChange={(e) => onChange({ ...settings, apiKey: e.target.value })}
-              placeholder="留空则尝试使用默认助手的 Key"
+              placeholder={t('completion.completionApiKeyHint')}
               autoComplete="off"
             />
           </div>
@@ -870,10 +881,11 @@ function AppearanceSettingsContent({
   settings: AppearanceSettings
   onChange: (settings: AppearanceSettings) => void
 }) {
+  const { t } = useTranslation('settings')
   const themeOptions = [
-    { value: 'system', label: '跟随系统' },
-    { value: 'light', label: '浅色' },
-    { value: 'dark', label: '深色' }
+    { value: 'system', label: t('appearance.system') },
+    { value: 'light', label: t('appearance.light') },
+    { value: 'dark', label: t('appearance.dark') }
   ]
 
   const zoomOptions = [
@@ -888,7 +900,7 @@ function AppearanceSettingsContent({
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label>主题</Label>
+        <Label>{t('appearance.theme')}</Label>
         <Select
           value={settings.theme}
           onValueChange={(value) =>
@@ -896,8 +908,9 @@ function AppearanceSettingsContent({
           }
         >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="选择主题">
-              {themeOptions.find((opt) => opt.value === settings.theme)?.label || '跟随系统'}
+            <SelectValue placeholder={t('appearance.selectTheme')}>
+              {themeOptions.find((opt) => opt.value === settings.theme)?.label ||
+                t('appearance.system')}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
@@ -911,17 +924,15 @@ function AppearanceSettingsContent({
       </div>
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <Label>界面缩放</Label>
-          <span className="text-xs text-muted-foreground">
-            使用 ⌥⌘= 或 ⌥⌘- 调整缩放，⌥⌘0 重置为 100%
-          </span>
+          <Label>{t('appearance.zoom')}</Label>
+          <span className="text-xs text-muted-foreground">{t('appearance.zoomHint')}</span>
         </div>
         <Select
           value={settings.uiScale.toString()}
           onValueChange={(value) => onChange({ ...settings, uiScale: parseFloat(value) })}
         >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="选择缩放比例">
+            <SelectValue placeholder={t('appearance.selectZoom')}>
               {zoomOptions.find((opt) => opt.value === settings.uiScale.toString())?.label ||
                 '100%'}
             </SelectValue>
@@ -951,18 +962,51 @@ function EditorSettingsContent({
   fontOptions: string[]
   currentTheme: 'light' | 'dark'
 }) {
+  const { t } = useTranslation('settings')
   const editorRef = useRef<any>(null)
   const decorationsRef = useRef<string[]>([])
 
-  // 假的 Git Blame 数据
-  const mockBlameData = [
-    { line: 1, author: '张三', time: '2 天前', summary: '添加示例代码' },
-    { line: 2, author: '李四', time: '1 周前', summary: '更新导入语句' },
-    { line: 4, author: '王五', time: '3 天前', summary: '定义配置接口' },
-    { line: 8, author: '张三', time: '2 天前', summary: '添加默认配置' },
-    { line: 13, author: '赵六', time: '5 天前', summary: 'feat: 实现 Circle 类' },
-    { line: 16, author: '赵六', time: '5 天前', summary: 'feat: 添加 run 方法实现' }
-  ]
+  const mockBlameData = useMemo(
+    () => [
+      {
+        line: 1,
+        author: t('editor.mockBlame.author1'),
+        time: t('editor.mockBlame.time1'),
+        summary: t('editor.mockBlame.l1summary')
+      },
+      {
+        line: 2,
+        author: t('editor.mockBlame.author2'),
+        time: t('editor.mockBlame.time2'),
+        summary: t('editor.mockBlame.l2summary')
+      },
+      {
+        line: 4,
+        author: t('editor.mockBlame.author3'),
+        time: t('editor.mockBlame.time3'),
+        summary: t('editor.mockBlame.l4summary')
+      },
+      {
+        line: 8,
+        author: t('editor.mockBlame.author1'),
+        time: t('editor.mockBlame.time1'),
+        summary: t('editor.mockBlame.l8summary')
+      },
+      {
+        line: 13,
+        author: t('editor.mockBlame.author4'),
+        time: t('editor.mockBlame.time4'),
+        summary: t('editor.mockBlame.l13summary')
+      },
+      {
+        line: 16,
+        author: t('editor.mockBlame.author4'),
+        time: t('editor.mockBlame.time4'),
+        summary: t('editor.mockBlame.l16summary')
+      }
+    ],
+    [t]
+  )
 
   // 当 gitBlame 开关变化时更新装饰器
   useEffect(() => {
@@ -993,14 +1037,14 @@ function EditorSettingsContent({
     } else {
       decorationsRef.current = editor.deltaDecorations(decorationsRef.current, [])
     }
-  }, [settings.gitBlame])
+  }, [settings.gitBlame, mockBlameData])
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-[400px_1fr] gap-4">
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="editor-font">字体</Label>
+            <Label htmlFor="editor-font">{t('editor.fontFamily')}</Label>
             <FontSelector
               value={settings.fontFamily}
               onValueChange={(value) => onChange({ ...settings, fontFamily: value })}
@@ -1008,7 +1052,7 @@ function EditorSettingsContent({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="editor-font-size">字体大小</Label>
+            <Label htmlFor="editor-font-size">{t('editor.fontSize')}</Label>
             <Input
               id="editor-font-size"
               type="number"
@@ -1019,7 +1063,7 @@ function EditorSettingsContent({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="editor-line-height">行高</Label>
+            <Label htmlFor="editor-line-height">{t('editor.lineHeight')}</Label>
             <Input
               id="editor-line-height"
               type="number"
@@ -1031,7 +1075,7 @@ function EditorSettingsContent({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="tab-size">制表符大小</Label>
+            <Label htmlFor="tab-size">{t('editor.tabSize')}</Label>
             <Input
               id="tab-size"
               type="number"
@@ -1042,28 +1086,28 @@ function EditorSettingsContent({
             />
           </div>
           <div className="flex items-center justify-between">
-            <Label>自动换行</Label>
+            <Label>{t('editor.wordWrap')}</Label>
             <Switch
               checked={settings.wordWrap}
               onCheckedChange={(checked) => onChange({ ...settings, wordWrap: checked })}
             />
           </div>
           <div className="flex items-center justify-between">
-            <Label>显示小地图</Label>
+            <Label>{t('editor.minimap')}</Label>
             <Switch
               checked={settings.minimap}
               onCheckedChange={(checked) => onChange({ ...settings, minimap: checked })}
             />
           </div>
           <div className="flex items-center justify-between">
-            <Label>显示行号</Label>
+            <Label>{t('editor.lineNumbers')}</Label>
             <Switch
               checked={settings.lineNumbers}
               onCheckedChange={(checked) => onChange({ ...settings, lineNumbers: checked })}
             />
           </div>
           <div className="flex items-center justify-between">
-            <Label>Git Blame 信息</Label>
+            <Label>{t('editor.gitBlame')}</Label>
             <Switch
               checked={settings.gitBlame}
               onCheckedChange={(checked) => onChange({ ...settings, gitBlame: checked })}
@@ -1074,7 +1118,7 @@ function EditorSettingsContent({
           <MonacoCodeEditor
             height="500px"
             language="typescript"
-            value={`// Circle IDE 示例代码
+            value={`${t('editor.preview.sampleLine1')}
 import { Agent } from '@/types'
 
 interface Config {
@@ -1092,7 +1136,7 @@ export class Circle {
   
   async run(): Promise<void> {
     console.log('Starting Circle...')
-    // 实现逻辑
+    ${t('editor.preview.sampleLine2')}
   }
 }`}
             path="/settings-preview.ts"
@@ -1145,10 +1189,11 @@ function TerminalSettingsContent({
   onChange: (settings: TerminalSettings) => void
   fontOptions: string[]
 }) {
+  const { t } = useTranslation('settings')
   const cursorStyleOptions = [
-    { value: 'block', label: '块状' },
-    { value: 'underline', label: '下划线' },
-    { value: 'bar', label: '竖线' }
+    { value: 'block', label: t('terminal.cursorBlock') },
+    { value: 'underline', label: t('terminal.cursorUnderline') },
+    { value: 'bar', label: t('terminal.cursorBar') }
   ]
 
   return (
@@ -1156,7 +1201,7 @@ function TerminalSettingsContent({
       <div className="grid grid-cols-[400px_1fr] gap-4">
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="terminal-font">字体</Label>
+            <Label htmlFor="terminal-font">{t('terminal.fontFamily')}</Label>
             <FontSelector
               value={settings.fontFamily}
               onValueChange={(value) => onChange({ ...settings, fontFamily: value })}
@@ -1164,7 +1209,7 @@ function TerminalSettingsContent({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="terminal-font-size">字体大小</Label>
+            <Label htmlFor="terminal-font-size">{t('terminal.fontSize')}</Label>
             <Input
               id="terminal-font-size"
               type="number"
@@ -1175,7 +1220,7 @@ function TerminalSettingsContent({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="terminal-line-height">行高</Label>
+            <Label htmlFor="terminal-line-height">{t('terminal.lineHeight')}</Label>
             <Input
               id="terminal-line-height"
               type="number"
@@ -1187,16 +1232,16 @@ function TerminalSettingsContent({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="terminal-shell">Shell 路径（可选）</Label>
+            <Label htmlFor="terminal-shell">{t('terminal.shellOptional')}</Label>
             <Input
               id="terminal-shell"
               value={settings.shell ?? ''}
               onChange={(e) => onChange({ ...settings, shell: e.target.value || undefined })}
-              placeholder="留空则使用系统默认（如 /bin/bash、powershell.exe）"
+              placeholder={t('terminal.shellPlaceholder')}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="cursor-style">光标样式</Label>
+            <Label htmlFor="cursor-style">{t('terminal.cursorStyle')}</Label>
             <Select
               value={settings.cursorStyle}
               onValueChange={(value) =>
@@ -1218,7 +1263,7 @@ function TerminalSettingsContent({
             </Select>
           </div>
           <div className="flex items-center justify-between">
-            <Label>光标闪烁</Label>
+            <Label>{t('terminal.cursorBlink')}</Label>
             <Switch
               checked={settings.cursorBlink}
               onCheckedChange={(checked) => onChange({ ...settings, cursorBlink: checked })}

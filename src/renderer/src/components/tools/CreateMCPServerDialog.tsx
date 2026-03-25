@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
@@ -24,6 +25,9 @@ export function CreateMCPServerDialog({
   onFormDataChange,
   onSubmit
 }: CreateMCPServerDialogProps) {
+  const { t } = useTranslation('tools')
+  const { t: tc } = useTranslation('common')
+
   const handleConfigChange = (config: string) => {
     const updates: Partial<typeof formData> = { config }
 
@@ -46,7 +50,7 @@ export function CreateMCPServerDialog({
           }
         }
       } catch {
-        // JSON 解析失败，只更新 config
+        // JSON parse failed; only config is updated
       }
     }
 
@@ -57,42 +61,40 @@ export function CreateMCPServerDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>添加 MCP Server</DialogTitle>
-          <DialogDescription>配置 MCP Server 以导入工具</DialogDescription>
+          <DialogTitle>{t('mcpCreateDialog.title')}</DialogTitle>
+          <DialogDescription>{t('mcpCreateDialog.description')}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div>
-            <Label htmlFor="mcp-config">配置 JSON</Label>
+            <Label htmlFor="mcp-config">{t('mcpCreateDialog.configJsonLabel')}</Label>
             <Textarea
               id="mcp-config"
-              placeholder={`{\n  "mcpServers": {\n    "filesystem": {\n      "command": "npx",\n      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path"]\n    }\n  }\n}`}
+              placeholder={t('mcpCreateDialog.configPlaceholder')}
               value={formData.config}
               onChange={(e) => handleConfigChange(e.target.value)}
               className="font-mono text-sm h-48 mt-2"
             />
-            <p className="text-xs text-muted-foreground mt-1">
-              粘贴 MCP Server 配置，名称和描述将自动填充
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">{t('mcpCreateDialog.configHint')}</p>
           </div>
 
           <div>
-            <Label htmlFor="mcp-name">名称</Label>
+            <Label htmlFor="mcp-name">{t('mcpCreateDialog.nameLabel')}</Label>
             <Input
               id="mcp-name"
               className="mt-2"
-              placeholder="例如: filesystem"
+              placeholder={t('mcpCreateDialog.namePlaceholder')}
               value={formData.name}
               onChange={(e) => onFormDataChange({ ...formData, name: e.target.value })}
             />
           </div>
 
           <div>
-            <Label htmlFor="mcp-description">描述（可选）</Label>
+            <Label htmlFor="mcp-description">{t('mcpCreateDialog.descriptionOptional')}</Label>
             <Input
               id="mcp-description"
               className="mt-2"
-              placeholder="简要描述此 MCP Server"
+              placeholder={t('mcpCreateDialog.descriptionPlaceholder')}
               value={formData.description}
               onChange={(e) => onFormDataChange({ ...formData, description: e.target.value })}
             />
@@ -101,11 +103,11 @@ export function CreateMCPServerDialog({
 
         <div className="flex justify-end gap-2 pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            取消
+            {tc('button.cancel')}
           </Button>
           <Button onClick={onSubmit}>
             <Plus className="size-4 mr-2" />
-            添加
+            {tc('button.add')}
           </Button>
         </div>
       </DialogContent>

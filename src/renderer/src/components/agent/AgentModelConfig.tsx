@@ -7,6 +7,7 @@ import { ProviderSelect } from '../select/ProviderSelect'
 import { ModelSelect } from '../select/ModelSelect'
 import { AgentFormData } from '@/hooks/useAgent'
 import { Brain } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 interface AgentModelConfigProps {
   agent: any
@@ -16,10 +17,12 @@ interface AgentModelConfigProps {
 }
 
 export function AgentModelConfig({ agent, editing, formData, setFormData }: AgentModelConfigProps) {
+  const { t } = useTranslation('agent')
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label>模型提供商</Label>
+        <Label>{t('model.provider')}</Label>
         {editing ? (
           <ProviderSelect
             value={formData.provider}
@@ -31,7 +34,7 @@ export function AgentModelConfig({ agent, editing, formData, setFormData }: Agen
       </div>
 
       <div className="space-y-2">
-        <Label>模型</Label>
+        <Label>{t('model.model')}</Label>
         {editing ? (
           <ModelSelect
             provider={formData.provider}
@@ -44,27 +47,25 @@ export function AgentModelConfig({ agent, editing, formData, setFormData }: Agen
       </div>
 
       <div className="space-y-2">
-        <Label>API Key（可选）</Label>
+        <Label>{t('model.apiKeyOptional')}</Label>
         {editing ? (
           <Input
             type="password"
-            placeholder="留空则使用全局环境变量"
+            placeholder={t('model.apiKeyPlaceholder')}
             value={formData.apiKey || ''}
             onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
           />
         ) : (
-          <p className="text-sm">{agent.apiKey ? '••••••••' : '使用全局配置'}</p>
+          <p className="text-sm">{agent.apiKey ? t('model.maskedKey') : t('model.useGlobal')}</p>
         )}
-        <p className="text-xs text-muted-foreground">
-          为此 Agent 单独配置 API Key，留空则使用环境变量中的全局配置
-        </p>
+        <p className="text-xs text-muted-foreground">{t('model.apiKeyPerAgentHint')}</p>
       </div>
 
       <Separator />
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <Label>Temperature</Label>
+          <Label>{t('model.temperature')}</Label>
           <span className="text-sm text-muted-foreground">{formData.temperature}</span>
         </div>
         {editing ? (
@@ -79,14 +80,12 @@ export function AgentModelConfig({ agent, editing, formData, setFormData }: Agen
         ) : (
           <div className="text-sm text-muted-foreground">{agent.temperature}</div>
         )}
-        <p className="text-xs text-muted-foreground">
-          控制输出的随机性。较高的值会使输出更随机，较低的值会使其更确定。
-        </p>
+        <p className="text-xs text-muted-foreground">{t('model.temperatureRandomnessShort')}</p>
       </div>
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <Label>Max Tokens</Label>
+          <Label>{t('model.maxTokensLabel')}</Label>
           <span className="text-sm text-muted-foreground">{formData.maxTokens}</span>
         </div>
         {editing ? (
@@ -100,12 +99,12 @@ export function AgentModelConfig({ agent, editing, formData, setFormData }: Agen
         ) : (
           <div className="text-sm text-muted-foreground">{agent.maxTokens}</div>
         )}
-        <p className="text-xs text-muted-foreground">生成的最大 token 数量。</p>
+        <p className="text-xs text-muted-foreground">{t('model.maxTokensGeneratedShort')}</p>
       </div>
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <Label>Top P</Label>
+          <Label>{t('model.topP')}</Label>
           <span className="text-sm text-muted-foreground">{formData.topP}</span>
         </div>
         {editing ? (
@@ -120,9 +119,7 @@ export function AgentModelConfig({ agent, editing, formData, setFormData }: Agen
         ) : (
           <div className="text-sm text-muted-foreground">{agent.topP}</div>
         )}
-        <p className="text-xs text-muted-foreground">
-          控制采样的多样性。建议与 temperature 二选一调整。
-        </p>
+        <p className="text-xs text-muted-foreground">{t('model.topPWithTemperatureHint')}</p>
       </div>
 
       <Separator />
@@ -136,7 +133,7 @@ export function AgentModelConfig({ agent, editing, formData, setFormData }: Agen
             </div>
             <div className="flex-1">
               <Label htmlFor="enable-reasoning" className="text-sm font-medium cursor-pointer">
-                启用思考模式
+                {t('model.enableReasoningShort')}
               </Label>
             </div>
           </div>
@@ -153,7 +150,7 @@ export function AgentModelConfig({ agent, editing, formData, setFormData }: Agen
           )}
         </div>
         <p className="text-xs text-muted-foreground leading-relaxed pl-12">
-          启用后，Agent 会展示详细的推理思考过程。此功能需要模型支持（如 Qwen3、qwen-plus 等）。
+          {t('model.reasoningDescriptionAgent')}
         </p>
 
         {/* Thinking Budget 配置 */}
@@ -161,19 +158,19 @@ export function AgentModelConfig({ agent, editing, formData, setFormData }: Agen
           <div className="space-y-2 pl-12 pt-2 border-t border-border/50">
             <div className="flex items-center justify-between">
               <Label htmlFor="thinking-budget" className="text-xs font-medium">
-                思考长度限制
+                {t('model.thinkingBudgetShort')}
               </Label>
               <span className="text-xs text-muted-foreground">
                 {editing
-                  ? formData.thinkingBudget || '模型默认'
-                  : agent.thinkingBudget || '模型默认'}
+                  ? formData.thinkingBudget || t('model.modelDefaultShort')
+                  : agent.thinkingBudget || t('model.modelDefaultShort')}
               </span>
             </div>
             {editing ? (
               <Input
                 id="thinking-budget"
                 type="number"
-                placeholder="留空使用模型默认值"
+                placeholder={t('model.placeholderModelDefault')}
                 value={formData.thinkingBudget || ''}
                 onChange={(e) =>
                   setFormData({
@@ -187,11 +184,11 @@ export function AgentModelConfig({ agent, editing, formData, setFormData }: Agen
               />
             ) : (
               <div className="text-xs text-muted-foreground">
-                {agent.thinkingBudget || '使用模型默认值'}
+                {agent.thinkingBudget || t('model.useModelDefaultLong')}
               </div>
             )}
             <p className="text-xs text-muted-foreground/70 leading-relaxed">
-              限制思考过程的最大 token 数量。留空则使用模型的默认最大思维链长度。建议范围：512-32768
+              {t('model.thinkingBudgetRangeHint')}
             </p>
           </div>
         )}

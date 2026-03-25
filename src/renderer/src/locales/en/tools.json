@@ -1,0 +1,192 @@
+{
+  "title": "Tools Management",
+  "view": {
+    "pageTitle": "MCP & Tools",
+    "pageSubtitle": "Manage all tools: MCP, custom, and built-in",
+    "loading": "Loading...",
+    "searchPlaceholder": "Search by name, description, or server...",
+    "tabMcp": "MCP Server ({{count}})",
+    "tabCustom": "Custom tools ({{count}})",
+    "mcpServersTitle": "MCP Servers",
+    "mcpServersDescription": "Manage external MCP server connections",
+    "addMcpServer": "Add MCP Server",
+    "emptyMcpTitle": "No MCP servers yet",
+    "emptyMcpDescription": "Add an MCP server to import tools",
+    "customToolsTitle": "Custom tools",
+    "customToolsDescription": "Create and manage custom tools",
+    "newCustomTool": "New custom tool",
+    "emptyCustomTitle": "No custom tools yet",
+    "emptyCustomDescription": "Create custom tools to extend agent capabilities"
+  },
+  "toast": {
+    "loadFailed": "Failed to load",
+    "enterMcpName": "Please enter an MCP server name",
+    "jsonMissingMcpServers": "Invalid JSON: missing mcpServers configuration",
+    "jsonInvalid": "Invalid JSON",
+    "mcpCreateSuccess": "MCP server created",
+    "importToolsFailed": "Failed to auto-import tools",
+    "createFailed": "Failed to create",
+    "mcpDeleted": "MCP server deleted",
+    "deleteFailed": "Failed to delete",
+    "enterToolName": "Please enter a tool name",
+    "enterToolCode": "Please enter tool code",
+    "parametersJsonInvalid": "Invalid parameters JSON",
+    "customToolCreateSuccess": "Custom tool created",
+    "toolDeleted": "Tool deleted"
+  },
+  "customTool": {
+    "sampleParamDescription": "Input content"
+  },
+  "mcp": {
+    "title": "MCP Servers",
+    "add": "Add MCP Server",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleteConfirm": "Are you sure you want to delete MCP Server \"{{name}}\"?",
+    "name": "Name",
+    "command": "Command",
+    "args": "Arguments",
+    "env": "Environment Variables",
+    "status": {
+      "connected": "Connected",
+      "disconnected": "Disconnected",
+      "connecting": "Connecting",
+      "error": "Error"
+    }
+  },
+  "mcpCreateDialog": {
+    "title": "Add MCP Server",
+    "description": "Configure an MCP server to import tools",
+    "configJsonLabel": "Config JSON",
+    "configPlaceholder": "{\n  \"mcpServers\": {\n    \"filesystem\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"@modelcontextprotocol/server-filesystem\", \"/path\"]\n    }\n  }\n}",
+    "configHint": "Paste MCP server configuration; name and description will be filled automatically",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. filesystem",
+    "descriptionOptional": "Description (optional)",
+    "descriptionPlaceholder": "Brief description of this MCP server"
+  },
+  "mcpDeleteDialog": {
+    "title": "Confirm delete",
+    "toolsRemovedWarning": "This will also remove all tools imported from this server."
+  },
+  "mcpDetailsDialog": {
+    "title": "MCP server details",
+    "basicInfo": "Basic information",
+    "name": "Name",
+    "description": "Description",
+    "status": "Status",
+    "error": "Error",
+    "availableTools": "Available tools ({{count}})",
+    "config": "Configuration"
+  },
+  "mcpCard": {
+    "statusTooltipConnected": "Server connected",
+    "statusTooltipLoading": "Connecting to server",
+    "statusTooltipError": "Connection error",
+    "statusTooltipDisconnected": "Server not connected",
+    "toolCount": "{{count}} tools",
+    "view": "View"
+  },
+  "customToolCreate": {
+    "title": "Create custom tool",
+    "subtitle": "Build powerful custom tools with JavaScript",
+    "autoSave": "Auto-saved",
+    "draftFound": "Draft found",
+    "lastEdited": "Last edited: {{time}}",
+    "restoreDraft": "Restore draft",
+    "unsavedTitle": "Unsaved changes",
+    "unsavedDescription": "You have unsaved changes. Closing will save a draft automatically. Continue?",
+    "continue": "Continue",
+    "basicInfo": "Basic information",
+    "toolNameRequired": "Tool name *",
+    "toolNameHint": "Use lowercase letters and underscores, e.g. my_calculator",
+    "toolNamePlaceholder": "e.g. my_calculator",
+    "category": "Category",
+    "selectCategory": "Select category",
+    "toolDescriptionRequired": "Tool description *",
+    "toolDescriptionHint": "Helps the AI know when to use this tool",
+    "toolDescriptionPlaceholder": "Briefly describe what this tool does",
+    "parametersSection": "Parameter definition",
+    "parametersHint": "Define tool parameters using JSON Schema",
+    "jsonInvalid": "Invalid JSON",
+    "parametersValid": "Parameter definition is valid",
+    "codeSection": "Code implementation",
+    "codeHint": "Parameters are passed via the params object; use return for the result",
+    "codeSyntaxError": "Code syntax error",
+    "codeSyntaxOk": "Code syntax check passed",
+    "validationComplete": "Tool configuration complete",
+    "validationIncomplete": "Please fill required fields",
+    "readyToCreate": "You can create the tool now",
+    "createTool": "Create tool",
+    "categories": {
+      "Utility": "🔧 Utility",
+      "Data": "📊 Data",
+      "API": "🌐 API",
+      "File": "📁 File",
+      "Text": "📝 Text",
+      "Math": "🔢 Math",
+      "Network": "🌍 Network",
+      "Database": "💾 Database",
+      "AI": "🤖 AI",
+      "Automation": "⚡ Automation",
+      "Other": "📦 Other"
+    },
+    "draftTime": {
+      "justNow": "Just now",
+      "minutesAgo": "{{count}} min ago",
+      "hoursAgo": "{{count}} h ago",
+      "daysAgo": "{{count}} d ago"
+    },
+    "templates": {
+      "basic": {
+        "name": "Basic",
+        "description": "Simple input/output example",
+        "parameters": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"input\": {\n      \"type\": \"string\",\n      \"description\": \"Input text\"\n    }\n  },\n  \"required\": [\"input\"]\n}",
+        "code": "// Parameters are passed via the params object\nconst { input } = params\n\n// Your logic\nconst result = input.toUpperCase()\n\n// Return result\nreturn result"
+      },
+      "api": {
+        "name": "API call",
+        "description": "HTTP request example",
+        "parameters": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"url\": {\n      \"type\": \"string\",\n      \"description\": \"API URL\"\n    },\n    \"method\": {\n      \"type\": \"string\",\n      \"enum\": [\"GET\", \"POST\"],\n      \"description\": \"HTTP method\"\n    }\n  },\n  \"required\": [\"url\"]\n}",
+        "code": "// API call with fetch (async)\nreturn (async () => {\n  const { url, method = 'GET' } = params\n\n  try {\n    const response = await fetch(url, {\n      method,\n      headers: {\n        'Content-Type': 'application/json'\n      }\n    })\n\n    const data = await response.json()\n    return data\n  } catch (error) {\n    throw new Error(`API request failed: ${error.message}`)\n  }\n})()"
+      },
+      "dataProcess": {
+        "name": "Data processing",
+        "description": "JSON transform example",
+        "parameters": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"data\": {\n      \"type\": \"array\",\n      \"description\": \"Data array to process\"\n    },\n    \"operation\": {\n      \"type\": \"string\",\n      \"enum\": [\"filter\", \"map\", \"reduce\"],\n      \"description\": \"Operation type\"\n    }\n  },\n  \"required\": [\"data\", \"operation\"]\n}",
+        "code": "// Data processing example\nconst { data, operation } = params\n\nswitch (operation) {\n  case 'filter':\n    return data.filter((item) => item.active === true)\n\n  case 'map':\n    return data.map((item) => ({\n      id: item.id,\n      name: item.name\n    }))\n\n  case 'reduce':\n    return data.reduce((acc, item) => acc + item.value, 0)\n\n  default:\n    throw new Error('Unknown operation type')\n}"
+      }
+    }
+  },
+  "toolDetailsDialog": {
+    "title": "Tool details",
+    "basicInfo": "Basic information",
+    "name": "Name",
+    "description": "Description",
+    "none": "None",
+    "usageStats": "Usage statistics",
+    "totalCalls": "Total calls",
+    "successCalls": "Successful",
+    "failedCalls": "Failed",
+    "avgExecutionTime": "Avg. duration",
+    "parameters": "Parameter definition"
+  },
+  "toolCard": {
+    "customTool": "Custom tool",
+    "sourceMcp": "MCP — {{name}}",
+    "callCount": "{{count}} calls"
+  },
+  "custom": {
+    "title": "Custom Tools",
+    "create": "Create Tool",
+    "edit": "Edit Tool",
+    "delete": "Delete Tool",
+    "name": "Tool Name",
+    "description": "Description",
+    "category": "Category",
+    "code": "Tool Code",
+    "parameters": "Parameter Definition",
+    "enable": "Enable",
+    "disable": "Disable"
+  }
+}

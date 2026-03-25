@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   DropdownMenuContent,
   DropdownMenuItem,
@@ -50,6 +51,7 @@ export function GitBranchMenu({
   onCheckoutBranch,
   onRefresh
 }: GitBranchMenuProps) {
+  const { t } = useTranslation('git')
   const [branches, setBranches] = useState<GitBranch[]>([])
   const [, setLoading] = useState(false)
 
@@ -89,18 +91,18 @@ export function GitBranchMenu({
     <DropdownMenuContent align="start" className="w-[320px]">
       {/* Quick Actions */}
       <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-        Git Operations
+        {t('branchMenu.gitOperations')}
       </DropdownMenuLabel>
 
       <DropdownMenuItem className="cursor-pointer" onClick={onUpdate}>
         <RefreshCw className="mr-2 size-4" />
-        <span>Update Project</span>
+        <span>{t('branchMenu.updateProject')}</span>
         <span className="ml-auto text-xs text-muted-foreground">⌘T</span>
       </DropdownMenuItem>
 
       <DropdownMenuItem className="cursor-pointer" onClick={onCommit}>
         <GitCommit className="mr-2 size-4" />
-        <span>Commit...</span>
+        <span>{t('branchMenu.commit')}</span>
         <span className="ml-auto text-xs text-muted-foreground">⌘K</span>
       </DropdownMenuItem>
 
@@ -129,7 +131,7 @@ export function GitBranchMenu({
         </DropdownMenuSubTrigger>
         <DropdownMenuSubContent className="max-h-[300px] w-[280px] overflow-y-auto">
           <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-            Local Branches
+            {t('branchMenu.localBranches')}
           </DropdownMenuLabel>
           {localBranches.length > 0 ? (
             localBranches.map((branch) => (
@@ -151,7 +153,7 @@ export function GitBranchMenu({
             ))
           ) : (
             <DropdownMenuItem disabled>
-              <span className="text-muted-foreground">No local branches</span>
+              <span className="text-muted-foreground">{t('branchMenu.noLocalBranches')}</span>
             </DropdownMenuItem>
           )}
 
@@ -159,7 +161,7 @@ export function GitBranchMenu({
             <>
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-                Remote Branches
+                {t('branchMenu.remoteBranches')}
               </DropdownMenuLabel>
               {remoteBranches.slice(0, 10).map((branch) => (
                 <DropdownMenuItem
@@ -180,17 +182,17 @@ export function GitBranchMenu({
 
       {/* Remote Operations */}
       <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-        Remote
+        {t('branchMenu.remote')}
       </DropdownMenuLabel>
 
       <DropdownMenuItem className="cursor-pointer" onClick={onPull}>
         <Download className="mr-2 size-4" />
-        <span>Pull...</span>
+        <span>{t('branchMenu.pull')}</span>
       </DropdownMenuItem>
 
       <DropdownMenuItem className="cursor-pointer" onClick={onFetch}>
         <RefreshCw className="mr-2 size-4" />
-        <span>Fetch</span>
+        <span>{t('branchMenu.fetch')}</span>
       </DropdownMenuItem>
     </DropdownMenuContent>
   )

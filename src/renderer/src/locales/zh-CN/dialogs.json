@@ -1,0 +1,29 @@
+{
+  "confirm": {
+    "title": "确认",
+    "ok": "确定",
+    "cancel": "取消",
+    "defaultConfirm": "确定",
+    "defaultCancel": "取消"
+  },
+  "input": {
+    "cancel": "取消",
+    "submit": "确定"
+  },
+  "error": {
+    "title": "错误",
+    "close": "关闭"
+  },
+  "info": {
+    "title": "提示",
+    "close": "关闭"
+  },
+  "warning": {
+    "title": "警告",
+    "continue": "继续",
+    "cancel": "取消"
+  },
+  "confirmProvider": {
+    "useConfirmError": "useConfirm 必须在 ConfirmProvider 内使用"
+  }
+}

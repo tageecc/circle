@@ -10,12 +10,15 @@ import { AgentModelConfig } from './AgentModelConfig'
 import { AgentToolsConfig } from './AgentToolsConfig'
 import { AgentTestChat } from './AgentTestChat'
 import { Badge } from '../ui/badge'
+import { useTranslation } from 'react-i18next'
 
 interface AgentPanelProps {
   agentId?: string
 }
 
 export function AgentPanel({ agentId }: AgentPanelProps) {
+  const { t } = useTranslation('agent')
+  const { t: tc } = useTranslation('common')
   const [activeTab, setActiveTab] = useState('basic')
   const { agent, editing, setEditing, formData, setFormData, updateAgent, resetForm } =
     useAgent(agentId)
@@ -99,11 +102,11 @@ export function AgentPanel({ agentId }: AgentPanelProps) {
       if (success) {
         setEditing(false)
       } else {
-        alert('保存失败')
+        alert(t('panel.saveFailed'))
       }
     } catch (error) {
       console.error('Failed to update agent:', error)
-      alert('保存失败')
+      alert(t('panel.saveFailed'))
     }
   }
 
@@ -119,7 +122,7 @@ export function AgentPanel({ agentId }: AgentPanelProps) {
     try {
       await selectAvatar()
     } catch {
-      alert('选择头像失败')
+      alert(t('panel.selectAvatarFailed'))
     }
   }
 
@@ -130,7 +133,7 @@ export function AgentPanel({ agentId }: AgentPanelProps) {
         // 重新加载后在 hook 中会自动更新 avatarPreview
       })
     } catch {
-      alert('删除头像失败')
+      alert(t('panel.removeAvatarFailed'))
     }
   }
 
@@ -143,8 +146,8 @@ export function AgentPanel({ agentId }: AgentPanelProps) {
               <Bot className="size-8 text-muted-foreground" />
             </div>
           </div>
-          <h3 className="text-sm font-semibold text-foreground mb-1">未选择 Agent</h3>
-          <p className="text-xs text-muted-foreground">从左侧列表中选择一个 Agent 查看详情</p>
+          <h3 className="text-sm font-semibold text-foreground mb-1">{t('panel.noAgentTitle')}</h3>
+          <p className="text-xs text-muted-foreground">{t('panel.noAgentDescription')}</p>
         </div>
       </div>
     )
@@ -168,7 +171,7 @@ export function AgentPanel({ agentId }: AgentPanelProps) {
                 <h2 className="text-lg font-bold">{agent.name}</h2>
                 {agent.metadata?.isSystem && (
                   <Badge variant="default" className="h-5 text-xs px-2">
-                    系统
+                    {t('list.badgeSystem')}
                   </Badge>
                 )}
               </div>
@@ -180,17 +183,17 @@ export function AgentPanel({ agentId }: AgentPanelProps) {
               <div className="flex gap-1">
                 <Button size="sm" variant="ghost" onClick={handleSave}>
                   <Save className="mr-2 size-4" />
-                  保存
+                  {tc('button.save')}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={handleCancel}>
                   <X className="mr-2 size-4" />
-                  取消
+                  {tc('button.cancel')}
                 </Button>
               </div>
             ) : (
               <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
                 <Edit className="mr-2 size-4" />
-                编辑
+                {tc('button.edit')}
               </Button>
             ))}
         </div>
@@ -208,21 +211,21 @@ export function AgentPanel({ agentId }: AgentPanelProps) {
                 className="relative rounded-md px-4 gap-2 text-sm font-medium transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm"
               >
                 <FileText className="size-4" />
-                基本信息
+                {t('panel.tabs.basic')}
               </TabsTrigger>
               <TabsTrigger
                 value="model"
                 className="relative rounded-md px-4 gap-2 text-sm font-medium transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm"
               >
                 <Sparkles className="size-4" />
-                模型配置
+                {t('panel.tabs.model')}
               </TabsTrigger>
               <TabsTrigger
                 value="tools"
                 className="relative rounded-md px-4 gap-2 text-sm font-medium transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm"
               >
                 <Wrench className="size-4" />
-                工具
+                {t('panel.tabs.tools')}
               </TabsTrigger>
             </TabsList>
           </div>

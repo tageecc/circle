@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { ZoomIn, ZoomOut, RotateCw, Maximize2 } from 'lucide-react'
 import { Button } from '../ui/button'
@@ -9,6 +10,7 @@ interface ImagePreviewProps {
 }
 
 export function ImagePreview({ path, className }: ImagePreviewProps) {
+  const { t } = useTranslation('editor')
   const [imageUrl, setImageUrl] = useState<string>('')
   const [zoom, setZoom] = useState(100)
   const [rotation, setRotation] = useState(0)
@@ -143,7 +145,7 @@ export function ImagePreview({ path, className }: ImagePreviewProps) {
             className="h-7 w-7 p-0"
             onClick={handleZoomOut}
             disabled={zoom <= 25}
-            title="缩小"
+            title={t('imagePreview.zoomOut')}
           >
             <ZoomOut className="size-4" />
           </Button>
@@ -153,7 +155,7 @@ export function ImagePreview({ path, className }: ImagePreviewProps) {
             className="h-7 w-7 p-0"
             onClick={handleZoomIn}
             disabled={zoom >= 400}
-            title="放大"
+            title={t('imagePreview.zoomIn')}
           >
             <ZoomIn className="size-4" />
           </Button>
@@ -162,7 +164,7 @@ export function ImagePreview({ path, className }: ImagePreviewProps) {
             size="sm"
             className="h-7 w-7 p-0"
             onClick={handleRotate}
-            title="旋转"
+            title={t('imagePreview.rotate')}
           >
             <RotateCw className="size-4" />
           </Button>
@@ -171,7 +173,7 @@ export function ImagePreview({ path, className }: ImagePreviewProps) {
             size="sm"
             className="h-7 w-7 p-0"
             onClick={handleReset}
-            title="重置"
+            title={t('imagePreview.reset')}
           >
             <Maximize2 className="size-4" />
           </Button>
@@ -189,7 +191,7 @@ export function ImagePreview({ path, className }: ImagePreviewProps) {
           >
             <img
               src={imageUrl}
-              alt="Preview"
+              alt={t('imagePreview.alt')}
               className="max-h-full max-w-full select-none shadow-lg"
               draggable={false}
               style={{
@@ -199,7 +201,7 @@ export function ImagePreview({ path, className }: ImagePreviewProps) {
           </div>
         ) : (
           <div className="text-center text-muted-foreground">
-            <p className="text-sm">Loading image...</p>
+            <p className="text-sm">{t('imagePreview.loading')}</p>
           </div>
         )}
       </div>

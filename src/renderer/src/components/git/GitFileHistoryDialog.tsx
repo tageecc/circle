@@ -54,24 +54,24 @@ export function GitFileHistoryDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[85vh] max-w-3xl flex-col gap-0 p-0">
         <DialogHeader className="border-b border-border px-6 py-4">
-          <DialogTitle className="text-base">提交历史 — {label}</DialogTitle>
+          <DialogTitle className="text-base">{t('history.title', { label })}</DialogTitle>
         </DialogHeader>
         <ScrollArea className="max-h-[min(60vh,480px)]">
           {loading ? (
             <div className="flex items-center gap-2 px-6 py-8 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
-              加载历史…
+              {t('history.loading')}
             </div>
           ) : entries.length === 0 ? (
-            <p className="px-6 py-8 text-sm text-muted-foreground">该文件暂无提交记录。</p>
+            <p className="px-6 py-8 text-sm text-muted-foreground">{t('history.empty')}</p>
           ) : (
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/40 text-left text-xs text-muted-foreground">
-                  <th className="px-4 py-2 font-medium">提交</th>
-                  <th className="px-4 py-2 font-medium">作者</th>
-                  <th className="px-4 py-2 font-medium">日期</th>
-                  <th className="px-4 py-2 font-medium">说明</th>
+                  <th className="px-4 py-2 font-medium">{t('history.columnCommit')}</th>
+                  <th className="px-4 py-2 font-medium">{t('history.columnAuthor')}</th>
+                  <th className="px-4 py-2 font-medium">{t('history.columnDate')}</th>
+                  <th className="px-4 py-2 font-medium">{t('history.columnSubject')}</th>
                 </tr>
               </thead>
               <tbody>

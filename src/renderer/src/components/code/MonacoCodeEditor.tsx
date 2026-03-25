@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Editor } from '@monaco-editor/react'
 import type { Monaco } from '@monaco-editor/react'
 import type { editor, IDisposable } from 'monaco-editor'
@@ -40,6 +41,7 @@ export function MonacoCodeEditor({
   onCursorPositionChange,
   onMount
 }: MonacoCodeEditorProps) {
+  const { t } = useTranslation('editor')
   const { editorSettings: globalEditorSettings, keymapSettings } = useSettings()
 
   // 合并配置，优先使用传入的配置（用于预览等场景）
@@ -181,22 +183,25 @@ export function MonacoCodeEditor({
   })
 
   // Git Blame 功能
-  const formatTimeAgo = (timestamp: number): string => {
-    const diff = Date.now() - timestamp * 1000
-    const minutes = Math.floor(diff / 60000)
-    const hours = Math.floor(minutes / 60)
-    const days = Math.floor(hours / 24)
-    const months = Math.floor(days / 30)
-    const years = Math.floor(days / 365)
+  const formatTimeAgo = useCallback(
+    (timestamp: number): string => {
+      const diff = Date.now() - timestamp * 1000
+      const minutes = Math.floor(diff / 60000)
+      const hours = Math.floor(minutes / 60)
+      const days = Math.floor(hours / 24)
+      const months = Math.floor(days / 30)
+      const years = Math.floor(days / 365)
 
-    if (years > 0) return `${years} 年前`
-    if (months > 0) return `${months} 个月前`
-    if (days > 6) return `${Math.floor(days / 7)} 周前`
-    if (days > 0) return `${days} 天前`
-    if (hours > 0) return `${hours} 小时前`
-    if (minutes > 0) return `${minutes} 分钟前`
-    return '刚刚'
-  }
+      if (years > 0) return t('timeAgo.years', { count: years })
+      if (months > 0) return t('timeAgo.months', { count: months })
+      if (days > 6) return t('timeAgo.weeks', { count: Math.floor(days / 7) })
+      if (days > 0) return t('timeAgo.days', { count: days })
+      if (hours > 0) return t('timeAgo.hours', { count: hours })
+      if (minutes > 0) return t('timeAgo.minutes', { count: minutes })
+      return t('timeAgo.justNow')
+    },
+    [t]
+  )
 
   useEffect(() => {
     if (!shouldEnableGitBlame || !path) return
@@ -247,7 +252,7 @@ export function MonacoCodeEditor({
         }
       }
     ])
-  }, [blameInfo, shouldEnableGitBlame, currentLine])
+  }, [blameInfo, shouldEnableGitBlame, currentLine, formatTimeAgo])
 
   useEffect(() => {
     updateBlameDecorations()
@@ -366,7 +371,7 @@ export function MonacoCodeEditor({
         const actionId = `circle.keymap.${commandId}`
         const disposable = editor.addAction({
           id: actionId,
-          label: 'Save',
+          label: t('file.save'),
           keybindings: [keybinding],
           run: (ed) => {
             const currentModel = ed.getModel()
@@ -414,7 +419,7 @@ export function MonacoCodeEditor({
       })
       keybindingDisposablesRef.current = []
     }
-  }, [keymapSettings.bindings, onSave, onChange])
+  }, [keymapSettings.bindings, onSave, onChange, t])
 
   // 编辑器挂载
   const handleEditorDidMount = useCallback(
@@ -483,7 +488,7 @@ export function MonacoCodeEditor({
       const kc = monacoInstance.KeyCode
       editor.addAction({
         id: 'circle.inlineSuggest.trigger',
-        label: 'Trigger AI Inline Suggestion',
+        label: t('inlineSuggest.triggerAction'),
         keybindings: [km.Alt | kc.Backslash, km.CtrlCmd | km.Shift | kc.Space],
         run: (ed) => {
           ed.trigger('keyboard', 'editor.action.inlineSuggest.trigger', null)
@@ -503,7 +508,8 @@ export function MonacoCodeEditor({
       onCursorPositionChange,
       updateBlameDecorations,
       getOrCreateModel,
-      onMount
+      onMount,
+      t
     ]
   )
 
@@ -525,7 +531,7 @@ export function MonacoCodeEditor({
       loading={
         <div className="flex h-full items-center justify-center">
           <Loader2 className="size-8 animate-spin text-muted-foreground" />
-          <span className="ml-2 text-sm text-muted-foreground">Loading editor...</span>
+          <span className="ml-2 text-sm text-muted-foreground">{t('loading')}</span>
         </div>
       }
     />

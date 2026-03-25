@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   ChevronRight,
   ChevronDown,
@@ -116,6 +117,7 @@ export function FileTree({
   onGitAnnotate,
   onGitCompareWithBranch
 }: FileTreeProps) {
+  const { t } = useTranslation('editor')
   const [tree, setTree] = useState<FileNode[]>([])
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(() => {
     return initialExpandedDirs ? new Set(initialExpandedDirs) : new Set()
@@ -445,16 +447,16 @@ export function FileTree({
                 <ContextMenuSub>
                   <ContextMenuSubTrigger>
                     <FilePlus className="mr-2 size-4" />
-                    <span>New</span>
+                    <span>{t('fileTree.newGroup')}</span>
                   </ContextMenuSubTrigger>
                   <ContextMenuSubContent>
                     <ContextMenuItem onClick={() => onNewFile?.(node.path)}>
                       <FileText className="mr-2 size-4" />
-                      <span>File</span>
+                      <span>{t('fileTree.newFileItem')}</span>
                     </ContextMenuItem>
                     <ContextMenuItem onClick={() => onNewFolder?.(node.path)}>
                       <FolderPlus className="mr-2 size-4" />
-                      <span>Folder</span>
+                      <span>{t('fileTree.newFolderItem')}</span>
                     </ContextMenuItem>
                   </ContextMenuSubContent>
                 </ContextMenuSub>
@@ -464,17 +466,17 @@ export function FileTree({
 
             <ContextMenuItem onClick={() => onCut?.(node.path)}>
               <Scissors className="mr-2 size-4" />
-              <span>Cut</span>
+              <span>{t('file.cut')}</span>
               <ContextMenuShortcut>⌘X</ContextMenuShortcut>
             </ContextMenuItem>
             <ContextMenuItem onClick={() => onCopy?.(node.path)}>
               <Copy className="mr-2 size-4" />
-              <span>Copy</span>
+              <span>{t('file.copy')}</span>
               <ContextMenuShortcut>⌘C</ContextMenuShortcut>
             </ContextMenuItem>
             <ContextMenuItem onClick={() => onCopyPath?.(node.path)}>
               <FileText className="mr-2 size-4" />
-              <span>Copy Path</span>
+              <span>{t('fileTree.copyPath')}</span>
             </ContextMenuItem>
             {clipboard && (
               <ContextMenuItem
@@ -483,7 +485,7 @@ export function FileTree({
                 }
               >
                 <Clipboard className="mr-2 size-4" />
-                <span>Paste</span>
+                <span>{t('file.paste')}</span>
                 <ContextMenuShortcut>⌘V</ContextMenuShortcut>
               </ContextMenuItem>
             )}
@@ -492,12 +494,12 @@ export function FileTree({
 
             <ContextMenuItem onClick={() => onRename?.(node.path)}>
               <Edit className="mr-2 size-4" />
-              <span>Rename...</span>
+              <span>{`${t('file.rename')}…`}</span>
               <ContextMenuShortcut>⇧F6</ContextMenuShortcut>
             </ContextMenuItem>
             <ContextMenuItem onClick={() => onDelete?.(node.path)} className="text-destructive">
               <Trash2 className="mr-2 size-4" />
-              <span>Delete</span>
+              <span>{t('file.delete')}</span>
               <ContextMenuShortcut>⌫</ContextMenuShortcut>
             </ContextMenuItem>
 
@@ -507,28 +509,28 @@ export function FileTree({
               <ContextMenuSub>
                 <ContextMenuSubTrigger>
                   <GitBranch className="mr-2 size-4" />
-                  <span>Git</span>
+                  <span>{t('fileTree.git')}</span>
                 </ContextMenuSubTrigger>
                 <ContextMenuSubContent>
                   <ContextMenuItem onClick={() => onGitRevert?.(node.path)}>
                     <Undo2 className="mr-2 size-4" />
-                    <span>Rollback</span>
+                    <span>{t('fileTree.gitRollback')}</span>
                   </ContextMenuItem>
                   <ContextMenuItem onClick={() => onGitShowDiff?.(node.path)}>
                     <GitCompare className="mr-2 size-4" />
-                    <span>Show Diff</span>
+                    <span>{t('fileTree.gitShowDiff')}</span>
                   </ContextMenuItem>
                   <ContextMenuItem onClick={() => onGitShowHistory?.(node.path)}>
                     <History className="mr-2 size-4" />
-                    <span>Show History</span>
+                    <span>{t('fileTree.gitShowHistory')}</span>
                   </ContextMenuItem>
                   <ContextMenuItem onClick={() => onGitAnnotate?.(node.path)}>
                     <FileCode className="mr-2 size-4" />
-                    <span>Annotate</span>
+                    <span>{t('fileTree.gitAnnotate')}</span>
                   </ContextMenuItem>
                   <ContextMenuItem onClick={() => onGitCompareWithBranch?.(node.path)}>
                     <GitCompare className="mr-2 size-4" />
-                    <span>Compare with Branch...</span>
+                    <span>{t('fileTree.gitCompareBranch')}</span>
                   </ContextMenuItem>
                 </ContextMenuSubContent>
               </ContextMenuSub>
@@ -538,11 +540,11 @@ export function FileTree({
 
             <ContextMenuItem onClick={() => onRevealInFinder?.(node.path)}>
               <ExternalLink className="mr-2 size-4" />
-              <span>Reveal in Finder</span>
+              <span>{t('fileTree.revealInFinder')}</span>
             </ContextMenuItem>
             <ContextMenuItem onClick={() => onRefresh?.()}>
               <Loader2 className="mr-2 size-4" />
-              <span>Reload from Disk</span>
+              <span>{t('fileTree.reloadFromDisk')}</span>
             </ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>
@@ -570,7 +572,7 @@ export function FileTree({
             variant="ghost"
             size="icon"
             className="h-6 w-6 hover:bg-accent/50"
-            title="新建"
+            title={t('fileTree.tooltipNew')}
             onClick={(e) => e.stopPropagation()}
           >
             <Plus className="size-3.5" />
@@ -579,11 +581,11 @@ export function FileTree({
         <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuItem onClick={() => onNewFile?.(selectedDir || workspaceRoot)}>
             <FileText className="mr-2 size-4" />
-            <span>文件</span>
+            <span>{t('file.newFile')}</span>
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => onNewFolder?.(selectedDir || workspaceRoot)}>
             <FolderPlus className="mr-2 size-4" />
-            <span>文件夹</span>
+            <span>{t('file.newFolder')}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -596,7 +598,7 @@ export function FileTree({
           locateActiveFile()
         }}
         disabled={!activeFile}
-        title="定位当前文件"
+        title={t('fileTree.tooltipLocateActiveFile')}
       >
         <LocateFixed className="size-3.5" />
       </Button>
@@ -608,7 +610,7 @@ export function FileTree({
           e.stopPropagation()
           collapseAll()
         }}
-        title="收起所有文件夹"
+        title={t('fileTree.tooltipCollapseAll')}
       >
         <Minimize2 className="size-3.5" />
       </Button>
@@ -620,7 +622,7 @@ export function FileTree({
           e.stopPropagation()
           expandAll()
         }}
-        title="展开所有文件夹"
+        title={t('fileTree.tooltipExpandAll')}
       >
         <Maximize2 className="size-3.5" />
       </Button>
@@ -633,7 +635,7 @@ export function FileTree({
           refreshFileTree()
           onRefresh?.()
         }}
-        title="刷新"
+        title={t('fileTree.tooltipRefresh')}
       >
         <RefreshCw className="size-3.5" />
       </Button>

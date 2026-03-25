@@ -13,6 +13,7 @@ import { AlertCircle, Loader2 } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 import { Checkbox } from '../ui/checkbox'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 
 interface GitPushDialogProps {
   open: boolean
@@ -29,6 +30,7 @@ export function GitPushDialog({
   onClose,
   onSuccess
 }: GitPushDialogProps) {
+  const { t } = useTranslation('git')
   const [remotes, setRemotes] = useState<Array<{ name: string; url: string }>>([])
   const [selectedRemote, setSelectedRemote] = useState('origin')
   const [setUpstream, setSetUpstream] = useState(false)
@@ -53,13 +55,13 @@ export function GitPushDialog({
       }
     } catch (error: any) {
       console.error('Failed to load remotes:', error)
-      setError('Failed to load remotes')
+      setError(t('push.loadRemotesFailed'))
     }
   }
 
   const handlePush = async () => {
     if (!selectedRemote) {
-      setError('Please select a remote')
+      setError(t('push.selectRemoteRequired'))
       return
     }
 
@@ -70,15 +72,18 @@ export function GitPushDialog({
       await window.api.git.push(workspaceRoot, selectedRemote, currentBranch, setUpstream)
 
       // 显示成功提示
-      toast.success('推送成功', {
-        description: `已推送到 ${selectedRemote}/${currentBranch}`
+      toast.success(t('push.success'), {
+        description: t('pushRemote.successDescription', {
+          remote: selectedRemote,
+          branch: currentBranch
+        })
       })
 
       onSuccess()
       handleClose()
     } catch (error: any) {
       console.error('Failed to push:', error)
-      setError(error.message || 'Failed to push changes')
+      setError(error.message || t('push.pushFailed'))
     } finally {
       setLoading(false)
     }
@@ -97,20 +102,20 @@ export function GitPushDialog({
     <Dialog open={open} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="sm:max-w-[450px]">
         <DialogHeader>
-          <DialogTitle>Push to Remote</DialogTitle>
+          <DialogTitle>{t('push.dialogTitle')}</DialogTitle>
           <DialogDescription>
-            Push changes from <strong>{currentBranch}</strong> to remote repository
+            {t('push.dialogDescription', { branch: currentBranch })}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           {/* Remote Selection */}
           <div className="space-y-2">
-            <Label htmlFor="remote">Remote</Label>
+            <Label htmlFor="remote">{t('push.remote')}</Label>
             {remotes.length > 0 ? (
               <Select value={selectedRemote} onValueChange={setSelectedRemote} disabled={loading}>
                 <SelectTrigger id="remote">
-                  <SelectValue placeholder="Select remote" />
+                  <SelectValue placeholder={t('push.selectRemotePlaceholder')} />
                 </SelectTrigger>
                 <SelectContent>
                   {remotes.map((remote) => (
@@ -125,7 +130,7 @@ export function GitPushDialog({
               </Select>
             ) : (
               <div className="rounded-md border p-3 text-sm text-muted-foreground">
-                No remotes configured
+                {t('push.noRemotes')}
               </div>
             )}
           </div>
@@ -139,7 +144,7 @@ export function GitPushDialog({
               disabled={loading}
             />
             <Label htmlFor="set-upstream" className="cursor-pointer text-sm font-normal">
-              Set upstream (--set-upstream)
+              {t('push.setUpstream')}
             </Label>
           </div>
 
@@ -154,11 +159,11 @@ export function GitPushDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose} disabled={loading}>
-            Cancel
+            {t('dialog.cancel')}
           </Button>
           <Button onClick={handlePush} disabled={!canPush}>
             {loading && <Loader2 className="mr-2 size-4 animate-spin" />}
-            Push
+            {t('push.pushButton')}
           </Button>
         </DialogFooter>
       </DialogContent>

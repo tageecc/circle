@@ -13,6 +13,7 @@ import { ConfigService } from './services/config.service'
 import { WindowStateManager } from './services/window-state.service'
 import { AvatarService } from './services/avatar.service'
 import { createMCPClientManager, type MCPClientManager } from './services/mcp-client.service'
+import { initMainI18n, setLanguage } from './utils/i18n'
 
 // 全局配置服务实例（在应用启动时初始化）
 let configService: ConfigService
@@ -134,6 +135,12 @@ function createWindow(): void {
     }
     updateWindowTheme(nativeTheme.shouldUseDarkColors)
   })
+
+  // 监听语言切换请求
+  ipcMain.on('language:changed', (_event, language: string) => {
+    setLanguage(language)
+    setupNativeMenu() // 重新构建菜单以使用新语言
+  })
 }
 
 // Initialize backend services
@@ -143,6 +150,11 @@ async function initializeBackend() {
   try {
     configService = new ConfigService()
     const userDataPath = app.getPath('userData')
+
+    // Initialize main process i18n
+    const config = configService.getConfig()
+    initMainI18n(config.language)
+    console.log(`🌐 Main process i18n initialized with language: ${config.language}`)
 
     const { initMastraMemory, initMastraTraces } = await import('./mastra.config')
     initMastraMemory(userDataPath)

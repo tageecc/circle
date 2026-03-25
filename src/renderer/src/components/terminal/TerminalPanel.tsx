@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Terminal } from './Terminal'
 import { Button } from '../ui/button'
 import { Plus, X, Terminal as TerminalIcon } from 'lucide-react'
@@ -26,6 +27,7 @@ export function TerminalPanel({
   pendingCommand,
   onCommandHandled
 }: TerminalPanelProps) {
+  const { t } = useTranslation('terminal')
   const [tabs, setTabs] = useState<TerminalTab[]>([])
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
   const [nextTabNumber, setNextTabNumber] = useState(1)
@@ -36,10 +38,11 @@ export function TerminalPanel({
       const cwd = workspaceRoot || '~'
       const terminalId = await window.api.terminal.create(cwd)
 
+      const tabTitle = t('tabTitle', { n: nextTabNumber })
       const newTab: TerminalTab = {
         id: `tab-${Date.now()}`,
         terminalId,
-        title: `终端 ${nextTabNumber}`
+        title: tabTitle
       }
 
       setTabs((prev) => [...prev, newTab])
@@ -153,7 +156,7 @@ export function TerminalPanel({
             size="sm"
             className="h-7 w-7 p-0"
             onClick={createNewTerminal}
-            title="新建终端"
+            title={t('new')}
           >
             <Plus className="size-4" />
           </Button>

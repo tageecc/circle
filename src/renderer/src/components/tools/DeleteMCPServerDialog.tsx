@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog'
 import { Button } from '../ui/button'
 import type { MCPServer } from './types'
@@ -9,23 +10,26 @@ interface DeleteMCPServerDialogProps {
 }
 
 export function DeleteMCPServerDialog({ server, onClose, onConfirm }: DeleteMCPServerDialogProps) {
+  const { t } = useTranslation('tools')
+  const { t: tc } = useTranslation('common')
+
   return (
     <Dialog open={!!server} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>确认删除</DialogTitle>
+          <DialogTitle>{t('mcpDeleteDialog.title')}</DialogTitle>
           <DialogDescription>
-            确定要删除 MCP Server "{server?.name}" 吗？
+            {t('mcp.deleteConfirm', { name: server?.name ?? '' })}
             <br />
-            <span className="text-red-500">此操作将同时删除该服务器导入的所有工具。</span>
+            <span className="text-red-500">{t('mcpDeleteDialog.toolsRemovedWarning')}</span>
           </DialogDescription>
         </DialogHeader>
         <div className="flex justify-end gap-2 pt-4">
           <Button variant="outline" onClick={onClose}>
-            取消
+            {tc('button.cancel')}
           </Button>
           <Button variant="destructive" onClick={onConfirm}>
-            删除
+            {tc('button.delete')}
           </Button>
         </div>
       </DialogContent>

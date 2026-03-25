@@ -1,0 +1,34 @@
+{
+  "menu": {
+    "file": {
+      "label": "File",
+      "open": "Open...",
+      "openFolder": "Open Folder...",
+      "openRecent": "Open Recent",
+      "noRecentProjects": "No Recent Projects",
+      "save": "Save",
+      "closeEditor": "Close Editor",
+      "closeFolder": "Close Folder"
+    },
+    "edit": {
+      "label": "Edit"
+    },
+    "view": {
+      "label": "View"
+    },
+    "help": {
+      "label": "Help",
+      "debugConfig": "Debug Configuration"
+    }
+  },
+  "dialog": {
+    "openFolder": "Select a folder",
+    "selectFolder": "Select Folder",
+    "cancel": "Cancel"
+  },
+  "notification": {
+    "updateAvailable": "Update Available",
+    "updateDownloaded": "Update Downloaded",
+    "restartToUpdate": "Restart to Update"
+  }
+}

@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ConfirmDialog } from '../dialogs/ConfirmDialog'
 
 interface ConfirmOptions {
@@ -16,6 +17,7 @@ interface ConfirmContextType {
 const ConfirmContext = createContext<ConfirmContextType | undefined>(undefined)
 
 export function ConfirmProvider({ children }: { children: ReactNode }) {
+  const { t } = useTranslation('dialogs')
   const [dialogState, setDialogState] = useState<{
     open: boolean
     options: ConfirmOptions | null
@@ -63,8 +65,8 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
           }}
           title={dialogState.options.title}
           description={dialogState.options.description}
-          confirmText={dialogState.options.confirmText || '确认'}
-          cancelText={dialogState.options.cancelText || '取消'}
+          confirmText={dialogState.options.confirmText || t('confirm.defaultConfirm')}
+          cancelText={dialogState.options.cancelText || t('confirm.defaultCancel')}
           variant={dialogState.options.variant || 'default'}
           onConfirm={() => handleClose(true)}
         />
@@ -74,9 +76,10 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
 }
 
 export function useConfirm() {
+  const { t } = useTranslation('dialogs')
   const context = useContext(ConfirmContext)
   if (!context) {
-    throw new Error('useConfirm must be used within a ConfirmProvider')
+    throw new Error(t('confirmProvider.useConfirmError'))
   }
   return context.confirm
 }

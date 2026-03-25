@@ -1,0 +1,100 @@
+{
+  "title": "对话",
+  "input": {
+    "placeholder": "输入你的问题或想法，AI 助手将为你提供帮助",
+    "send": "发送",
+    "stop": "停止",
+    "generating": "生成中...",
+    "placeholderAsk": "提问、搜索或聊天…",
+    "placeholderNeedSession": "请先创建对话",
+    "removeImage": "删除图片",
+    "selectAgent": "选择 Agent",
+    "systemBadge": "系统",
+    "stopGeneratingTitle": "停止生成",
+    "sendMessageTitle": "发送消息",
+    "pastedImageFileName": "粘贴的图片-{{ts}}.png"
+  },
+  "panel": {
+    "agentsLabel": "助手",
+    "chatTab": "对话",
+    "tracesTab": "追踪",
+    "evalsTab": "评测",
+    "newChat": "新对话",
+    "chatFrom": "对话始于",
+    "emptyPrompt": "在下方输入消息开始对话",
+    "inputPlaceholder": "输入消息...",
+    "defaultThreadTitle": "新对话",
+    "agentFallback": "Agent"
+  },
+  "welcome": {
+    "title": "开始与 AI 对话",
+    "subtitle": "输入你的问题或想法，AI 助手将为你提供帮助",
+    "features": {
+      "codeAnalysis": "智能代码分析",
+      "problemSolving": "问题解答",
+      "codeGeneration": "代码生成"
+    }
+  },
+  "home": {
+    "tagline": "AI 驱动的开发平台",
+    "createHeading": "从想法到应用，一键生成",
+    "createSub": "描述你想要的应用，AI 会帮你自动创建",
+    "createPlaceholder": "描述你想要创建的应用，例如：创建一个待办事项管理应用...",
+    "openProject": "打开项目",
+    "openProjectDesc": "打开本地文件夹",
+    "cloneRepo": "克隆仓库",
+    "cloneRepoDesc": "从 Git 克隆",
+    "sshTitle": "连接 SSH",
+    "sshDesc": "远程开发",
+    "recentTitle": "最近打开",
+    "recentCount": "共 {{count}} 个项目",
+    "noRecent": "暂无最近项目，打开文件夹开始使用"
+  },
+  "reasoning": {
+    "title": "思考过程"
+  },
+  "message": {
+    "copy": "复制",
+    "copied": "已复制",
+    "regenerate": "重新生成",
+    "delete": "删除"
+  },
+  "session": {
+    "new": "新对话",
+    "rename": "重命名",
+    "delete": "删除",
+    "deleteConfirm": "确定要删除这个对话吗？",
+    "pin": "固定",
+    "unpin": "取消固定",
+    "clear": "清空历史",
+    "clearConfirm": "确定要清空所有对话历史吗？",
+    "empty": "暂无对话",
+    "emptyHistory": "暂无历史会话"
+  },
+  "toast": {
+    "waitLoadingDefaultModel": "请稍候，正在加载默认模型…",
+    "keepAllApplied": "所有文件修改已应用",
+    "filesModifiedCount": "已修改 {{count}} 个文件",
+    "noWorkspace": "未打开工作区",
+    "cannotResolvePaths": "无法定位要恢复的文件路径",
+    "undoSessionChanges": "已撤销本会话中的文件修改",
+    "filesProcessedCount": "已处理 {{count}} 个文件",
+    "undoFailed": "撤销失败",
+    "messageSendFailed": "消息发送失败",
+    "sendMessageFailed": "发送消息失败"
+  },
+  "header": {
+    "newChat": "新建对话",
+    "sessionHistory": "历史会话",
+    "more": "更多"
+  },
+  "empty": {
+    "createNewTitle": "创建新对话",
+    "createNewHintBefore": "点击右上角的 ",
+    "createNewHintAfter": " 按钮开始一个新的对话",
+    "orPickFromHistory": "或从历史记录中选择"
+  },
+  "planning": {
+    "nextMoves": "正在规划下一步…"
+  }
+}

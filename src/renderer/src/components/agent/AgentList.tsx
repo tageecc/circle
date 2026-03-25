@@ -23,6 +23,7 @@ import { ModelSelect } from '../select/ModelSelect'
 import { Bot, Cloud, Code, Database, Sparkles, Plus, Trash2, Edit } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface Agent {
   id: string
@@ -49,6 +50,8 @@ interface AgentListProps {
 }
 
 export function AgentList({ selectedAgent, onAgentSelect }: AgentListProps) {
+  const { t } = useTranslation('agent')
+  const { t: tc } = useTranslation('common')
   const [agents, setAgents] = useState<Agent[]>([])
   const [loading, setLoading] = useState(true)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
@@ -154,7 +157,11 @@ export function AgentList({ selectedAgent, onAgentSelect }: AgentListProps) {
       loadAgents()
     } catch (error) {
       console.error('Failed to create agent:', error)
-      alert('创建失败: ' + (error instanceof Error ? error.message : '未知错误'))
+      alert(
+        t('alert.createFailed', {
+          error: error instanceof Error ? error.message : tc('message.unknownError')
+        })
+      )
     }
   }
 
@@ -168,14 +175,18 @@ export function AgentList({ selectedAgent, onAgentSelect }: AgentListProps) {
       loadAgents()
     } catch (error) {
       console.error('Failed to delete agent:', error)
-      alert('删除失败: ' + (error instanceof Error ? error.message : '未知错误'))
+      alert(
+        t('alert.deleteFailed', {
+          error: error instanceof Error ? error.message : tc('message.unknownError')
+        })
+      )
     }
   }
 
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <p className="text-muted-foreground">Loading agents...</p>
+        <p className="text-muted-foreground">{t('list.loadingAgents')}</p>
       </div>
     )
   }
@@ -185,7 +196,7 @@ export function AgentList({ selectedAgent, onAgentSelect }: AgentListProps) {
       {/* Header */}
       <div className="flex h-14 items-center justify-between border-b border-sidebar-border/50 px-4">
         <div className="flex items-center gap-2">
-          <h2 className="text-sm font-bold tracking-tight">Agents</h2>
+          <h2 className="text-sm font-bold tracking-tight">{t('list.titleAgents')}</h2>
           <Badge variant="secondary" className="h-5 px-2 text-xs">
             {agents.length}
           </Badge>
@@ -197,7 +208,7 @@ export function AgentList({ selectedAgent, onAgentSelect }: AgentListProps) {
           variant="ghost"
         >
           <Plus className="size-4" />
-          新建
+          {t('list.buttonNew')}
         </Button>
       </div>
 
@@ -228,7 +239,7 @@ export function AgentList({ selectedAgent, onAgentSelect }: AgentListProps) {
                           <h3 className="text-sm font-semibold leading-none">{agent.name}</h3>
                           {agent.isSystem && (
                             <Badge variant="default" className="h-4 text-[10px] px-1.5">
-                              系统
+                              {t('list.badgeSystem')}
                             </Badge>
                           )}
                         </div>
@@ -244,7 +255,7 @@ export function AgentList({ selectedAgent, onAgentSelect }: AgentListProps) {
                             {agent.provider}
                           </Badge>
                           <Badge variant="outline" className="h-5 text-[10px]">
-                            {agent.tools} tools
+                            {t('list.toolsCount', { count: agent.tools })}
                           </Badge>
                         </div>
                       </div>
@@ -255,7 +266,7 @@ export function AgentList({ selectedAgent, onAgentSelect }: AgentListProps) {
                   {!agent.isSystem && (
                     <ContextMenuItem onClick={() => onAgentSelect?.(agent.id)}>
                       <Edit className="mr-2 size-4" />
-                      编辑
+                      {t('list.edit')}
                     </ContextMenuItem>
                   )}
                   {!agent.isSystem && (
@@ -267,11 +278,11 @@ export function AgentList({ selectedAgent, onAgentSelect }: AgentListProps) {
                       className="text-destructive focus:text-destructive"
                     >
                       <Trash2 className="mr-2 size-4" />
-                      删除
+                      {t('list.delete')}
                     </ContextMenuItem>
                   )}
                   {agent.isSystem && (
-                    <ContextMenuItem disabled>系统 Agent 无法编辑或删除</ContextMenuItem>
+                    <ContextMenuItem disabled>{t('list.systemAgentLocked')}</ContextMenuItem>
                   )}
                 </ContextMenuContent>
               </ContextMenu>
@@ -284,50 +295,50 @@ export function AgentList({ selectedAgent, onAgentSelect }: AgentListProps) {
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>新建 Agent</DialogTitle>
-            <DialogDescription>创建一个新的 AI Agent</DialogDescription>
+            <DialogTitle>{t('dialog.create.title')}</DialogTitle>
+            <DialogDescription>{t('dialog.create.description')}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <label className="text-sm font-medium">名称 *</label>
+              <label className="text-sm font-medium">{t('dialog.create.nameLabel')}</label>
               <Input
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="例如: Weather Agent"
+                placeholder={t('dialog.create.namePlaceholder')}
               />
             </div>
             <div className="grid gap-2">
-              <label className="text-sm font-medium">描述</label>
+              <label className="text-sm font-medium">{t('dialog.create.descriptionLabel')}</label>
               <Input
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="简短描述这个 Agent 的功能"
+                placeholder={t('dialog.create.descriptionPlaceholder')}
               />
             </div>
             <div className="grid gap-2">
-              <label className="text-sm font-medium">提供商 *</label>
+              <label className="text-sm font-medium">{t('dialog.create.providerLabel')}</label>
               <ProviderSelect
                 value={formData.provider}
                 onChange={(value) => setFormData({ ...formData, provider: value })}
               />
             </div>
             <div className="grid gap-2">
-              <label className="text-sm font-medium">模型 *</label>
+              <label className="text-sm font-medium">{t('dialog.create.modelLabel')}</label>
               <ModelSelect
                 provider={formData.provider}
                 value={formData.model}
                 onChange={(value) => setFormData({ ...formData, model: value })}
               />
-              <p className="text-xs text-muted-foreground">或手动输入:</p>
+              <p className="text-xs text-muted-foreground">{t('dialog.create.manualInputHint')}</p>
               <Input
                 value={formData.model}
                 onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-                placeholder="自定义模型名称..."
+                placeholder={t('dialog.create.modelManualPlaceholder')}
                 className="h-8"
               />
             </div>
             <div className="grid gap-2">
-              <label className="text-sm font-medium">系统提示词 *</label>
+              <label className="text-sm font-medium">{t('dialog.create.instructionsLabel')}</label>
               <Textarea
                 value={formData.instructions}
                 onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
@@ -337,7 +348,7 @@ export function AgentList({ selectedAgent, onAgentSelect }: AgentListProps) {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <label className="text-sm font-medium">温度 (0-10)</label>
+                <label className="text-sm font-medium">{t('dialog.create.temperatureLabel')}</label>
                 <Input
                   type="number"
                   min="0"
@@ -349,7 +360,7 @@ export function AgentList({ selectedAgent, onAgentSelect }: AgentListProps) {
                 />
               </div>
               <div className="grid gap-2">
-                <label className="text-sm font-medium">最大 Tokens</label>
+                <label className="text-sm font-medium">{t('dialog.create.maxTokensLabel')}</label>
                 <Input
                   type="number"
                   value={formData.maxTokens}
@@ -362,10 +373,10 @@ export function AgentList({ selectedAgent, onAgentSelect }: AgentListProps) {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
-              取消
+              {tc('button.cancel')}
             </Button>
             <Button onClick={handleCreate} disabled={!formData.name || !formData.model}>
-              创建
+              {t('list.create')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -375,17 +386,17 @@ export function AgentList({ selectedAgent, onAgentSelect }: AgentListProps) {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>确认删除</DialogTitle>
+            <DialogTitle>{t('list.confirmDelete')}</DialogTitle>
             <DialogDescription>
-              确定要删除 Agent "{deletingAgent?.name}" 吗？此操作无法撤销。
+              {t('dialog.delete.description', { name: deletingAgent?.name ?? '' })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-              取消
+              {tc('button.cancel')}
             </Button>
             <Button variant="destructive" onClick={handleDelete}>
-              删除
+              {t('list.delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

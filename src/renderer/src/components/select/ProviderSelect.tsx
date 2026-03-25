@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Check, ChevronsUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '../ui/button'
@@ -69,6 +70,7 @@ interface ProviderSelectProps {
 }
 
 export function ProviderSelect({ value, onChange, disabled }: ProviderSelectProps) {
+  const { t } = useTranslation('settings')
   const [open, setOpen] = useState(false)
 
   return (
@@ -81,14 +83,16 @@ export function ProviderSelect({ value, onChange, disabled }: ProviderSelectProp
           className="w-full justify-between"
           disabled={disabled}
         >
-          {value ? PROVIDERS.find((provider) => provider.value === value)?.label : '选择提供商...'}
+          {value
+            ? PROVIDERS.find((provider) => provider.value === value)?.label
+            : t('select.providerPlaceholder')}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[400px] p-0">
         <Command>
-          <CommandInput placeholder="搜索提供商..." />
-          <CommandEmpty>未找到提供商</CommandEmpty>
+          <CommandInput placeholder={t('select.searchProviders')} />
+          <CommandEmpty>{t('select.providerNotFound')}</CommandEmpty>
           <CommandGroup className="max-h-64 overflow-auto">
             {PROVIDERS.map((provider) => (
               <CommandItem
@@ -109,7 +113,9 @@ export function ProviderSelect({ value, onChange, disabled }: ProviderSelectProp
                 <div className="flex flex-1 items-center justify-between">
                   <span>{provider.label}</span>
                   {provider.models > 0 && (
-                    <span className="text-xs text-muted-foreground">{provider.models} 个模型</span>
+                    <span className="text-xs text-muted-foreground">
+                      {t('select.modelsCount', { count: provider.models })}
+                    </span>
                   )}
                 </div>
               </CommandItem>

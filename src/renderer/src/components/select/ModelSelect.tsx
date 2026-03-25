@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Check, ChevronsUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '../ui/button'
@@ -94,6 +95,7 @@ interface ModelSelectProps {
 }
 
 export function ModelSelect({ provider, value, onChange, disabled }: ModelSelectProps) {
+  const { t } = useTranslation('settings')
   const [open, setOpen] = useState(false)
 
   const availableModels = provider ? PROVIDER_MODELS[provider] || [] : []
@@ -110,33 +112,33 @@ export function ModelSelect({ provider, value, onChange, disabled }: ModelSelect
           disabled={disabled || !provider}
         >
           {!provider ? (
-            <span className="text-muted-foreground">请先选择提供商</span>
+            <span className="text-muted-foreground">{t('select.selectProviderFirst')}</span>
           ) : !hasModels ? (
-            <span className="text-muted-foreground">自定义输入模型名称</span>
+            <span className="text-muted-foreground">{t('select.customModelHint')}</span>
           ) : value && availableModels.includes(value) ? (
             value
           ) : value ? (
             <span className="flex items-center gap-2">
               {value}
-              <span className="text-xs text-muted-foreground">(自定义)</span>
+              <span className="text-xs text-muted-foreground">{t('select.customSuffix')}</span>
             </span>
           ) : (
-            '选择模型...'
+            t('select.modelPlaceholder')
           )}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[400px] p-0">
         <Command>
-          <CommandInput placeholder="搜索模型..." />
+          <CommandInput placeholder={t('select.searchModels')} />
           {!hasModels ? (
             <div className="p-4 text-center text-sm text-muted-foreground">
-              <p>该提供商暂无预设模型</p>
-              <p className="mt-1 text-xs">请手动输入模型名称</p>
+              <p>{t('select.noPresetModels')}</p>
+              <p className="mt-1 text-xs">{t('select.enterModelManually')}</p>
             </div>
           ) : (
             <>
-              <CommandEmpty>未找到模型</CommandEmpty>
+              <CommandEmpty>{t('select.modelNotFound')}</CommandEmpty>
               <CommandGroup className="max-h-64 overflow-auto">
                 {availableModels.map((model) => (
                   <CommandItem

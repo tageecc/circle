@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
@@ -67,6 +68,26 @@ function ToolsList({ tools, serverId }: { tools: string[]; serverId: string }) {
 }
 
 function StatusIndicator({ status, error }: { status: MCPServer['status']; error?: string }) {
+  const { t } = useTranslation('tools')
+
+  const shortLabel =
+    status === 'connected'
+      ? t('mcp.status.connected')
+      : status === 'loading'
+        ? t('mcp.status.connecting')
+        : status === 'error'
+          ? t('mcp.status.error')
+          : t('mcp.status.disconnected')
+
+  const tooltipDefault =
+    status === 'connected'
+      ? t('mcpCard.statusTooltipConnected')
+      : status === 'loading'
+        ? t('mcpCard.statusTooltipLoading')
+        : status === 'error'
+          ? t('mcpCard.statusTooltipError')
+          : t('mcpCard.statusTooltipDisconnected')
+
   return (
     <TooltipProvider>
       <Tooltip delayDuration={300}>
@@ -84,15 +105,7 @@ function StatusIndicator({ status, error }: { status: MCPServer['status']; error
             ) : (
               <div className="size-2 rounded-full bg-gray-400" />
             )}
-            <span className="text-xs text-muted-foreground">
-              {status === 'connected'
-                ? '已连接'
-                : status === 'loading'
-                  ? '连接中'
-                  : status === 'error'
-                    ? '错误'
-                    : '未连接'}
-            </span>
+            <span className="text-xs text-muted-foreground">{shortLabel}</span>
           </div>
         </TooltipTrigger>
         <TooltipContent
@@ -104,15 +117,7 @@ function StatusIndicator({ status, error }: { status: MCPServer['status']; error
           {status === 'error' && error ? (
             <p className="max-w-xs text-xs">{error}</p>
           ) : (
-            <p className="max-w-xs text-xs">
-              {status === 'connected'
-                ? '服务器已连接'
-                : status === 'loading'
-                  ? '正在连接服务器'
-                  : status === 'error'
-                    ? '连接出错'
-                    : '服务器未连接'}
-            </p>
+            <p className="max-w-xs text-xs">{tooltipDefault}</p>
           )}
         </TooltipContent>
       </Tooltip>
@@ -121,6 +126,8 @@ function StatusIndicator({ status, error }: { status: MCPServer['status']; error
 }
 
 export function MCPServerCard({ server, onViewDetails, onDelete }: MCPServerCardProps) {
+  const { t } = useTranslation('tools')
+
   return (
     <Card className="border-border/30 shadow-sm hover:shadow-md hover:border-primary/40 transition-all">
       <CardHeader className="space-y-1 pb-3">
@@ -140,7 +147,7 @@ export function MCPServerCard({ server, onViewDetails, onDelete }: MCPServerCard
         {server.tools && server.tools.length > 0 && (
           <div className="space-y-1.5">
             <span className="text-xs font-medium text-muted-foreground">
-              {server.tools.length} 个工具
+              {t('mcpCard.toolCount', { count: server.tools.length })}
             </span>
             <ToolsList tools={server.tools} serverId={server.id} />
           </div>
@@ -158,7 +165,7 @@ export function MCPServerCard({ server, onViewDetails, onDelete }: MCPServerCard
               }}
             >
               <Eye className="size-3.5" />
-              查看
+              {t('mcpCard.view')}
             </Button>
             <Button
               variant="ghost"

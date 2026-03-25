@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
@@ -43,126 +44,27 @@ interface CreateCustomToolDialogProps {
   onSubmit: () => void
 }
 
-// 常见工具分类
-const TOOL_CATEGORIES = [
-  { value: 'Utility', label: '🔧 实用工具' },
-  { value: 'Data', label: '📊 数据处理' },
-  { value: 'API', label: '🌐 API 调用' },
-  { value: 'File', label: '📁 文件操作' },
-  { value: 'Text', label: '📝 文本处理' },
-  { value: 'Math', label: '🔢 数学计算' },
-  { value: 'Network', label: '🌍 网络请求' },
-  { value: 'Database', label: '💾 数据库' },
-  { value: 'AI', label: '🤖 AI 工具' },
-  { value: 'Automation', label: '⚡ 自动化' },
-  { value: 'Other', label: '📦 其他' }
-]
-
-// 代码模板
-const CODE_TEMPLATES = {
-  basic: {
-    name: '基础模板',
-    description: '简单的输入输出示例',
-    parameters: `{
-  "type": "object",
-  "properties": {
-    "input": {
-      "type": "string",
-      "description": "输入内容"
-    }
-  },
-  "required": ["input"]
-}`,
-    code: `// 参数通过 params 对象传入
-const { input } = params
-
-// 执行你的逻辑
-const result = input.toUpperCase()
-
-// 返回结果
-return result`
-  },
-  api: {
-    name: 'API 调用',
-    description: 'HTTP 请求示例',
-    parameters: `{
-  "type": "object",
-  "properties": {
-    "url": {
-      "type": "string",
-      "description": "API URL"
-    },
-    "method": {
-      "type": "string",
-      "enum": ["GET", "POST"],
-      "description": "请求方法"
-    }
-  },
-  "required": ["url"]
-}`,
-    code: `// 使用 fetch 进行 API 调用（异步函数）
-return (async () => {
-  const { url, method = 'GET' } = params
-
-  try {
-    const response = await fetch(url, {
-      method,
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-    
-    const data = await response.json()
-    return data
-  } catch (error) {
-    throw new Error(\`API 请求失败: \${error.message}\`)
-  }
-})()`
-  },
-  dataProcess: {
-    name: '数据处理',
-    description: 'JSON 数据转换示例',
-    parameters: `{
-  "type": "object",
-  "properties": {
-    "data": {
-      "type": "array",
-      "description": "要处理的数据数组"
-    },
-    "operation": {
-      "type": "string",
-      "enum": ["filter", "map", "reduce"],
-      "description": "操作类型"
-    }
-  },
-  "required": ["data", "operation"]
-}`,
-    code: `// 数据处理示例
-const { data, operation } = params
-
-switch (operation) {
-  case 'filter':
-    // 过滤数据
-    return data.filter(item => item.active === true)
-    
-  case 'map':
-    // 转换数据
-    return data.map(item => ({
-      id: item.id,
-      name: item.name
-    }))
-    
-  case 'reduce':
-    // 聚合数据
-    return data.reduce((acc, item) => acc + item.value, 0)
-    
-  default:
-    throw new Error('未知操作类型')
-}`
-  }
+type CodeTemplate = {
+  name: string
+  description: string
+  parameters: string
+  code: string
 }
 
-// 草稿存储 key
+const TOOL_CATEGORY_VALUES = [
+  'Utility',
+  'Data',
+  'API',
+  'File',
+  'Text',
+  'Math',
+  'Network',
+  'Database',
+  'AI',
+  'Automation',
+  'Other'
+] as const
+
 const DRAFT_KEY = 'custom_tool_draft'
 const DRAFT_TIMESTAMP_KEY = 'custom_tool_draft_timestamp'
 
@@ -173,14 +75,40 @@ export function CreateCustomToolDialog({
   onFormDataChange,
   onSubmit
 }: CreateCustomToolDialogProps) {
+  const { t } = useTranslation('tools')
+  const { t: tc } = useTranslation('common')
   const confirm = useConfirm()
+
+  const codeTemplates = useMemo<Record<'basic' | 'api' | 'dataProcess', CodeTemplate>>(
+    () => ({
+      basic: {
+        name: t('customToolCreate.templates.basic.name'),
+        description: t('customToolCreate.templates.basic.description'),
+        parameters: t('customToolCreate.templates.basic.parameters'),
+        code: t('customToolCreate.templates.basic.code')
+      },
+      api: {
+        name: t('customToolCreate.templates.api.name'),
+        description: t('customToolCreate.templates.api.description'),
+        parameters: t('customToolCreate.templates.api.parameters'),
+        code: t('customToolCreate.templates.api.code')
+      },
+      dataProcess: {
+        name: t('customToolCreate.templates.dataProcess.name'),
+        description: t('customToolCreate.templates.dataProcess.description'),
+        parameters: t('customToolCreate.templates.dataProcess.parameters'),
+        code: t('customToolCreate.templates.dataProcess.code')
+      }
+    }),
+    [t]
+  )
+
   const [theme, setTheme] = useState<'vs-dark' | 'light'>('vs-dark')
   const [parametersError, setParametersError] = useState<string | null>(null)
   const [codeError, setCodeError] = useState<string | null>(null)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [hasDraft, setHasDraft] = useState(false)
 
-  // 监听主题变化
   useEffect(() => {
     const checkTheme = () => {
       const isDark = document.documentElement.classList.contains('dark')
@@ -197,13 +125,11 @@ export function CreateCustomToolDialog({
     return () => observer.disconnect()
   }, [])
 
-  // 检查是否有草稿
   useEffect(() => {
     const draft = localStorage.getItem(DRAFT_KEY)
     setHasDraft(!!draft)
   }, [open])
 
-  // 自动保存草稿
   useEffect(() => {
     if (!open) return undefined
 
@@ -216,7 +142,6 @@ export function CreateCustomToolDialog({
     if (hasContent) {
       setHasUnsavedChanges(true)
 
-      // 防抖保存
       const timer = setTimeout(() => {
         localStorage.setItem(DRAFT_KEY, JSON.stringify(formData))
         localStorage.setItem(DRAFT_TIMESTAMP_KEY, new Date().toISOString())
@@ -228,7 +153,6 @@ export function CreateCustomToolDialog({
     return undefined
   }, [formData, open])
 
-  // 验证 Parameters JSON
   useEffect(() => {
     if (!formData.parameters.trim()) {
       setParametersError(null)
@@ -243,7 +167,6 @@ export function CreateCustomToolDialog({
     }
   }, [formData.parameters])
 
-  // 验证代码语法
   useEffect(() => {
     if (!formData.code.trim()) {
       setCodeError(null)
@@ -258,7 +181,7 @@ export function CreateCustomToolDialog({
     }
   }, [formData.code])
 
-  const applyTemplate = (template: typeof CODE_TEMPLATES.basic) => {
+  const applyTemplate = (template: CodeTemplate) => {
     onFormDataChange({
       ...formData,
       parameters: template.parameters,
@@ -289,10 +212,10 @@ export function CreateCustomToolDialog({
   const handleClose = async () => {
     if (hasUnsavedChanges) {
       const confirmed = await confirm({
-        title: '未保存的更改',
-        description: '您有未保存的更改，关闭后将自动保存为草稿。是否继续？',
-        confirmText: '继续',
-        cancelText: '取消'
+        title: t('customToolCreate.unsavedTitle'),
+        description: t('customToolCreate.unsavedDescription'),
+        confirmText: t('customToolCreate.continue'),
+        cancelText: tc('button.cancel')
       })
       if (!confirmed) return
     }
@@ -322,10 +245,10 @@ export function CreateCustomToolDialog({
     const hours = Math.floor(minutes / 60)
     const days = Math.floor(hours / 24)
 
-    if (days > 0) return `${days} 天前`
-    if (hours > 0) return `${hours} 小时前`
-    if (minutes > 0) return `${minutes} 分钟前`
-    return '刚刚'
+    if (days > 0) return t('customToolCreate.draftTime.daysAgo', { count: days })
+    if (hours > 0) return t('customToolCreate.draftTime.hoursAgo', { count: hours })
+    if (minutes > 0) return t('customToolCreate.draftTime.minutesAgo', { count: minutes })
+    return t('customToolCreate.draftTime.justNow')
   }
 
   return (
@@ -338,93 +261,92 @@ export function CreateCustomToolDialog({
           <DialogHeader className="border-b shrink-0 pb-4 pt-5 px-6">
             <div className="flex items-center justify-between">
               <div>
-                <DialogTitle className="text-2xl">创建自定义工具</DialogTitle>
+                <DialogTitle className="text-2xl">{t('customToolCreate.title')}</DialogTitle>
                 <DialogDescription className="text-sm mt-1.5">
-                  使用 JavaScript 编写强大的自定义工具，降低开发门槛
+                  {t('customToolCreate.subtitle')}
                 </DialogDescription>
               </div>
               {hasUnsavedChanges && (
                 <Badge variant="outline" className="text-xs gap-1.5 px-2.5 py-1">
                   <Save className="size-3.5" />
-                  自动保存
+                  {t('customToolCreate.autoSave')}
                 </Badge>
               )}
             </div>
 
-            {/* 草稿提示 */}
             {hasDraft && (
               <div className="flex items-center justify-between p-3.5 mt-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
                 <div className="flex items-center gap-2.5">
                   <BookOpen className="size-4 text-blue-500" />
                   <div>
                     <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                      发现未完成的草稿
+                      {t('customToolCreate.draftFound')}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      上次编辑：{getDraftTime()}
+                      {t('customToolCreate.lastEdited', { time: getDraftTime() })}
                     </p>
                   </div>
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={clearDraft} className="gap-1.5">
                     <Trash2 className="size-3.5" />
-                    删除
+                    {tc('button.delete')}
                   </Button>
                   <Button size="sm" onClick={loadDraft}>
-                    恢复草稿
+                    {t('customToolCreate.restoreDraft')}
                   </Button>
                 </div>
               </div>
             )}
           </DialogHeader>
 
-          {/* 左右分栏布局 */}
           <div className="flex-1 flex gap-6 px-6 py-5 overflow-hidden min-h-0">
-            {/* 左侧配置区 */}
             <div className="w-[40%] flex flex-col gap-4 overflow-y-auto pr-3 min-h-0">
-              {/* 基本信息 */}
               <div className="space-y-3.5">
                 <div className="flex items-center gap-2.5">
                   <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center">
                     <BookOpen className="size-4 text-primary" />
                   </div>
-                  <h3 className="font-semibold text-base">基本信息</h3>
+                  <h3 className="font-semibold text-base">{t('customToolCreate.basicInfo')}</h3>
                 </div>
 
-                {/* 工具名称和分类 */}
                 <div className="flex gap-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-1.5 mb-2">
-                      <Label className="text-sm font-medium">工具名称 *</Label>
+                      <Label className="text-sm font-medium">
+                        {t('customToolCreate.toolNameRequired')}
+                      </Label>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <HelpCircle className="size-3.5 text-muted-foreground cursor-help" />
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>使用小写字母和下划线，例如: my_calculator</p>
+                          <p>{t('customToolCreate.toolNameHint')}</p>
                         </TooltipContent>
                       </Tooltip>
                     </div>
                     <Input
-                      placeholder="例如: my_calculator"
+                      placeholder={t('customToolCreate.toolNamePlaceholder')}
                       value={formData.name}
                       onChange={(e) => onFormDataChange({ ...formData, name: e.target.value })}
                     />
                   </div>
 
                   <div className="w-[125px]">
-                    <Label className="text-sm font-medium mb-2 block">分类</Label>
+                    <Label className="text-sm font-medium mb-2 block">
+                      {t('customToolCreate.category')}
+                    </Label>
                     <Select
                       value={formData.category || 'Utility'}
                       onValueChange={(value) => onFormDataChange({ ...formData, category: value })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="选择分类" />
+                        <SelectValue placeholder={t('customToolCreate.selectCategory')} />
                       </SelectTrigger>
                       <SelectContent>
-                        {TOOL_CATEGORIES.map((category) => (
-                          <SelectItem key={category.value} value={category.value}>
-                            {category.label}
+                        {TOOL_CATEGORY_VALUES.map((value) => (
+                          <SelectItem key={value} value={value}>
+                            {t(`customToolCreate.categories.${value}`)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -434,18 +356,20 @@ export function CreateCustomToolDialog({
 
                 <div>
                   <div className="flex items-center gap-1.5 mb-2">
-                    <Label className="text-sm font-medium">工具描述 *</Label>
+                    <Label className="text-sm font-medium">
+                      {t('customToolCreate.toolDescriptionRequired')}
+                    </Label>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <HelpCircle className="size-3.5 text-muted-foreground cursor-help" />
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>帮助 AI 理解何时使用这个工具</p>
+                        <p>{t('customToolCreate.toolDescriptionHint')}</p>
                       </TooltipContent>
                     </Tooltip>
                   </div>
                   <Input
-                    placeholder="简要描述此工具的功能"
+                    placeholder={t('customToolCreate.toolDescriptionPlaceholder')}
                     value={formData.description}
                     onChange={(e) => onFormDataChange({ ...formData, description: e.target.value })}
                   />
@@ -454,27 +378,27 @@ export function CreateCustomToolDialog({
 
               <Separator className="my-2" />
 
-              {/* 参数定义 */}
               <div className="flex-1 flex flex-col gap-3.5 min-h-[300px]">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <div className="size-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
                       <Code className="size-4 text-purple-500" />
                     </div>
-                    <h3 className="font-semibold text-base">参数定义</h3>
+                    <h3 className="font-semibold text-base">
+                      {t('customToolCreate.parametersSection')}
+                    </h3>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <HelpCircle className="size-3.5 text-muted-foreground cursor-help" />
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>使用 JSON Schema 格式定义工具参数</p>
+                        <p>{t('customToolCreate.parametersHint')}</p>
                       </TooltipContent>
                     </Tooltip>
                   </div>
 
-                  {/* 模板按钮 */}
                   <div className="flex items-center gap-1.5">
-                    {Object.entries(CODE_TEMPLATES).map(([key, template]) => (
+                    {Object.entries(codeTemplates).map(([key, template]) => (
                       <Button
                         key={key}
                         variant="ghost"
@@ -516,7 +440,9 @@ export function CreateCustomToolDialog({
                   <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
                     <AlertCircle className="size-4 text-red-500 mt-0.5 shrink-0" />
                     <div className="text-sm">
-                      <p className="font-medium text-red-500">JSON 格式错误</p>
+                      <p className="font-medium text-red-500">
+                        {t('customToolCreate.jsonInvalid')}
+                      </p>
                       <p className="text-muted-foreground mt-0.5 text-xs">{parametersError}</p>
                     </div>
                   </div>
@@ -525,26 +451,27 @@ export function CreateCustomToolDialog({
                 {!parametersError && formData.parameters.trim() && (
                   <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10 border border-green-500/20">
                     <CheckCircle2 className="size-4 text-green-500" />
-                    <p className="text-xs text-green-600 dark:text-green-400">参数定义格式正确</p>
+                    <p className="text-xs text-green-600 dark:text-green-400">
+                      {t('customToolCreate.parametersValid')}
+                    </p>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* 右侧代码编辑区 */}
             <div className="flex-1 flex flex-col gap-4 min-h-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="size-8 rounded-lg bg-green-500/10 flex items-center justify-center">
                     <Code className="size-4 text-green-500" />
                   </div>
-                  <h3 className="font-semibold text-base">代码实现</h3>
+                  <h3 className="font-semibold text-base">{t('customToolCreate.codeSection')}</h3>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <HelpCircle className="size-3.5 text-muted-foreground cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>参数通过 params 对象传入，使用 return 返回结果</p>
+                      <p>{t('customToolCreate.codeHint')}</p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
@@ -583,7 +510,9 @@ export function CreateCustomToolDialog({
                 <div className="flex items-start gap-2 p-2.5 rounded-lg bg-red-500/10 border border-red-500/20">
                   <AlertCircle className="size-3.5 text-red-500 mt-0.5 shrink-0" />
                   <div className="text-xs">
-                    <p className="font-medium text-red-500">代码语法错误</p>
+                    <p className="font-medium text-red-500">
+                      {t('customToolCreate.codeSyntaxError')}
+                    </p>
                     <p className="text-muted-foreground mt-0.5">{codeError}</p>
                   </div>
                 </div>
@@ -592,13 +521,14 @@ export function CreateCustomToolDialog({
               {!codeError && formData.code.trim() && (
                 <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10 border border-green-500/20">
                   <CheckCircle2 className="size-3.5 text-green-500" />
-                  <p className="text-xs text-green-600 dark:text-green-400">代码语法检查通过</p>
+                  <p className="text-xs text-green-600 dark:text-green-400">
+                    {t('customToolCreate.codeSyntaxOk')}
+                  </p>
                 </div>
               )}
             </div>
           </div>
 
-          {/* 底部固定按钮栏 */}
           <div className="border-t shrink-0 px-6 py-4 bg-muted/30">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -613,24 +543,30 @@ export function CreateCustomToolDialog({
                   {isValid ? (
                     <>
                       <CheckCircle2 className="size-4" />
-                      <span className="font-medium">工具配置完成</span>
+                      <span className="font-medium">
+                        {t('customToolCreate.validationComplete')}
+                      </span>
                     </>
                   ) : (
                     <>
                       <AlertCircle className="size-4" />
-                      <span>请填写必填字段</span>
+                      <span>{t('customToolCreate.validationIncomplete')}</span>
                     </>
                   )}
                 </div>
-                {isValid && <p className="text-xs text-muted-foreground">可以创建工具了</p>}
+                {isValid && (
+                  <p className="text-xs text-muted-foreground">
+                    {t('customToolCreate.readyToCreate')}
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-3">
                 <Button variant="outline" onClick={handleClose}>
-                  取消
+                  {tc('button.cancel')}
                 </Button>
                 <Button onClick={handleSubmit} disabled={!isValid} className="gap-2" size="default">
                   <Plus className="size-4" />
-                  创建工具
+                  {t('customToolCreate.createTool')}
                 </Button>
               </div>
             </div>

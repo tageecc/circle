@@ -10,6 +10,7 @@ import {
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
+import { useTranslation } from 'react-i18next'
 
 interface InputDialogProps {
   open: boolean
@@ -32,6 +33,7 @@ export function InputDialog({
   placeholder = '',
   onConfirm
 }: InputDialogProps) {
+  const { t } = useTranslation('dialogs')
   const [value, setValue] = useState(defaultValue)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -76,10 +78,10 @@ export function InputDialog({
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {t('input.cancel')}
             </Button>
             <Button type="submit" disabled={!value.trim()}>
-              Confirm
+              {t('input.submit')}
             </Button>
           </DialogFooter>
         </form>

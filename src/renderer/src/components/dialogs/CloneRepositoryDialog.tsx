@@ -11,6 +11,7 @@ import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { FolderOpen, AlertCircle, Loader2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 interface CloneRepositoryDialogProps {
   open: boolean
@@ -19,6 +20,8 @@ interface CloneRepositoryDialogProps {
 }
 
 export function CloneRepositoryDialog({ open, onClose, onSuccess }: CloneRepositoryDialogProps) {
+  const { t } = useTranslation('project')
+  const { t: tc } = useTranslation('common')
   const [repoUrl, setRepoUrl] = useState('')
   const [targetDir, setTargetDir] = useState('')
   const [repoName, setRepoName] = useState('')
@@ -64,20 +67,20 @@ export function CloneRepositoryDialog({ open, onClose, onSuccess }: CloneReposit
 
     setLoading(true)
     setError('')
-    setCloneProgress('准备克隆...')
+    setCloneProgress(t('cloneRepositoryDialog.progressPreparing'))
 
     try {
       const fullPath = `${targetDir}/${repoName}`
       const clonedPath = await window.api.git.cloneRepository(repoUrl, fullPath)
 
-      setCloneProgress('克隆完成！')
+      setCloneProgress(t('cloneRepositoryDialog.progressDone'))
 
       setTimeout(() => {
         onSuccess(clonedPath)
         handleClose()
       }, 500)
     } catch (error: any) {
-      setError(error.message || 'Failed to clone repository')
+      setError(error.message || t('cloneRepositoryDialog.cloneFailed'))
       setCloneProgress('')
     } finally {
       setLoading(false)
@@ -101,34 +104,32 @@ export function CloneRepositoryDialog({ open, onClose, onSuccess }: CloneReposit
     <Dialog open={open} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="sm:max-w-[550px]">
         <DialogHeader>
-          <DialogTitle>Clone Repository</DialogTitle>
-          <DialogDescription>Clone a Git repository from a remote URL</DialogDescription>
+          <DialogTitle>{t('cloneRepositoryDialog.title')}</DialogTitle>
+          <DialogDescription>{t('cloneRepositoryDialog.description')}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           {/* Repository URL */}
           <div className="space-y-2">
-            <Label htmlFor="repo-url">Repository URL</Label>
+            <Label htmlFor="repo-url">{t('cloneRepositoryDialog.repositoryUrl')}</Label>
             <Input
               id="repo-url"
-              placeholder="https://github.com/username/repo.git"
+              placeholder={t('cloneRepositoryDialog.urlPlaceholder')}
               value={repoUrl}
               onChange={(e) => setRepoUrl(e.target.value)}
               disabled={loading}
               className={error && repoUrl ? 'border-destructive' : ''}
             />
-            <p className="text-xs text-muted-foreground">
-              Supports HTTPS, SSH, and Git protocol URLs
-            </p>
+            <p className="text-xs text-muted-foreground">{t('cloneRepositoryDialog.urlHint')}</p>
           </div>
 
           {/* Target Directory */}
           <div className="space-y-2">
-            <Label htmlFor="target-dir">Parent Directory</Label>
+            <Label htmlFor="target-dir">{t('cloneRepositoryDialog.parentDirectory')}</Label>
             <div className="flex gap-2">
               <Input
                 id="target-dir"
-                placeholder="Select parent directory..."
+                placeholder={t('cloneRepositoryDialog.parentDirectoryPlaceholder')}
                 value={targetDir}
                 readOnly
                 disabled={loading}
@@ -148,17 +149,17 @@ export function CloneRepositoryDialog({ open, onClose, onSuccess }: CloneReposit
 
           {/* Repository Name */}
           <div className="space-y-2">
-            <Label htmlFor="repo-name">Repository Name</Label>
+            <Label htmlFor="repo-name">{t('cloneRepositoryDialog.repositoryName')}</Label>
             <Input
               id="repo-name"
-              placeholder="my-project"
+              placeholder={t('cloneRepositoryDialog.repositoryNamePlaceholder')}
               value={repoName}
               onChange={(e) => setRepoName(e.target.value)}
               disabled={loading}
             />
             {targetDir && repoName && (
               <p className="text-xs text-muted-foreground">
-                Will clone to: {targetDir}/{repoName}
+                {t('cloneRepositoryDialog.willCloneTo', { path: `${targetDir}/${repoName}` })}
               </p>
             )}
           </div>
@@ -182,11 +183,11 @@ export function CloneRepositoryDialog({ open, onClose, onSuccess }: CloneReposit
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose} disabled={loading}>
-            Cancel
+            {tc('button.cancel')}
           </Button>
           <Button onClick={handleClone} disabled={!canClone}>
             {loading && <Loader2 className="mr-2 size-4 animate-spin" />}
-            Clone Repository
+            {t('cloneRepositoryDialog.cloneButton')}
           </Button>
         </DialogFooter>
       </DialogContent>

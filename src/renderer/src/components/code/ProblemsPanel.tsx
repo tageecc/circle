@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ScrollArea } from '../ui/scroll-area'
 import { Button } from '../ui/button'
 import { AlertCircle, AlertTriangle, Info, X, ChevronDown, ChevronRight } from 'lucide-react'
@@ -21,6 +22,7 @@ interface ProblemsPanelProps {
 }
 
 export function ProblemsPanel({ diagnostics, onDiagnosticClick, onClose }: ProblemsPanelProps) {
+  const { t } = useTranslation('editor')
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set())
   const [filterSeverity, setFilterSeverity] = useState<'all' | 'error' | 'warning' | 'info'>('all')
 
@@ -106,7 +108,7 @@ export function ProblemsPanel({ diagnostics, onDiagnosticClick, onClose }: Probl
     <div className="flex h-full flex-col border-t border-border/30 bg-background">
       <div className="flex items-center justify-between border-b border-border/30 px-3 py-2">
         <div className="flex items-center gap-3">
-          <span className="text-sm font-medium">问题</span>
+          <span className="text-sm font-medium">{t('problems.title')}</span>
 
           <div className="flex items-center gap-2 text-xs">
             <button
@@ -116,7 +118,7 @@ export function ProblemsPanel({ diagnostics, onDiagnosticClick, onClose }: Probl
               )}
               onClick={() => setFilterSeverity('all')}
             >
-              <span>全部 ({diagnostics.length})</span>
+              <span>{t('problems.all', { count: diagnostics.length })}</span>
             </button>
 
             <button
@@ -165,8 +167,12 @@ export function ProblemsPanel({ diagnostics, onDiagnosticClick, onClose }: Probl
         {Object.keys(filteredDiagnostics).length === 0 ? (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
             {filterSeverity === 'all'
-              ? '没有发现问题'
-              : `没有发现${filterSeverity === 'error' ? '错误' : filterSeverity === 'warning' ? '警告' : '信息'}`}
+              ? t('problems.emptyAll')
+              : filterSeverity === 'error'
+                ? t('problems.emptyError')
+                : filterSeverity === 'warning'
+                  ? t('problems.emptyWarning')
+                  : t('problems.emptyInfo')}
           </div>
         ) : (
           <div className="p-2">
@@ -183,7 +189,7 @@ export function ProblemsPanel({ diagnostics, onDiagnosticClick, onClose }: Probl
                   )}
                   <span className="font-medium">{fileName}</span>
                   <span className="ml-auto text-xs text-muted-foreground">
-                    {items.length} 个问题
+                    {t('problems.countInFile', { count: items.length })}
                   </span>
                 </button>
 

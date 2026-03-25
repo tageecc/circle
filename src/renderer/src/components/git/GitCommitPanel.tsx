@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '../ui/button'
 import { Textarea } from '../ui/textarea'
 import { Checkbox } from '../ui/checkbox'
@@ -46,6 +47,7 @@ export function GitCommitPanel({
   onSuccess,
   onRefresh
 }: GitCommitPanelProps) {
+  const { t } = useTranslation(['git', 'common'])
   const [message, setMessage] = useState('')
   const [status, setStatus] = useState<GitStatus | null>(null)
   const [loading, setLoading] = useState(false)
@@ -73,8 +75,8 @@ export function GitCommitPanel({
       onRefresh?.()
     } catch (error) {
       console.error('Failed to load git status:', error)
-      toast.error('加载 Git 状态失败', {
-        description: error instanceof Error ? error.message : '未知错误'
+      toast.error(t('git:status.loading'), {
+        description: error instanceof Error ? error.message : t('common:message.unknownError')
       })
     } finally {
       setLoading(false)
@@ -112,10 +114,10 @@ export function GitCommitPanel({
     try {
       await window.api.git.stageFiles(workspaceRoot, [file])
       await loadStatus()
-      toast.success('文件已暂存')
+      toast.success(t('stage.success'))
     } catch (error) {
-      toast.error('暂存失败', {
-        description: error instanceof Error ? error.message : '未知错误'
+      toast.error(t('stage.failed'), {
+        description: error instanceof Error ? error.message : t('common:message.unknownError')
       })
     }
   }
@@ -125,22 +127,22 @@ export function GitCommitPanel({
     try {
       await window.api.git.unstageFiles(workspaceRoot, [file])
       await loadStatus()
-      toast.success('文件已取消暂存')
+      toast.success(t('stage.unstageSuccess'))
     } catch (error) {
-      toast.error('取消暂存失败', {
-        description: error instanceof Error ? error.message : '未知错误'
+      toast.error(t('stage.unstageFailed'), {
+        description: error instanceof Error ? error.message : t('common:message.unknownError')
       })
     }
   }
 
   const handleCommit = async (andPush: boolean = false) => {
     if (!message.trim()) {
-      toast.error('请输入提交信息')
+      toast.error(t('commit.emptyMessage'))
       return
     }
 
     if (selectedFiles.size === 0) {
-      toast.error('请选择要提交的文件')
+      toast.error(t('commit.noFiles'))
       return
     }
 
@@ -149,17 +151,17 @@ export function GitCommitPanel({
       await window.api.git.stageFiles(workspaceRoot, Array.from(selectedFiles))
       await window.api.git.commit(workspaceRoot, message.trim())
 
-      toast.success('提交成功', {
-        description: `已提交 ${selectedFiles.size} 个文件`
+      toast.success(t('commit.success'), {
+        description: t('commit.filesCommitted', { count: selectedFiles.size })
       })
 
       if (andPush) {
         try {
           await window.api.git.push(workspaceRoot, 'origin')
-          toast.success('推送成功')
+          toast.success(t('push.success'))
         } catch (error) {
-          toast.error('推送失败', {
-            description: error instanceof Error ? error.message : '未知错误'
+          toast.error(t('push.failed'), {
+            description: error instanceof Error ? error.message : t('common:message.unknownError')
           })
         }
       }
@@ -169,8 +171,8 @@ export function GitCommitPanel({
       onSuccess?.()
       await loadStatus()
     } catch (error) {
-      toast.error('提交失败', {
-        description: error instanceof Error ? error.message : '未知错误'
+      toast.error(t('commit.failed'), {
+        description: error instanceof Error ? error.message : t('common:message.unknownError')
       })
     } finally {
       setCommitting(false)
@@ -188,9 +190,9 @@ export function GitCommitPanel({
   if (!status) {
     return (
       <div className="flex h-full flex-col items-center justify-center bg-background p-4 text-center">
-        <p className="text-sm text-muted-foreground">无法加载 Git 状态</p>
+        <p className="text-sm text-muted-foreground">{t('status.noStatus')}</p>
         <Button size="sm" variant="outline" onClick={loadStatus} className="mt-2">
-          重试
+          {t('common:button.retry')}
         </Button>
       </div>
     )
@@ -304,7 +306,7 @@ export function GitCommitPanel({
       <ScrollArea className="flex-1">
         <div className="p-3 space-y-2">
           <Textarea
-            placeholder="Commit message (⌘↵ to commit)"
+            placeholder={t('panel.commitPlaceholder')}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             disabled={committing}
@@ -325,7 +327,7 @@ export function GitCommitPanel({
             >
               {committing && <Loader2 className="mr-1.5 size-3 animate-spin" />}
               <GitCommit className="mr-1.5 size-3" />
-              Commit
+              {t('panel.commit')}
             </Button>
             <Button
               onClick={() => handleCommit(true)}
@@ -335,7 +337,7 @@ export function GitCommitPanel({
               size="sm"
             >
               <Upload className="mr-1.5 size-3" />
-              Push
+              {t('panel.push')}
             </Button>
           </div>
         </div>
@@ -345,14 +347,14 @@ export function GitCommitPanel({
         {!hasChanges ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <CheckCircle2 className="size-8 text-muted-foreground/30 mb-2" />
-            <p className="text-xs font-medium text-muted-foreground">No changes</p>
-            <p className="text-[10px] text-muted-foreground/70">Working tree clean</p>
+            <p className="text-xs font-medium text-muted-foreground">{t('panel.noChanges')}</p>
+            <p className="text-[10px] text-muted-foreground/70">{t('panel.workingTreeClean')}</p>
           </div>
         ) : (
           <div className="pb-2">
-            {renderFileSection('Staged Changes', stagedFiles, 'staged')}
-            {renderFileSection('Changes', unstagedFiles, 'unstaged')}
-            {renderFileSection('Untracked Files', untrackedFiles, 'untracked')}
+            {renderFileSection(t('panel.sectionStaged'), stagedFiles, 'staged')}
+            {renderFileSection(t('panel.sectionChanges'), unstagedFiles, 'unstaged')}
+            {renderFileSection(t('panel.sectionUntracked'), untrackedFiles, 'untracked')}
           </div>
         )}
       </ScrollArea>

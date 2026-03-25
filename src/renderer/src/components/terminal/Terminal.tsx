@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Terminal as XTerm } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
@@ -55,6 +56,7 @@ const lightTheme = {
 }
 
 export function Terminal({ terminalId, onReady }: TerminalProps) {
+  const { t, i18n } = useTranslation('terminal')
   const terminalRef = useRef<HTMLDivElement>(null)
   const xtermRef = useRef<XTerm | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
@@ -99,7 +101,8 @@ export function Terminal({ terminalId, onReady }: TerminalProps) {
 
     const cleanupExit = window.api.terminal.onExit((event) => {
       if (event.terminalId === terminalId) {
-        xterm.write('\r\n\x1b[1;31m[Process exited with code ' + event.exitCode + ']\x1b[0m\r\n')
+        const msg = t('processExited', { code: event.exitCode })
+        xterm.write('\r\n\x1b[1;31m[' + msg + ']\x1b[0m\r\n')
       }
     })
 
@@ -142,7 +145,7 @@ export function Terminal({ terminalId, onReady }: TerminalProps) {
       cleanupExit()
       xterm.dispose()
     }
-  }, [terminalId, onReady])
+  }, [terminalId, onReady, t, i18n.language])
 
   // 动态更新终端设置
   useEffect(() => {

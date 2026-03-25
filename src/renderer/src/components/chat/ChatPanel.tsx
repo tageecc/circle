@@ -10,6 +10,7 @@ import {
 import { Plus, Mic, Send, ArrowLeft, Brain } from 'lucide-react'
 import { Reasoning, ReasoningTrigger, ReasoningContent } from '../ui/reasoning'
 import { Markdown } from '../ui/markdown'
+import { useTranslation } from 'react-i18next'
 
 interface Message {
   id: string
@@ -28,10 +29,14 @@ interface Chat {
 
 interface ChatPanelProps {
   agentId: string
+  /** Breadcrumb label; falls back to translated default when omitted */
+  agentName?: string
   onBack?: () => void
 }
 
-export function ChatPanel({ agentId, onBack }: ChatPanelProps) {
+export function ChatPanel({ agentId, agentName, onBack }: ChatPanelProps) {
+  const { t, i18n } = useTranslation('chat')
+  const { t: tc } = useTranslation('common')
   const [chats, setChats] = useState<Chat[]>([])
   const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState('')
@@ -41,7 +46,7 @@ export function ChatPanel({ agentId, onBack }: ChatPanelProps) {
 
   useEffect(() => {
     loadThreads()
-  }, [agentId])
+  }, [agentId, i18n.language, t])
 
   const loadThreads = async () => {
     try {
@@ -160,9 +165,7 @@ export function ChatPanel({ agentId, onBack }: ChatPanelProps) {
           console.error('Failed to send message:', error)
           setMessages((prev) =>
             prev.map((msg) =>
-              msg.id === assistantMsgId
-                ? { ...msg, content: 'Sorry, I encountered an error. Please try again.' }
-                : msg
+              msg.id === assistantMsgId ? { ...msg, content: tc('message.unknownError') } : msg
             )
           )
           setSending(false)
@@ -172,9 +175,7 @@ export function ChatPanel({ agentId, onBack }: ChatPanelProps) {
       console.error('Failed to send message:', error)
       setMessages((prev) =>
         prev.map((msg) =>
-          msg.id === assistantMsgId
-            ? { ...msg, content: 'Sorry, I encountered an error. Please try again.' }
-            : msg
+          msg.id === assistantMsgId ? { ...msg, content: tc('message.unknownError') } : msg
         )
       )
       setSending(false)
@@ -189,12 +190,13 @@ export function ChatPanel({ agentId, onBack }: ChatPanelProps) {
   }
 
   const formatTime = (date: Date) => {
-    return date.toLocaleString('en-US', {
+    const locale = i18n.language === 'zh-CN' ? 'zh-CN' : 'en-US'
+    return date.toLocaleString(locale, {
       month: 'short',
       day: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
-      hour12: true
+      hour12: locale !== 'zh-CN'
     })
   }
 
@@ -208,15 +210,15 @@ export function ChatPanel({ agentId, onBack }: ChatPanelProps) {
               <ArrowLeft className="size-4" />
             </Button>
           )}
-          <span className="text-sm text-muted-foreground">Agents</span>
+          <span className="text-sm text-muted-foreground">{t('panel.agentsLabel')}</span>
           <span className="text-sm text-muted-foreground">/</span>
-          <span className="text-sm font-medium">Weather Agent</span>
+          <span className="text-sm font-medium">{agentName ?? t('panel.agentFallback')}</span>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Chat</span>
+          <span>{t('panel.chatTab')}</span>
           <span className="text-border">|</span>
-          <span>Traces</span>
-          <span>Evals</span>
+          <span>{t('panel.tracesTab')}</span>
+          <span>{t('panel.evalsTab')}</span>
         </div>
       </div>
 
@@ -228,7 +230,7 @@ export function ChatPanel({ agentId, onBack }: ChatPanelProps) {
           onClick={handleNewChat}
         >
           <Plus className="size-4" />
-          <span className="text-sm font-medium text-primary">New Chat</span>
+          <span className="text-sm font-medium text-primary">{t('panel.newChat')}</span>
         </Button>
         <div className="max-h-48 overflow-y-auto">
           {chats.map((chat) => (
@@ -237,7 +239,7 @@ export function ChatPanel({ agentId, onBack }: ChatPanelProps) {
               className="cursor-pointer border-b border-border px-4 py-3 hover:bg-accent"
               onClick={() => loadThread(chat.id)}
             >
-              <div className="text-xs text-muted-foreground">Chat from</div>
+              <div className="text-xs text-muted-foreground">{t('panel.chatFrom')}</div>
               <div className="text-sm">{formatTime(chat.timestamp)}</div>
             </div>
           ))}
@@ -250,9 +252,7 @@ export function ChatPanel({ agentId, onBack }: ChatPanelProps) {
           <div className="mx-auto max-w-3xl space-y-6">
             {messages.length === 0 && !loading && (
               <div className="flex h-full min-h-[400px] items-center justify-center text-center">
-                <p className="text-muted-foreground">
-                  Start a conversation by typing a message below
-                </p>
+                <p className="text-muted-foreground">{t('panel.emptyPrompt')}</p>
               </div>
             )}
             {messages.map((message) => (
@@ -280,7 +280,7 @@ export function ChatPanel({ agentId, onBack }: ChatPanelProps) {
                         <ReasoningTrigger className="text-xs">
                           <div className="flex items-center gap-2">
                             <Brain className="h-3.5 w-3.5" />
-                            思考过程
+                            {t('reasoning.title')}
                           </div>
                         </ReasoningTrigger>
                         <ReasoningContent
@@ -314,7 +314,7 @@ export function ChatPanel({ agentId, onBack }: ChatPanelProps) {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Enter your message..."
+              placeholder={t('panel.inputPlaceholder')}
               className="pr-20"
               disabled={sending}
             />

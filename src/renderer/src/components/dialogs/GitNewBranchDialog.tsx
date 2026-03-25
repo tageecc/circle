@@ -13,6 +13,7 @@ import { Label } from '../ui/label'
 import { AlertCircle, Loader2 } from 'lucide-react'
 import { Checkbox } from '../ui/checkbox'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 
 interface GitNewBranchDialogProps {
   open: boolean
@@ -29,23 +30,23 @@ export function GitNewBranchDialog({
   onClose,
   onSuccess
 }: GitNewBranchDialogProps) {
+  const { t } = useTranslation('git')
   const [branchName, setBranchName] = useState('')
   const [checkout, setCheckout] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const validateBranchName = (name: string): { valid: boolean; message?: string } => {
+  const validateBranchName = (name: string): { valid: boolean; messageKey?: string } => {
     if (!name || name.trim() === '') {
-      return { valid: false, message: 'Branch name cannot be empty' }
+      return { valid: false, messageKey: 'newBranch.validation.empty' }
     }
 
-    // Git 分支名称规则
     if (name.includes('..') || name.startsWith('.') || name.endsWith('.')) {
-      return { valid: false, message: 'Invalid branch name format' }
+      return { valid: false, messageKey: 'newBranch.validation.invalidFormat' }
     }
 
     if (/[\s~^:?*\[\\]/.test(name)) {
-      return { valid: false, message: 'Branch name contains invalid characters' }
+      return { valid: false, messageKey: 'newBranch.validation.invalidChars' }
     }
 
     return { valid: true }
@@ -55,7 +56,7 @@ export function GitNewBranchDialog({
     setBranchName(name)
     const validation = validateBranchName(name)
     if (!validation.valid && name) {
-      setError(validation.message || '')
+      setError(validation.messageKey ? t(validation.messageKey) : '')
     } else {
       setError('')
     }
@@ -75,8 +76,10 @@ export function GitNewBranchDialog({
       await window.api.git.createBranch(workspaceRoot, branchName, checkout)
 
       // 显示成功提示
-      toast.success('分支创建成功', {
-        description: checkout ? `已创建并切换到分支 ${branchName}` : `已创建分支 ${branchName}`
+      toast.success(t('newBranch.success'), {
+        description: checkout
+          ? t('newBranch.createdCheckedOut', { name: branchName })
+          : t('newBranch.createdOnly', { name: branchName })
       })
 
       onSuccess()
@@ -149,11 +152,11 @@ export function GitNewBranchDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose} disabled={loading}>
-            Cancel
+            {t('dialog.cancel')}
           </Button>
           <Button onClick={handleCreate} disabled={!canCreate}>
             {loading && <Loader2 className="mr-2 size-4 animate-spin" />}
-            Create Branch
+            {t('newBranch.createButton')}
           </Button>
         </DialogFooter>
       </DialogContent>

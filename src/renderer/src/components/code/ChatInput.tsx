@@ -16,6 +16,7 @@ import { Badge } from '../ui/badge'
 import { Plus, ArrowUp, X, Bot, Wrench, Square } from 'lucide-react'
 import { getProviderLogo } from '@/lib/provider-logos'
 import { cn } from '@/lib/utils'
+import { useTranslation } from 'react-i18next'
 
 export interface PastedImage {
   id: string
@@ -55,7 +56,7 @@ interface ChatInputProps {
 }
 
 export function ChatInput({
-  placeholder = 'Ask, Search or Chat...',
+  placeholder,
   value,
   onChange,
   onSend,
@@ -68,6 +69,8 @@ export function ChatInput({
   onAgentChange,
   defaultAgentId
 }: ChatInputProps) {
+  const { t } = useTranslation('chat')
+  const resolvedPlaceholder = placeholder ?? t('input.placeholderAsk')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [agents, setAgents] = useState<Agent[]>([])
   const [selectedAgentId, setSelectedAgentId] = useState<string>(defaultAgentId || '')
@@ -159,7 +162,7 @@ export function ChatInput({
               const newImage: PastedImage = {
                 id: `img-${Date.now()}-${i}`,
                 dataUrl,
-                name: file.name || `粘贴的图片-${Date.now()}.png`,
+                name: file.name || t('input.pastedImageFileName', { ts: Date.now() }),
                 size: file.size
               }
               onPastedImagesChange([...pastedImages, newImage])
@@ -169,7 +172,7 @@ export function ChatInput({
         }
       }
     },
-    [pastedImages, onPastedImagesChange]
+    [pastedImages, onPastedImagesChange, t]
   )
 
   // 删除粘贴的图片
@@ -201,7 +204,7 @@ export function ChatInput({
               <button
                 onClick={() => handleRemoveImage(image.id)}
                 className="absolute right-1 top-1 flex size-5 items-center justify-center rounded-full bg-destructive/90 text-destructive-foreground opacity-0 transition-opacity hover:bg-destructive group-hover:opacity-100"
-                title="删除图片"
+                title={t('input.removeImage')}
               >
                 <X className="size-3" />
               </button>
@@ -217,7 +220,7 @@ export function ChatInput({
       <InputGroup className="[--radius:1.5rem]">
         <InputGroupTextarea
           ref={textareaRef}
-          placeholder={placeholder}
+          placeholder={resolvedPlaceholder}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onPaste={handlePaste}
@@ -232,7 +235,7 @@ export function ChatInput({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <InputGroupButton variant="ghost" disabled={disabled || isSending}>
-                  {agents.find((a) => a.id === selectedAgentId)?.name || '选择 Agent'}
+                  {agents.find((a) => a.id === selectedAgentId)?.name || t('input.selectAgent')}
                 </InputGroupButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -266,7 +269,7 @@ export function ChatInput({
                             <h4 className="truncate text-sm font-medium">{agent.name}</h4>
                             {agent.metadata?.isSystem && (
                               <Badge variant="default" className="px-1 py-0 text-[9px] h-4">
-                                系统
+                                {t('input.systemBadge')}
                               </Badge>
                             )}
                             {agent.model && (
@@ -319,17 +322,17 @@ export function ChatInput({
             size="icon-xs"
             disabled={!isSending && ((!value.trim() && pastedImages.length === 0) || disabled)}
             onClick={isSending ? onStop : onSend}
-            title={isSending ? '停止生成' : '发送消息'}
+            title={isSending ? t('input.stopGeneratingTitle') : t('input.sendMessageTitle')}
           >
             {!isSending ? (
               <>
                 <ArrowUp className="size-4" />
-                <span className="sr-only">Send</span>
+                <span className="sr-only">{t('input.send')}</span>
               </>
             ) : (
               <>
                 <Square className="size-3 fill-current" />
-                <span className="sr-only">Stop</span>
+                <span className="sr-only">{t('input.stop')}</span>
               </>
             )}
           </InputGroupButton>

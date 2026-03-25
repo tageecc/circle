@@ -1,0 +1,195 @@
+{
+  "title": "Settings",
+  "tabs": {
+    "general": "General",
+    "editor": "Editor",
+    "terminal": "Terminal",
+    "appearance": "Appearance",
+    "model": "Model",
+    "tools": "Tools",
+    "mcpTools": "MCP & Tools",
+    "keymap": "Keybindings",
+    "about": "About"
+  },
+  "dialog": {
+    "title": "Settings",
+    "description": "Customize your application settings",
+    "breadcrumb": "Settings"
+  },
+  "toast": {
+    "saved": "Settings saved",
+    "saveFailed": "Failed to save settings",
+    "resetSuccess": "Settings reset",
+    "resetFailed": "Failed to reset settings"
+  },
+  "font": {
+    "selectPlaceholder": "Select font",
+    "recommendedMono": "Recommended monospace",
+    "otherFonts": "Other fonts",
+    "builtIn": "Bundled"
+  },
+  "reset": {
+    "button": "Reset to defaults",
+    "title": "Reset all settings?",
+    "description": "This resets every setting to its default, including appearance, editor, and terminal.",
+    "confirm": "Reset"
+  },
+  "general": {
+    "language": "Language",
+    "languageDescription": "Select interface display language",
+    "uiLanguage": "Interface language",
+    "selectLanguage": "Select language",
+    "zhCN": "Simplified Chinese",
+    "en": "English",
+    "autoSave": "Auto Save",
+    "autoSaveDescription": "Automatically save files after editing",
+    "autoSaveHint": "Automatically save file changes",
+    "debugMode": "Debug Mode",
+    "debugModeDescription": "Enable debug logging",
+    "telemetry": "Telemetry",
+    "telemetryDescription": "Send anonymous usage data to improve the product"
+  },
+  "embedding": {
+    "title": "Codebase semantic index (embedding)",
+    "description": "Used for codebase indexing and semantic search. With DashScope and an API key, also powers the Apply Edit small model when AI edits files.",
+    "provider": "Provider",
+    "dashscope": "Alibaba Cloud DashScope",
+    "openai": "OpenAI",
+    "modelId": "Model ID",
+    "apiKeyOptional": "API key (optional)",
+    "apiKeyEnvHint": "Leave empty to use environment variables"
+  },
+  "bing": {
+    "title": "Web search (Bing)",
+    "description": "Powers AI web search. With a Bing Search API key, tools can query live information.",
+    "apiKeyOptional": "Bing Search API key (optional)",
+    "disabledHint": "Leave empty to disable web search"
+  },
+  "defaultModel": {
+    "provider": "Default model provider",
+    "openaiGpt": "OpenAI (GPT)",
+    "anthropic": "Anthropic (Claude)",
+    "googleGemini": "Google (Gemini)",
+    "modelId": "Model ID",
+    "modelIdPlaceholder": "e.g. gpt-4o, claude-3-5-sonnet-20241022",
+    "customInstructions": "Custom instructions (optional)",
+    "instructionsPlaceholder": "e.g. You are a concise professional coding assistant."
+  },
+  "completion": {
+    "title": "Inline AI completion (Copilot-style)",
+    "description": "Shows gray ghost suggestions while typing. You can set a dedicated model; otherwise the default assistant above is used. Reopen editor tabs or reload after saving.",
+    "enable": "Enable inline completion",
+    "enableHint": "When off, no inline suggestions are requested",
+    "shadowValidation": "Shadow diagnostic validation",
+    "shadowValidationHint": "Lightweight diagnostics on TS/JS completions (slower)",
+    "dedicatedProvider": "Dedicated completion provider (optional)",
+    "sameAsDefault": "Same as default assistant (recommended)",
+    "dashscope": "DashScope (Tongyi)",
+    "completionModelId": "Completion model ID",
+    "completionModelPlaceholder": "e.g. gpt-4o-mini",
+    "completionApiKey": "Completion API key (optional)",
+    "completionApiKeyHint": "Leave empty to try the default assistant key"
+  },
+  "editor": {
+    "fontSize": "Font Size",
+    "fontFamily": "Font Family",
+    "lineHeight": "Line height",
+    "tabSize": "Tab Size",
+    "insertSpaces": "Insert Spaces",
+    "insertSpacesDescription": "Insert spaces instead of tabs when pressing Tab",
+    "wordWrap": "Word Wrap",
+    "lineNumbers": "Line Numbers",
+    "minimap": "Minimap",
+    "gitBlame": "Git blame annotations",
+    "bracketPairColorization": "Bracket Pair Colorization",
+    "formatOnSave": "Format on Save",
+    "formatOnPaste": "Format on Paste",
+    "preview": {
+      "sampleLine1": "// Circle IDE sample code",
+      "sampleLine2": "// Implementation"
+    },
+    "mockBlame": {
+      "l1summary": "Add sample code",
+      "l2summary": "Update imports",
+      "l4summary": "Define config interface",
+      "l8summary": "Add default config",
+      "l13summary": "feat: implement Circle class",
+      "l16summary": "feat: add run() implementation",
+      "time1": "2 days ago",
+      "time2": "1 week ago",
+      "time3": "3 days ago",
+      "time4": "5 days ago",
+      "author1": "Alice",
+      "author2": "Bob",
+      "author3": "Carol",
+      "author4": "Dan"
+    }
+  },
+  "terminal": {
+    "shell": "Shell",
+    "fontSize": "Font Size",
+    "fontFamily": "Font Family",
+    "lineHeight": "Line height",
+    "shellOptional": "Shell path (optional)",
+    "shellPlaceholder": "Leave empty for system default (e.g. /bin/bash, powershell.exe)",
+    "cursorStyle": "Cursor Style",
+    "cursorBlink": "Cursor Blink",
+    "scrollback": "Scrollback Lines",
+    "cursorBlock": "Block",
+    "cursorUnderline": "Underline",
+    "cursorBar": "Bar"
+  },
+  "appearance": {
+    "theme": "Theme",
+    "themeDescription": "Select application theme",
+    "selectTheme": "Select theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "monacoTheme": "Editor Theme",
+    "fontSize": "UI Font Size",
+    "zoom": "UI zoom",
+    "zoomHint": "Use ⌥⌘= / ⌥⌘- to zoom, ⌥⌘0 for 100%",
+    "selectZoom": "Select zoom level"
+  },
+  "model": {
+    "provider": "Provider",
+    "model": "Model",
+    "apiKey": "API Key",
+    "instructions": "System Instructions",
+    "instructionsPlaceholder": "Enter system instructions (optional)",
+    "embedding": "Codebase Index Embedding Settings"
+  },
+  "actions": {
+    "save": "Save settings",
+    "reset": "Reset to Defaults",
+    "resetConfirm": "Are you sure you want to reset all settings to default values? This action cannot be undone."
+  },
+  "keymap": {
+    "selectPreset": "Select keymap preset",
+    "searchPlaceholder": "Search commands or shortcuts (e.g. Save, Cmd+S)",
+    "resetBinding": "Reset",
+    "noCommandsFound": "No matching commands",
+    "clickToSetBinding": "Click to set shortcut",
+    "recordDialogTitle": "Record shortcut",
+    "recordDialogIntro": "Press a new key combination for:",
+    "recordDialogHint": "Press Esc to cancel. Click Confirm to save.",
+    "recordKeyHint": "Press a key combination…",
+    "confirm": "Confirm",
+    "cancel": "Cancel"
+  },
+  "select": {
+    "providerPlaceholder": "Select provider…",
+    "searchProviders": "Search providers…",
+    "providerNotFound": "No provider found",
+    "modelsCount": "{{count}} models",
+    "modelPlaceholder": "Select model…",
+    "searchModels": "Search models…",
+    "selectProviderFirst": "Select a provider first",
+    "customModelHint": "Enter a custom model name",
+    "customSuffix": "(custom)",
+    "noPresetModels": "No preset models for this provider",
+    "enterModelManually": "Enter the model name manually",
+    "modelNotFound": "No model found"
+  }
+}

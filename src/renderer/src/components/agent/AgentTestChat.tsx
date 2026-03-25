@@ -11,6 +11,7 @@ import { MessageSquare, X, Send, Loader2, Bot, Brain } from 'lucide-react'
 import { Message, MessageAvatar, MessageContent } from '../ui/message'
 import { Markdown } from '../ui/markdown'
 import { Reasoning, ReasoningTrigger, ReasoningContent } from '../ui/reasoning'
+import { useTranslation } from 'react-i18next'
 
 interface AgentTestChatProps {
   agentId: string
@@ -25,6 +26,7 @@ interface ChatMessage {
 }
 
 export function AgentTestChat({ agentId }: AgentTestChatProps) {
+  const { t } = useTranslation('agent')
   const [testMessages, setTestMessages] = useState<ChatMessage[]>([])
   const [testInput, setTestInput] = useState('')
   const [isTesting, setIsTesting] = useState(false)
@@ -92,7 +94,7 @@ export function AgentTestChat({ agentId }: AgentTestChatProps) {
         console.error('Stream error:', error)
         setTestMessages((prev) =>
           prev.map((m) =>
-            m.id === assistantMessageId ? { ...m, content: '抱歉，发生错误，请重试。' } : m
+            m.id === assistantMessageId ? { ...m, content: t('testChat.streamError') } : m
           )
         )
         setIsTesting(false)
@@ -106,7 +108,7 @@ export function AgentTestChat({ agentId }: AgentTestChatProps) {
       <div className="flex items-center justify-between border-b border-sidebar-border/50 px-3 py-2">
         <div className="flex items-center gap-2">
           <MessageSquare className="size-4 text-sidebar-foreground/70" />
-          <span className="text-sm font-semibold">测试对话</span>
+          <span className="text-sm font-semibold">{t('testChat.title')}</span>
         </div>
         <Button
           size="sm"
@@ -131,8 +133,10 @@ export function AgentTestChat({ agentId }: AgentTestChatProps) {
                   </div>
                   <div className="absolute inset-0 rounded-full bg-linear-to-br from-primary/20 via-primary/10 to-transparent blur-xl animate-pulse-soft" />
                 </div>
-                <h3 className="text-sm font-semibold text-foreground mb-1">开始测试</h3>
-                <p className="text-xs text-muted-foreground">发送消息测试 Agent 的响应能力</p>
+                <h3 className="text-sm font-semibold text-foreground mb-1">
+                  {t('testChat.emptyTitle')}
+                </h3>
+                <p className="text-xs text-muted-foreground">{t('testChat.emptyDescription')}</p>
               </div>
             </div>
           ) : (
@@ -154,7 +158,7 @@ export function AgentTestChat({ agentId }: AgentTestChatProps) {
                               <ReasoningTrigger className="text-xs">
                                 <div className="flex items-center gap-2">
                                   <Brain className="h-3.5 w-3.5" />
-                                  思考过程
+                                  {t('testChat.reasoning')}
                                 </div>
                               </ReasoningTrigger>
                               <ReasoningContent
@@ -202,7 +206,7 @@ export function AgentTestChat({ agentId }: AgentTestChatProps) {
                 handleTestSend()
               }
             }}
-            placeholder="输入测试消息..."
+            placeholder={t('testChat.placeholder')}
             className="min-h-[60px] resize-none text-sm bg-background"
             disabled={isTesting}
           />
@@ -215,7 +219,7 @@ export function AgentTestChat({ agentId }: AgentTestChatProps) {
             {isTesting ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
           </Button>
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">Enter 发送 • Shift+Enter 换行</p>
+        <p className="mt-2 text-xs text-muted-foreground">{t('testChat.hintKeys')}</p>
       </div>
     </div>
   )

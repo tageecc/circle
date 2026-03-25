@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import {
@@ -32,6 +33,7 @@ export function GitBranchCompareDialog({
   filePath,
   fileLabel
 }: GitBranchCompareDialogProps) {
+  const { t } = useTranslation('git')
   const [branchesLoading, setBranchesLoading] = useState(false)
   const [branches, setBranches] = useState<GitBranch[]>([])
   const [selectedBranch, setSelectedBranch] = useState<string>('')
@@ -98,28 +100,28 @@ export function GitBranchCompareDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[85vh] max-w-4xl flex-col gap-0 p-0">
         <DialogHeader className="border-b border-border px-6 py-4">
-          <DialogTitle className="text-base">与分支比较 — {label}</DialogTitle>
+          <DialogTitle className="text-base">{t('branch.compareTitle', { label })}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 border-b border-border px-6 py-4">
           <div className="space-y-2">
-            <Label className="text-xs">选择分支</Label>
+            <Label className="text-xs">{t('branch.select')}</Label>
             {branchesLoading ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="size-4 animate-spin" />
-                加载分支…
+                {t('branch.loading')}
               </div>
             ) : branches.length === 0 ? (
-              <p className="text-sm text-muted-foreground">没有可比较的分支。</p>
+              <p className="text-sm text-muted-foreground">{t('branch.noBranches')}</p>
             ) : (
               <Select value={selectedBranch} onValueChange={setSelectedBranch}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="选择分支" />
+                  <SelectValue placeholder={t('branch.selectPlaceholder')} />
                 </SelectTrigger>
                 <SelectContent>
                   {branches.map((b) => (
                     <SelectItem key={b.name} value={b.name}>
                       {b.name}
-                      {b.remote ? ' (remote)' : ''}
+                      {b.remote ? t('branch.remoteTag') : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -131,11 +133,11 @@ export function GitBranchCompareDialog({
           {diffLoading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
-              加载差异…
+              {t('diff.loading')}
             </div>
           ) : (
             <pre className="wrap-break-word whitespace-pre-wrap font-mono text-xs leading-relaxed">
-              {diffText.trim() ? diffText : '（与所选分支无差异或无法比较）'}
+              {diffText.trim() ? diffText : t('branch.noDiff')}
             </pre>
           )}
         </ScrollArea>

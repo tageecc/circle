@@ -1,0 +1,29 @@
+{
+  "confirm": {
+    "title": "Confirm",
+    "ok": "OK",
+    "cancel": "Cancel",
+    "defaultConfirm": "Confirm",
+    "defaultCancel": "Cancel"
+  },
+  "input": {
+    "cancel": "Cancel",
+    "submit": "Confirm"
+  },
+  "error": {
+    "title": "Error",
+    "close": "Close"
+  },
+  "info": {
+    "title": "Info",
+    "close": "Close"
+  },
+  "warning": {
+    "title": "Warning",
+    "continue": "Continue",
+    "cancel": "Cancel"
+  },
+  "confirmProvider": {
+    "useConfirmError": "useConfirm must be used within a ConfirmProvider"
+  }
+}

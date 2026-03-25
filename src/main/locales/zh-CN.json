@@ -1,0 +1,34 @@
+{
+  "menu": {
+    "file": {
+      "label": "文件",
+      "open": "打开...",
+      "openFolder": "打开文件夹...",
+      "openRecent": "打开最近",
+      "noRecentProjects": "无最近项目",
+      "save": "保存",
+      "closeEditor": "关闭编辑器",
+      "closeFolder": "关闭文件夹"
+    },
+    "edit": {
+      "label": "编辑"
+    },
+    "view": {
+      "label": "视图"
+    },
+    "help": {
+      "label": "帮助",
+      "debugConfig": "调试配置"
+    }
+  },
+  "dialog": {
+    "openFolder": "选择文件夹",
+    "selectFolder": "选择文件夹",
+    "cancel": "取消"
+  },
+  "notification": {
+    "updateAvailable": "有可用更新",
+    "updateDownloaded": "更新已下载",
+    "restartToUpdate": "重启以更新"
+  }
+}

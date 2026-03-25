@@ -1,6 +1,7 @@
 import { app } from 'electron'
 import fs from 'fs'
 import path from 'path'
+import { detectSystemLanguage } from '../utils/detect-language'
 
 interface WindowState {
   x?: number
@@ -148,7 +149,7 @@ interface AppConfig {
 
 const defaultConfig: AppConfig = {
   theme: 'dark',
-  language: 'zh-CN',
+  language: detectSystemLanguage(),
   windowState: {
     width: 1400,
     height: 900,

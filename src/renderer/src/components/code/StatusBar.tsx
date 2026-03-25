@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { AlertCircle, Terminal, Circle } from 'lucide-react'
 import { Button } from '../ui/button'
 import { cn } from '@/lib/utils'
@@ -56,6 +57,7 @@ export function StatusBar({
   projectSwitcher = null,
   gitBranch = null
 }: StatusBarProps) {
+  const { t } = useTranslation('editor')
   const errorCount = useMemo(
     () => diagnostics.filter((d) => d.severity === 'error').length,
     [diagnostics]
@@ -138,7 +140,7 @@ export function StatusBar({
             bottomPanel === 'problems' && 'bg-accent'
           )}
           onClick={() => handleTogglePanel('problems')}
-          title="切换问题面板"
+          title={t('statusBar.toggleProblemsPanel')}
         >
           <AlertCircle className="size-3.5" />
           {errorCount > 0 && (
@@ -162,10 +164,10 @@ export function StatusBar({
             bottomPanel === 'terminal' && 'bg-accent'
           )}
           onClick={() => handleTogglePanel('terminal')}
-          title="切换终端面板"
+          title={t('statusBar.toggleTerminalPanel')}
         >
           <Terminal className="size-3.5" />
-          <span>终端</span>
+          <span>{t('statusBar.terminal')}</span>
         </Button>
 
         {currentFile && (
@@ -175,15 +177,19 @@ export function StatusBar({
                 variant="ghost"
                 size="sm"
                 className="h-6 gap-1.5 px-2 text-xs hover:bg-accent/50"
-                title="语言服务"
+                title={t('statusBar.languageServiceTooltip')}
               >
                 <Circle className="size-2.5 fill-green-500 text-green-500" />
-                <span className="text-muted-foreground">Language Services</span>
+                <span className="text-muted-foreground">
+                  {t('statusBar.languageServicesLabel')}
+                </span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-64">
               <div className="px-2 py-1.5">
-                <div className="text-xs font-semibold mb-2">运行中的语言服务</div>
+                <div className="text-xs font-semibold mb-2">
+                  {t('statusBar.runningLanguageServices')}
+                </div>
                 <div className="space-y-1">
                   {(language === 'typescript' ||
                     language === 'typescriptreact' ||
@@ -257,7 +263,10 @@ export function StatusBar({
             className="h-6 px-2 text-xs font-mono hover:bg-accent/50"
             disabled
           >
-            Ln {cursorPosition.line}, Col {cursorPosition.column}
+            {t('statusBar.cursorPosition', {
+              line: cursorPosition.line,
+              column: cursorPosition.column
+            })}
           </Button>
         )}
       </div>

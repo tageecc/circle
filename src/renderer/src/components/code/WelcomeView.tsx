@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Card } from '../ui/card'
 import { ChatInput, type PastedImage } from './ChatInput'
 import { Folder, GitBranch, Terminal, Clock } from 'lucide-react'
@@ -25,6 +26,7 @@ export function WelcomeView({
   onCloneRepository,
   onProjectCreated
 }: WelcomeViewProps) {
+  const { t } = useTranslation('chat')
   const [promptValue, setPromptValue] = useState('')
   const [pastedImages, setPastedImages] = useState<PastedImage[]>([])
   const [showCreationDialog, setShowCreationDialog] = useState(false)
@@ -56,19 +58,17 @@ export function WelcomeView({
             <Terminal className="size-9 text-primary" />
             <h1 className="text-3xl font-bold">Circle</h1>
           </div>
-          <p className="text-base text-muted-foreground">AI-Powered Development Platform</p>
+          <p className="text-base text-muted-foreground">{t('home.tagline')}</p>
         </div>
 
         {/* Create App Input */}
         <div className="mx-auto max-w-3xl">
           <div className="mb-4 text-center">
-            <h2 className="text-lg font-semibold">从想法到应用，一键生成</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              描述你想要的应用，AI 会帮你自动创建
-            </p>
+            <h2 className="text-lg font-semibold">{t('home.createHeading')}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t('home.createSub')}</p>
           </div>
           <ChatInput
-            placeholder="描述你想要创建的应用，例如：创建一个待办事项管理应用..."
+            placeholder={t('home.createPlaceholder')}
             value={promptValue}
             onChange={setPromptValue}
             onSend={handleCreateApp}
@@ -89,8 +89,8 @@ export function WelcomeView({
                 <Folder className="size-4 text-primary" />
               </div>
               <div className="flex-1 space-y-0.5">
-                <div className="text-xs font-semibold">打开项目</div>
-                <div className="text-[11px] text-muted-foreground">打开本地文件夹</div>
+                <div className="text-xs font-semibold">{t('home.openProject')}</div>
+                <div className="text-[11px] text-muted-foreground">{t('home.openProjectDesc')}</div>
               </div>
             </div>
           </Card>
@@ -104,8 +104,8 @@ export function WelcomeView({
                 <GitBranch className="size-4 text-primary" />
               </div>
               <div className="flex-1 space-y-0.5">
-                <div className="text-xs font-semibold">克隆仓库</div>
-                <div className="text-[11px] text-muted-foreground">从 Git 克隆</div>
+                <div className="text-xs font-semibold">{t('home.cloneRepo')}</div>
+                <div className="text-[11px] text-muted-foreground">{t('home.cloneRepoDesc')}</div>
               </div>
             </div>
           </Card>
@@ -116,8 +116,10 @@ export function WelcomeView({
                 <Terminal className="size-4 text-muted-foreground" />
               </div>
               <div className="flex-1 space-y-0.5">
-                <div className="text-xs font-semibold text-muted-foreground">连接 SSH</div>
-                <div className="text-[11px] text-muted-foreground">远程开发</div>
+                <div className="text-xs font-semibold text-muted-foreground">
+                  {t('home.sshTitle')}
+                </div>
+                <div className="text-[11px] text-muted-foreground">{t('home.sshDesc')}</div>
               </div>
             </div>
           </Card>
@@ -127,9 +129,9 @@ export function WelcomeView({
         {recentProjects.length > 0 && (
           <div className="space-y-3">
             <div className="flex items-center justify-between px-1">
-              <h2 className="text-base font-semibold">最近打开</h2>
+              <h2 className="text-base font-semibold">{t('home.recentTitle')}</h2>
               <span className="text-xs text-muted-foreground">
-                共 {recentProjects.length} 个项目
+                {t('home.recentCount', { count: recentProjects.length })}
               </span>
             </div>
 
@@ -163,7 +165,7 @@ export function WelcomeView({
         {recentProjects.length === 0 && (
           <div className="rounded-lg border border-dashed border-border/50 p-6 text-center">
             <Folder className="mx-auto mb-2 size-10 text-muted-foreground opacity-50" />
-            <p className="text-sm text-muted-foreground">暂无最近项目，打开文件夹开始使用</p>
+            <p className="text-sm text-muted-foreground">{t('home.noRecent')}</p>
           </div>
         )}
       </div>

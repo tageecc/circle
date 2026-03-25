@@ -1,4 +1,5 @@
 import { Menu, BrowserWindow } from 'electron'
+import { t } from './utils/i18n'
 
 let cachedRecent: { path: string; name: string }[] = []
 
@@ -16,18 +17,30 @@ function buildFileSubmenu(): Electron.MenuItemConstructorOptions[] {
           label: p.name.length > 40 ? p.name.slice(0, 37) + '...' : p.name,
           click: () => sendMenuAction('openRecent', p.path)
         }))
-      : [{ label: '无最近项目', enabled: false }]
+      : [{ label: t('menu.file.noRecentProjects'), enabled: false }]
 
   return [
-    { label: '打开...', accelerator: 'CmdOrCtrl+O', click: () => sendMenuAction('openProject') },
-    { label: '打开文件夹...', click: () => sendMenuAction('openProject') },
+    {
+      label: t('menu.file.open'),
+      accelerator: 'CmdOrCtrl+O',
+      click: () => sendMenuAction('openProject')
+    },
+    { label: t('menu.file.openFolder'), click: () => sendMenuAction('openProject') },
     { type: 'separator' },
-    { label: '打开最近', submenu: recentItems },
+    { label: t('menu.file.openRecent'), submenu: recentItems },
     { type: 'separator' },
-    { label: '保存', accelerator: 'CmdOrCtrl+S', click: () => sendMenuAction('saveFile') },
+    {
+      label: t('menu.file.save'),
+      accelerator: 'CmdOrCtrl+S',
+      click: () => sendMenuAction('saveFile')
+    },
     { type: 'separator' },
-    { label: '关闭编辑器', accelerator: 'CmdOrCtrl+W', click: () => sendMenuAction('closeFile') },
-    { label: '关闭文件夹', click: () => sendMenuAction('closeWorkspace') }
+    {
+      label: t('menu.file.closeEditor'),
+      accelerator: 'CmdOrCtrl+W',
+      click: () => sendMenuAction('closeFile')
+    },
+    { label: t('menu.file.closeFolder'), click: () => sendMenuAction('closeWorkspace') }
   ]
 }
 
@@ -49,9 +62,9 @@ export function setupNativeMenu(): void {
         { role: 'quit' as const }
       ]
     },
-    { label: '文件', submenu: buildFileSubmenu() },
+    { label: t('menu.file.label'), submenu: buildFileSubmenu() },
     {
-      label: '编辑',
+      label: t('menu.edit.label'),
       submenu: [
         { role: 'undo' as const },
         { role: 'redo' as const },
@@ -62,7 +75,7 @@ export function setupNativeMenu(): void {
       ]
     },
     {
-      label: '视图',
+      label: t('menu.view.label'),
       submenu: [
         { role: 'reload' as const },
         { role: 'forceReload' as const },
@@ -76,9 +89,9 @@ export function setupNativeMenu(): void {
       ]
     },
     {
-      label: '帮助',
+      label: t('menu.help.label'),
       submenu: [
-        { label: '调试配置', click: () => sendMenuAction('debugConfig') },
+        { label: t('menu.help.debugConfig'), click: () => sendMenuAction('debugConfig') },
         { type: 'separator' },
         { role: 'about' as const }
       ]

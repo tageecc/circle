@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
 import { Input } from '../ui/input'
 import { Button } from '../ui/button'
@@ -16,6 +17,7 @@ import { CreateCustomToolDialog } from './CreateCustomToolDialog'
 import { DeleteMCPServerDialog } from './DeleteMCPServerDialog'
 
 export function ToolsView() {
+  const { t } = useTranslation('tools')
   const [activeTab, setActiveTab] = useState('mcp')
   const [searchQuery, setSearchQuery] = useState('')
   const [tools, setTools] = useState<Tool[]>([])
@@ -33,21 +35,22 @@ export function ToolsView() {
 
   // Custom Tool 相关
   const [createCustomToolOpen, setCreateCustomToolOpen] = useState(false)
-  const defaultFormData = {
-    name: '',
-    description: '',
-    category: 'Utility',
-    parameters: `{
+  const defaultFormData = useMemo(
+    () => ({
+      name: '',
+      description: '',
+      category: 'Utility',
+      parameters: `{
   "type": "object",
   "properties": {
     "input": {
       "type": "string",
-      "description": "输入内容"
+      "description": "${t('customTool.sampleParamDescription')}"
     }
   },
   "required": ["input"]
 }`,
-    code: `// 参数通过 params 对象传入
+      code: `// 参数通过 params 对象传入
 const { input } = params
 
 // 执行你的逻辑
@@ -55,7 +58,9 @@ const result = input.toUpperCase()
 
 // 返回结果
 return result`
-  }
+    }),
+    [t]
+  )
   const [customToolFormData, setCustomToolFormData] = useState(defaultFormData)
 
   // Tool 详情
@@ -87,7 +92,7 @@ return result`
     } catch (error) {
       console.error('Failed to load data:', error)
       if (!silent) {
-        toast.error('加载失败')
+        toast.error(t('toast.loadFailed'))
       }
     } finally {
       if (!silent) setLoading(false)
@@ -98,7 +103,7 @@ return result`
   const handleCreateMCPServer = async () => {
     try {
       if (!mcpFormData.name.trim()) {
-        toast.error('请输入 MCP Server 名称')
+        toast.error(t('toast.enterMcpName'))
         return
       }
 
@@ -107,12 +112,12 @@ return result`
         const parsed = JSON.parse(mcpFormData.config)
         const firstKey = Object.keys(parsed.mcpServers || {})[0]
         if (!firstKey) {
-          toast.error('JSON 格式错误：缺少 mcpServers 配置')
+          toast.error(t('toast.jsonMissingMcpServers'))
           return
         }
         configJson = parsed.mcpServers[firstKey]
       } catch {
-        toast.error('JSON 格式错误')
+        toast.error(t('toast.jsonInvalid'))
         return
       }
 
@@ -124,7 +129,7 @@ return result`
         config: configJson
       })
 
-      toast.success('MCP Server 创建成功')
+      toast.success(t('toast.mcpCreateSuccess'))
       setCreateMCPDialogOpen(false)
       setMCPFormData({ name: '', description: '', config: '' })
 
@@ -142,7 +147,7 @@ return result`
             await loadData()
           } catch (error) {
             console.error('Failed to import tools:', error)
-            toast.error('自动导入工具失败')
+            toast.error(t('toast.importToolsFailed'))
           }
         } else if (retries < maxRetries) {
           retries++
@@ -155,7 +160,7 @@ return result`
       setTimeout(checkAndImport, 500)
     } catch (error: any) {
       console.error('Failed to create MCP server:', error)
-      toast.error(error.message || '创建失败')
+      toast.error(error.message || t('toast.createFailed'))
     }
   }
 
@@ -164,12 +169,12 @@ return result`
 
     try {
       await window.api.mcp.delete(mcpServerToDelete.id)
-      toast.success('MCP Server 已删除')
+      toast.success(t('toast.mcpDeleted'))
       setMCPServerToDelete(null)
       loadData()
     } catch (error) {
       console.error('Failed to delete MCP server:', error)
-      toast.error('删除失败')
+      toast.error(t('toast.deleteFailed'))
     }
   }
 
@@ -177,12 +182,12 @@ return result`
   const handleCreateCustomTool = async () => {
     try {
       if (!customToolFormData.name.trim()) {
-        toast.error('请输入工具名称')
+        toast.error(t('toast.enterToolName'))
         return
       }
 
       if (!customToolFormData.code.trim()) {
-        toast.error('请输入工具代码')
+        toast.error(t('toast.enterToolCode'))
         return
       }
 
@@ -190,7 +195,7 @@ return result`
       try {
         parameters = JSON.parse(customToolFormData.parameters)
       } catch {
-        toast.error('参数定义 JSON 格式错误')
+        toast.error(t('toast.parametersJsonInvalid'))
         return
       }
 
@@ -202,24 +207,24 @@ return result`
         code: customToolFormData.code
       })
 
-      toast.success('自定义工具创建成功')
+      toast.success(t('toast.customToolCreateSuccess'))
       setCreateCustomToolOpen(false)
       setCustomToolFormData(defaultFormData)
       loadData()
     } catch (error: any) {
       console.error('Failed to create custom tool:', error)
-      toast.error(error.message || '创建失败')
+      toast.error(error.message || t('toast.createFailed'))
     }
   }
 
   const handleDeleteTool = async (toolId: string) => {
     try {
       await window.api.tools.delete(toolId)
-      toast.success('工具已删除')
+      toast.success(t('toast.toolDeleted'))
       loadData()
     } catch (error) {
       console.error('Failed to delete tool:', error)
-      toast.error('删除失败')
+      toast.error(t('toast.deleteFailed'))
     }
   }
 
@@ -248,7 +253,7 @@ return result`
       <div className="flex h-full items-center justify-center">
         <div className="text-center">
           <div className="animate-spin size-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-sm text-muted-foreground">加载中...</p>
+          <p className="text-sm text-muted-foreground">{t('view.loading')}</p>
         </div>
       </div>
     )
@@ -260,10 +265,8 @@ return result`
       <div className="border-b border-border/30 bg-card px-6 py-5 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">MCP & Tools</h1>
-            <p className="text-sm text-muted-foreground mt-1.5">
-              管理所有工具：MCP、自定义和内置工具
-            </p>
+            <h1 className="text-2xl font-bold tracking-tight">{t('view.pageTitle')}</h1>
+            <p className="text-sm text-muted-foreground mt-1.5">{t('view.pageSubtitle')}</p>
           </div>
         </div>
 
@@ -271,7 +274,7 @@ return result`
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input
-            placeholder="搜索工具名称、描述或服务器..."
+            placeholder={t('view.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 h-10"
@@ -288,11 +291,13 @@ return result`
           <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger value="mcp" className="gap-2">
               <Server className="size-4" />
-              MCP Server ({mcpServers.length})
+              {t('view.tabMcp', { count: mcpServers.length })}
             </TabsTrigger>
             <TabsTrigger value="custom" className="gap-2">
               <Code className="size-4" />
-              自定义工具 ({tools.filter((t) => t.source === 'custom').length})
+              {t('view.tabCustom', {
+                count: tools.filter((tool) => tool.source === 'custom').length
+              })}
             </TabsTrigger>
           </TabsList>
 
@@ -302,12 +307,14 @@ return result`
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-lg">MCP Servers</CardTitle>
-                    <CardDescription className="mt-1">管理外部 MCP Server 连接</CardDescription>
+                    <CardTitle className="text-lg">{t('view.mcpServersTitle')}</CardTitle>
+                    <CardDescription className="mt-1">
+                      {t('view.mcpServersDescription')}
+                    </CardDescription>
                   </div>
                   <Button onClick={() => setCreateMCPDialogOpen(true)} className="gap-2">
                     <Plus className="size-4" />
-                    添加 MCP Server
+                    {t('view.addMcpServer')}
                   </Button>
                 </div>
               </CardHeader>
@@ -315,8 +322,8 @@ return result`
                 {mcpServers.length === 0 ? (
                   <EmptyState
                     icon={Server}
-                    title="暂无 MCP Server"
-                    description="添加 MCP Server 以导入工具"
+                    title={t('view.emptyMcpTitle')}
+                    description={t('view.emptyMcpDescription')}
                   />
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -340,12 +347,14 @@ return result`
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-lg">自定义工具</CardTitle>
-                    <CardDescription className="mt-1">创建和管理自定义工具</CardDescription>
+                    <CardTitle className="text-lg">{t('view.customToolsTitle')}</CardTitle>
+                    <CardDescription className="mt-1">
+                      {t('view.customToolsDescription')}
+                    </CardDescription>
                   </div>
                   <Button onClick={() => setCreateCustomToolOpen(true)} className="gap-2">
                     <Plus className="size-4" />
-                    新建自定义工具
+                    {t('view.newCustomTool')}
                   </Button>
                 </div>
               </CardHeader>
@@ -353,8 +362,8 @@ return result`
                 {filteredTools.length === 0 ? (
                   <EmptyState
                     icon={Code}
-                    title="暂无自定义工具"
-                    description="创建自定义工具以扩展 Agent 能力"
+                    title={t('view.emptyCustomTitle')}
+                    description={t('view.emptyCustomDescription')}
                   />
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

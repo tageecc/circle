@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
@@ -11,15 +12,17 @@ interface ToolCardProps {
 }
 
 export function ToolCard({ tool, onViewDetails, onDelete }: ToolCardProps) {
+  const { t } = useTranslation('tools')
+
   const sourceIcon = {
     mcp: <Server className="size-4 text-blue-500" />,
     custom: <Code className="size-4 text-purple-500" />
   }[tool.source]
 
-  const sourceLabel = {
-    mcp: `MCP - ${tool.mcpServerName}`,
-    custom: '自定义工具'
-  }[tool.source]
+  const sourceLabel =
+    tool.source === 'mcp'
+      ? t('toolCard.sourceMcp', { name: tool.mcpServerName ?? '' })
+      : t('toolCard.customTool')
 
   return (
     <Card className="border-border/30 shadow-sm hover:shadow-md hover:border-primary/40 transition-all">
@@ -42,7 +45,7 @@ export function ToolCard({ tool, onViewDetails, onDelete }: ToolCardProps) {
             </Badge>
             {tool.usageStats.totalCalls > 0 && (
               <Badge variant="secondary" className="h-5 text-xs">
-                {tool.usageStats.totalCalls} 次
+                {t('toolCard.callCount', { count: tool.usageStats.totalCalls })}
               </Badge>
             )}
           </div>

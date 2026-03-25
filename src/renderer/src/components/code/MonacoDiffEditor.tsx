@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { DiffEditor } from '@monaco-editor/react'
 import type { Monaco } from '@monaco-editor/react'
 import type { editor } from 'monaco-editor'
@@ -34,6 +35,7 @@ export function MonacoDiffEditor({
   onCurrentDiffChange,
   onMount
 }: MonacoDiffEditorProps) {
+  const { t } = useTranslation('editor')
   const { editorSettings } = useSettings()
 
   const [currentValue, setCurrentValue] = useState(value)
@@ -87,8 +89,13 @@ export function MonacoDiffEditor({
 
   // 工具栏配置
   const toolbarConfig = useMemo(() => {
-    return { ...defaultToolbarConfig, ...toolbar }
-  }, [toolbar])
+    const merged = { ...defaultToolbarConfig, ...toolbar }
+    return {
+      ...merged,
+      acceptLabel: toolbar.acceptLabel ?? t('diff.accept'),
+      rejectLabel: toolbar.rejectLabel ?? t('diff.reject')
+    }
+  }, [toolbar, t])
 
   // Diff 编辑器选项
   const diffEditorOptions = useMemo(
@@ -375,9 +382,9 @@ export function MonacoDiffEditor({
         }
       }, 150)
     } catch (error) {
-      console.error('接受 diff 失败:', error)
+      console.error(t('diff.acceptFailed'), error)
     }
-  }, [wholeFileAcceptReject, toolbarPosition, currentDiffIndex, onAccept, scrollToDiff])
+  }, [wholeFileAcceptReject, toolbarPosition, currentDiffIndex, onAccept, scrollToDiff, t])
 
   // 拒绝当前 diff：更新 modified model 使其与 original 一致（或整文件模式仅回调）
   const handleReject = useCallback(() => {
@@ -490,10 +497,10 @@ export function MonacoDiffEditor({
         }
       }, 150)
     } catch (error) {
-      console.error('拒绝 diff 失败:', error)
+      console.error(t('diff.rejectFailed'), error)
       isProgrammaticChangeRef.current = false
     }
-  }, [wholeFileAcceptReject, toolbarPosition, currentDiffIndex, onReject, scrollToDiff])
+  }, [wholeFileAcceptReject, toolbarPosition, currentDiffIndex, onReject, scrollToDiff, t])
 
   return (
     <div className="w-full h-full relative">
@@ -544,7 +551,7 @@ export function MonacoDiffEditor({
                 className="h-6 w-6"
                 onClick={handlePrevDiff}
                 disabled={currentDiffIndex === 0}
-                title="上一个更改"
+                title={t('diff.prevChange')}
               >
                 <ChevronUp className="size-3.5" />
               </Button>
@@ -557,7 +564,7 @@ export function MonacoDiffEditor({
                 className="h-6 w-6"
                 onClick={handleNextDiff}
                 disabled={currentDiffIndex === diffActions.length - 1}
-                title="下一个更改"
+                title={t('diff.nextChange')}
               >
                 <ChevronDown className="size-3.5" />
               </Button>
@@ -577,7 +584,7 @@ export function MonacoDiffEditor({
               size="sm"
               className="h-7 text-xs gap-1.5"
               onClick={handleReject}
-              title="撤销当前更改"
+              title={t('diff.rejectCurrent')}
             >
               <X className="size-3.5" />
               <span>{toolbarConfig.rejectLabel}</span>
@@ -591,7 +598,7 @@ export function MonacoDiffEditor({
               size="sm"
               className="h-7 text-xs gap-1.5 bg-green-500/10 border-green-500/30 text-green-600 hover:bg-green-500/20 hover:border-green-500/50 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
               onClick={handleAccept}
-              title="接受当前更改"
+              title={t('diff.acceptCurrent')}
             >
               <Check className="size-3.5" />
               <span>{toolbarConfig.acceptLabel}</span>

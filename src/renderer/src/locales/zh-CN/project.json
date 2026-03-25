@@ -1,0 +1,49 @@
+{
+  "title": "项目",
+  "open": "打开项目",
+  "openFolder": "打开文件夹",
+  "newProject": "新建项目",
+  "cloneRepo": "克隆仓库",
+  "recent": "最近打开",
+  "noRecent": "暂无最近项目",
+  "removeFromRecent": "从最近列表移除",
+  "clone": {
+    "title": "克隆 Git 仓库",
+    "url": "仓库 URL",
+    "urlPlaceholder": "https://github.com/user/repo.git",
+    "targetFolder": "目标文件夹",
+    "selectFolder": "选择文件夹",
+    "cloning": "克隆中...",
+    "success": "克隆成功",
+    "failed": "克隆失败",
+    "invalidUrl": "请输入有效的仓库 URL"
+  },
+  "aiCreate": {
+    "title": "AI 辅助创建项目",
+    "description": "描述你想创建的项目",
+    "descriptionPlaceholder": "例如：一个 React + TypeScript 的 Todo 应用",
+    "creating": "创建中...",
+    "success": "项目创建成功",
+    "failed": "项目创建失败"
+  },
+  "aiWizard": {
+    "title": "AI 自动创建项目",
+    "yourRequest": "您的需求",
+    "intro": "AI 将帮助您创建项目。首先，请选择一个文件夹来存放您的新项目。",
+    "tipTitle": "提示",
+    "tipBody": "建议选择一个空文件夹或创建新文件夹。AI 会在选定的文件夹中创建项目结构和文件。",
+    "selectFolder": "选择文件夹",
+    "creatingTitle": "正在创建项目...",
+    "successTitle": "项目创建成功！",
+    "openLater": "稍后打开",
+    "openProject": "打开项目",
+    "failedTitle": "创建失败",
+    "close": "关闭",
+    "retry": "重试",
+    "streamStart": "🚀 开始创建项目...\n\n",
+    "streamDone": "\n\n✅ 项目创建完成！",
+    "streamErrorPrefix": "\n\n❌ 错误：",
+    "errorCreate": "创建项目时发生错误",
+    "errorSelectFolder": "选择文件夹时发生错误"
+  }
+}

@@ -22,6 +22,7 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useTranslation } from 'react-i18next'
 
 interface Tool {
   id: string
@@ -63,6 +64,8 @@ export function AgentToolsConfig({
   selectedTools,
   onToolsChange
 }: AgentToolsConfigProps) {
+  const { t, i18n } = useTranslation('agent')
+  const { t: tc } = useTranslation('common')
   const [allTools, setAllTools] = useState<Tool[]>([])
   const [mcpServers, setMCPServers] = useState<MCPServer[]>([])
   const [topTools, setTopTools] = useState<Tool[]>([])
@@ -209,7 +212,7 @@ export function AgentToolsConfig({
         <CardContent className="flex items-center justify-center py-12">
           <div className="text-center">
             <div className="animate-spin size-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-            <p className="text-sm text-muted-foreground">加载工具列表...</p>
+            <p className="text-sm text-muted-foreground">{t('tools.loading')}</p>
           </div>
         </CardContent>
       </Card>
@@ -229,17 +232,16 @@ export function AgentToolsConfig({
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-medium text-muted-foreground">工具配置</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">{t('tools.configTitle')}</h3>
             <p className="text-xs text-muted-foreground mt-1">
-              已选择 <span className="font-medium text-foreground">{selectedTools.length}</span>{' '}
-              个工具
+              {t('tools.selectedCount', { count: selectedTools.length })}
             </p>
           </div>
 
           {editing && topTools.length > 0 && (
             <Button variant="outline" size="sm" onClick={() => setShowTopTools(true)}>
               <TrendingUp className="size-4 mr-2" />
-              快选常用
+              {t('tools.quickPick')}
             </Button>
           )}
         </div>
@@ -249,7 +251,7 @@ export function AgentToolsConfig({
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
-              placeholder="搜索工具..."
+              placeholder={t('tools.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 h-9"
@@ -263,16 +265,18 @@ export function AgentToolsConfig({
             <div className="flex flex-col items-center justify-center py-12 text-center rounded-lg border border-dashed">
               <Server className="size-10 text-muted-foreground/50 mb-3" />
               <p className="text-sm font-medium text-muted-foreground">
-                {searchQuery ? '没有匹配的工具' : '暂无可用工具'}
+                {searchQuery ? t('tools.noMatch') : t('tools.noTools')}
               </p>
               {!searchQuery && (
-                <p className="text-xs text-muted-foreground mt-1">前往 MCP & Tools 页面添加工具</p>
+                <p className="text-xs text-muted-foreground mt-1">{t('tools.gotoMcp')}</p>
               )}
             </div>
           ) : (
             Object.entries(filteredToolsByServer).map(([serverId, group]) => {
               const isCustom = serverId === 'custom'
-              const serverName = isCustom ? '自定义工具' : group.server?.name || 'Unknown Server'
+              const serverName = isCustom
+                ? t('tools.customTools')
+                : group.server?.name || t('tools.unknownServer')
 
               const serverStatus = group.server?.status
               const isConnected = serverStatus === 'connected'
@@ -340,7 +344,10 @@ export function AgentToolsConfig({
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        {selectedCount} / {serverToolNames.length} 已选
+                        {t('tools.selectedFraction', {
+                          selected: selectedCount,
+                          total: serverToolNames.length
+                        })}
                       </p>
                     </div>
 
@@ -356,7 +363,7 @@ export function AgentToolsConfig({
                           handleToggleServer(serverId)
                         }}
                       >
-                        {isAllSelected ? '取消全选' : '全选'}
+                        {isAllSelected ? t('tools.deselectAll') : t('tools.selectAll')}
                       </Button>
                     )}
                   </div>
@@ -421,16 +428,22 @@ export function AgentToolsConfig({
                                     <div className="space-y-1 text-xs">
                                       <p className="flex items-center">
                                         <CheckCircle2 className="size-3 mr-1.5 text-green-500" />
-                                        成功: {tool.usageStats.successCalls}
+                                        {t('tools.statSuccess', {
+                                          count: tool.usageStats.successCalls
+                                        })}
                                       </p>
                                       <p className="flex items-center">
                                         <XCircle className="size-3 mr-1.5 text-red-500" />
-                                        失败: {tool.usageStats.failedCalls}
+                                        {t('tools.statFailed', {
+                                          count: tool.usageStats.failedCalls
+                                        })}
                                       </p>
                                       {tool.usageStats.avgExecutionTime > 0 && (
                                         <p className="flex items-center">
                                           <Clock className="size-3 mr-1.5 text-blue-500" />
-                                          平均: {tool.usageStats.avgExecutionTime}ms
+                                          {t('tools.statAvg', {
+                                            ms: tool.usageStats.avgExecutionTime
+                                          })}
                                         </p>
                                       )}
                                     </div>
@@ -469,7 +482,7 @@ export function AgentToolsConfig({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <TrendingUp className="size-5" />
-              Top 10 常用工具
+              {t('tools.top10Title')}
             </DialogTitle>
           </DialogHeader>
 
@@ -486,7 +499,9 @@ export function AgentToolsConfig({
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <span className="font-medium font-mono">{tool.name}</span>
-                    <Badge variant="secondary">{tool.usageStats.totalCalls} 次调用</Badge>
+                    <Badge variant="secondary">
+                      {t('tools.callsCount', { count: tool.usageStats.totalCalls })}
+                    </Badge>
                   </div>
                   {tool.description && (
                     <p className="text-xs text-muted-foreground mt-1">{tool.description}</p>
@@ -498,11 +513,11 @@ export function AgentToolsConfig({
 
           <div className="flex justify-end gap-2 pt-4 border-t">
             <Button variant="outline" onClick={() => setShowTopTools(false)}>
-              取消
+              {tc('button.cancel')}
             </Button>
             <Button onClick={handleAddTopTools}>
               <Plus className="size-4 mr-2" />
-              添加到 Agent
+              {t('tools.addToAgent')}
             </Button>
           </div>
         </DialogContent>
@@ -514,7 +529,7 @@ export function AgentToolsConfig({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Info className="size-5" />
-              工具详情
+              {t('tools.detailTitle')}
             </DialogTitle>
           </DialogHeader>
 
@@ -522,23 +537,28 @@ export function AgentToolsConfig({
             <div className="space-y-4">
               {/* 基本信息 */}
               <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">基本信息</h3>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">
+                  {t('tools.sectionBasic')}
+                </h3>
                 <div className="space-y-2">
                   <div className="flex items-start gap-2">
-                    <span className="text-sm font-medium min-w-20">名称:</span>
+                    <span className="text-sm font-medium min-w-20">{t('tools.fieldName')}</span>
                     <span className="text-sm font-mono">{selectedTool.name}</span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <span className="text-sm font-medium min-w-20">描述:</span>
+                    <span className="text-sm font-medium min-w-20">
+                      {t('tools.fieldDescription')}
+                    </span>
                     <span className="text-sm text-muted-foreground">
-                      {selectedTool.description || '无描述'}
+                      {selectedTool.description || t('tools.noDescription')}
                     </span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <span className="text-sm font-medium min-w-20">来源:</span>
+                    <span className="text-sm font-medium min-w-20">{t('tools.fieldSource')}</span>
                     <Badge variant="outline">
-                      {selectedTool.source === 'mcp' && `MCP - ${selectedTool.mcpServerName}`}
-                      {selectedTool.source === 'custom' && '自定义工具'}
+                      {selectedTool.source === 'mcp' &&
+                        t('tools.sourceMcp', { server: selectedTool.mcpServerName ?? '' })}
+                      {selectedTool.source === 'custom' && t('tools.sourceCustom')}
                     </Badge>
                   </div>
                 </div>
@@ -546,35 +566,43 @@ export function AgentToolsConfig({
 
               {/* 使用统计 */}
               <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">使用统计</h3>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">
+                  {t('tools.sectionStats')}
+                </h3>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-lg border border-border p-3">
                     <div className="text-2xl font-bold">{selectedTool.usageStats.totalCalls}</div>
-                    <div className="text-xs text-muted-foreground">总调用次数</div>
+                    <div className="text-xs text-muted-foreground">{t('tools.totalCalls')}</div>
                   </div>
                   <div className="rounded-lg border border-border p-3">
                     <div className="text-2xl font-bold text-green-500">
                       {selectedTool.usageStats.successCalls}
                     </div>
-                    <div className="text-xs text-muted-foreground">成功次数</div>
+                    <div className="text-xs text-muted-foreground">{t('tools.successCalls')}</div>
                   </div>
                   <div className="rounded-lg border border-border p-3">
                     <div className="text-2xl font-bold text-red-500">
                       {selectedTool.usageStats.failedCalls}
                     </div>
-                    <div className="text-xs text-muted-foreground">失败次数</div>
+                    <div className="text-xs text-muted-foreground">{t('tools.failedCalls')}</div>
                   </div>
                   <div className="rounded-lg border border-border p-3">
                     <div className="text-2xl font-bold">
                       {selectedTool.usageStats.avgExecutionTime}ms
                     </div>
-                    <div className="text-xs text-muted-foreground">平均执行时间</div>
+                    <div className="text-xs text-muted-foreground">
+                      {t('tools.avgExecutionTime')}
+                    </div>
                   </div>
                 </div>
 
                 {selectedTool.usageStats.lastUsedAt && (
                   <div className="mt-2 text-xs text-muted-foreground">
-                    最后使用: {new Date(selectedTool.usageStats.lastUsedAt).toLocaleString('zh-CN')}
+                    {t('tools.lastUsed', {
+                      time: new Date(selectedTool.usageStats.lastUsedAt).toLocaleString(
+                        i18n.language === 'zh-CN' ? 'zh-CN' : undefined
+                      )
+                    })}
                   </div>
                 )}
               </div>
@@ -582,7 +610,9 @@ export function AgentToolsConfig({
               {/* 参数定义 */}
               {selectedTool.parameters && (
                 <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-2">参数定义</h3>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-2">
+                    {t('tools.sectionParams')}
+                  </h3>
                   <pre className="rounded-lg bg-muted p-3 text-xs overflow-x-auto">
                     {JSON.stringify(selectedTool.parameters, null, 2)}
                   </pre>

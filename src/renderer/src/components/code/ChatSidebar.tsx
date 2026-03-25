@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
 import {
@@ -72,6 +73,7 @@ export function ChatSidebar({
   onOpenFile,
   onSessionFilesRestored
 }: ChatSidebarProps) {
+  const { t } = useTranslation('chat')
   const [sessions, setSessions] = useState<Session[]>([])
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
   const [defaultAgent, setDefaultAgent] = useState<DefaultAgent | null>(null)
@@ -113,7 +115,7 @@ export function ChatSidebar({
   const createDefaultSession = (agentId: string) => {
     const defaultSession: Session = {
       id: `session-${Date.now()}`,
-      title: '新对话',
+      title: t('session.new'),
       agentId,
       messages: [],
       fileChanges: [],
@@ -127,12 +129,12 @@ export function ChatSidebar({
 
   const handleNewSession = () => {
     if (!defaultAgent) {
-      toast.error('请稍候，正在加载默认模型…')
+      toast.error(t('toast.waitLoadingDefaultModel'))
       return
     }
     const newSession: Session = {
       id: `session-${Date.now()}`,
-      title: '新对话',
+      title: t('session.new'),
       agentId: defaultAgent.id,
       messages: [],
       fileChanges: [],
@@ -176,8 +178,8 @@ export function ChatSidebar({
   const handleKeepAll = async () => {
     if (!currentSession || currentSession.fileChanges.length === 0) return
 
-    toast.success('所有文件修改已应用', {
-      description: `已修改 ${currentSession.fileChanges.length} 个文件`
+    toast.success(t('toast.keepAllApplied'), {
+      description: t('toast.filesModifiedCount', { count: currentSession.fileChanges.length })
     })
 
     // 清空文件修改列表
@@ -190,7 +192,7 @@ export function ChatSidebar({
   const handleUndoAll = async () => {
     if (!currentSession || currentSession.fileChanges.length === 0) return
     if (!workspaceRoot) {
-      toast.error('未打开工作区', { description: '无法定位要恢复的文件路径' })
+      toast.error(t('toast.noWorkspace'), { description: t('toast.cannotResolvePaths') })
       return
     }
 
@@ -658,7 +660,7 @@ export function ChatSidebar({
             size="icon"
             className="size-8 hover:bg-sidebar-accent"
             onClick={handleNewSession}
-            title="新建对话"
+            title={t('header.newChat')}
           >
             <Plus className="size-4" />
           </Button>
@@ -670,14 +672,16 @@ export function ChatSidebar({
                 variant="ghost"
                 size="icon"
                 className="size-8 hover:bg-sidebar-accent"
-                title="历史会话"
+                title={t('header.sessionHistory')}
               >
                 <Clock className="size-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[280px]">
               {sessions.length === 0 ? (
-                <div className="p-3 text-center text-xs text-muted-foreground">暂无历史会话</div>
+                <div className="p-3 text-center text-xs text-muted-foreground">
+                  {t('session.emptyHistory')}
+                </div>
               ) : (
                 sessions.map((session) => (
                   <DropdownMenuItem
@@ -704,7 +708,7 @@ export function ChatSidebar({
             variant="ghost"
             size="icon"
             className="size-8 hover:bg-sidebar-accent"
-            title="更多"
+            title={t('header.more')}
             disabled
           >
             <MoreHorizontal className="size-4" />
@@ -731,9 +735,11 @@ export function ChatSidebar({
 
                   {/* 主标题 */}
                   <div className="space-y-2">
-                    <h3 className="text-base font-semibold text-foreground">开始与 AI 对话</h3>
+                    <h3 className="text-base font-semibold text-foreground">
+                      {t('welcome.title')}
+                    </h3>
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      输入你的问题或想法，AI 助手将为你提供帮助
+                      {t('welcome.subtitle')}
                     </p>
                   </div>
 
@@ -741,15 +747,15 @@ export function ChatSidebar({
                   <div className="space-y-2 pt-2">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground/80">
                       <div className="size-1.5 rounded-full bg-primary/60" />
-                      <span>智能代码分析</span>
+                      <span>{t('welcome.features.codeAnalysis')}</span>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground/80">
                       <div className="size-1.5 rounded-full bg-primary/60" />
-                      <span>问题解答</span>
+                      <span>{t('welcome.features.problemSolving')}</span>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground/80">
                       <div className="size-1.5 rounded-full bg-primary/60" />
-                      <span>代码生成</span>
+                      <span>{t('welcome.features.codeGeneration')}</span>
                     </div>
                   </div>
                 </div>
@@ -796,7 +802,9 @@ export function ChatSidebar({
                           <div key={blockIndex} className="animate-in fade-in duration-200">
                             {block.type === 'reasoning' && (
                               <Reasoning isStreaming={block.isStreaming}>
-                                <ReasoningTrigger className="text-xs">思考过程</ReasoningTrigger>
+                                <ReasoningTrigger className="text-xs">
+                                  {t('reasoning.title')}
+                                </ReasoningTrigger>
                                 <ReasoningContent
                                   markdown
                                   contentClassName="my-1 text-xs text-muted-foreground/80 prose-p:text-muted-foreground/80 prose-li:text-muted-foreground/80 prose-p:text-xs prose-pre:text-xs prose-code:text-xs leading-relaxed"
@@ -851,17 +859,20 @@ export function ChatSidebar({
 
                 {/* 主标题 */}
                 <div className="space-y-2">
-                  <h3 className="text-base font-semibold text-foreground">创建新对话</h3>
+                  <h3 className="text-base font-semibold text-foreground">
+                    {t('empty.createNewTitle')}
+                  </h3>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    点击右上角的 <span className="font-medium text-foreground">+</span>{' '}
-                    按钮开始一个新的对话
+                    {t('empty.createNewHintBefore')}
+                    <span className="font-medium text-foreground">+</span>
+                    {t('empty.createNewHintAfter')}
                   </p>
                 </div>
 
                 {/* 提示 */}
                 <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground/60">
                   <Clock className="size-3.5" />
-                  <span>或从历史记录中选择</span>
+                  <span>{t('empty.orPickFromHistory')}</span>
                 </div>
               </div>
             </div>
@@ -882,7 +893,9 @@ export function ChatSidebar({
         )}
 
         <ChatInput
-          placeholder={currentSession ? 'Ask, Search or Chat...' : '请先创建对话'}
+          placeholder={
+            currentSession ? t('input.placeholderAsk') : t('input.placeholderNeedSession')
+          }
           value={inputValue}
           onChange={setInputValue}
           onSend={handleSendMessage}
@@ -928,11 +941,12 @@ function PlanningIndicator({ message }: { message: Message }) {
 }
 
 function PlanningIndicatorView() {
+  const { t } = useTranslation('chat')
   return (
     <div className="flex items-center gap-2 px-1 py-2 animate-in fade-in duration-300">
       <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
         <Loader2 className="size-3 animate-spin opacity-60" />
-        <span className="animate-shimmer font-medium">Planning next moves...</span>
+        <span className="animate-shimmer font-medium">{t('planning.nextMoves')}</span>
       </div>
     </div>
   )
