@@ -14,22 +14,21 @@ Circle 使用 **sqlite-vec** 扩展实现可选的语义代码搜索。
 
 ### 1. 启用向量搜索
 
-在 **设置 → 通用 → 代码搜索** 中：
-1. 开启"向量语义搜索"开关
-2. 选择 Embedding Provider：
-   - `OpenAI Small` (推荐)：1536 维，成本低速度快
-   - `OpenAI Large`：3072 维，更精确
-   - `Voyage AI Code`：1536 维，代码优化
-   - `Qwen Embedding`：1024 维，中文友好
+在 **设置 → AI 配置** 中：
+1. 配置对应 Provider 的 API Key：
+   - OpenAI：需 OpenAI API key
+   - Voyage AI：需 Voyage AI key
+   - Qwen：需 Alibaba DashScope key
 
-### 2. 配置 API Key
+2. 在"向量语义搜索"部分：
+   - 开启"启用向量搜索"开关
+   - 选择 Embedding Provider：
+     - `OpenAI Small` (推荐)：1536 维，成本低速度快
+     - `OpenAI Large`：3072 维，更精确
+     - `Voyage AI Code`：1536 维，代码优化
+     - `Qwen Embedding`：1024 维，中文友好
 
-在 **设置 → API Keys** 中配置对应的 key：
-- OpenAI：需 OpenAI API key
-- Voyage AI：需 Voyage AI key
-- Qwen：需 Alibaba DashScope key
-
-### 3. 索引项目（首次或代码变更后）
+### 2. 索引项目（首次或代码变更后）
 
 点击状态栏的 **"索引项目"** 按钮，或使用命令面板 `⌘K` → "Index Project"
 
@@ -44,7 +43,7 @@ Circle 使用 **sqlite-vec** 扩展实现可选的语义代码搜索。
 - 中型项目（5-10万行）：5-10 分钟
 - 大型项目（50万行+）：30+ 分钟
 
-### 4. 使用语义搜索
+### 3. 使用语义搜索
 
 在 AI 对话中，助手会自动使用 `codebase_search` 工具：
 
@@ -137,7 +136,7 @@ filter: score >= 0.5  // 默认阈值
 - 检查 API Key 是否配置正确
 - 尝试更换 embedding 模型（`openai-large` 更精确）
 - 降低相似度阈值（代码中 `minScore` 参数）
-- 查看是否降级到文本搜索（日志会提示）
+- 查看向量搜索是否已启用（控制台日志会显示模式）
 
 ### Q: 成本如何？
 **A**:
@@ -147,9 +146,9 @@ filter: score >= 0.5  // 默认阈值
 
 ### Q: 能离线使用吗？
 **A**:
-- 当前版本需要 embedding API（在线）
-- 未来可集成本地模型（Ollama/ONNX）
-- 已生成的向量支持离线搜索
+- 索引时需要 embedding API（在线）
+- 已索引的项目支持离线向量搜索
+- 关闭向量搜索后可使用离线文本 LIKE 搜索
 
 ### Q: 和 grep 的区别？
 **A**:

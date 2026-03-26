@@ -105,16 +105,11 @@ export class EmbeddingService {
     return provider
   }
 
-  async generateEmbedding(text: string): Promise<Float32Array | null> {
-    try {
-      return await this.callProvider(this.getProvider(), text)
-    } catch (error) {
-      console.error('[Embedding] Failed:', error)
-      return null
-    }
+  async generateEmbedding(text: string): Promise<Float32Array> {
+    return await this.callProvider(this.getProvider(), text)
   }
 
-  async generateEmbeddings(texts: string[]): Promise<(Float32Array | null)[]> {
+  async generateEmbeddings(texts: string[]): Promise<Float32Array[]> {
     const provider = this.getProvider()
     const BATCH_SIZE = 50
     const results: Float32Array[] = []

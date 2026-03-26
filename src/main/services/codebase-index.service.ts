@@ -400,16 +400,9 @@ export class CodebaseIndexService {
         const chunks = this.chunkText(content)
 
         // Generate embeddings if vector search is enabled
-        let embeddings: (Float32Array | null)[] = []
+        let embeddings: Float32Array[] = []
         if (this.embeddingService.isEnabled()) {
           embeddings = await this.embeddingService.generateEmbeddings(chunks)
-
-          const failedCount = embeddings.filter((e) => e === null).length
-          if (failedCount > 0) {
-            throw new Error(
-              `Failed to generate embeddings for ${meta.relativePath}: ${failedCount}/${chunks.length} chunks failed`
-            )
-          }
         }
 
         for (let i = 0; i < chunks.length; i++) {
@@ -458,7 +451,10 @@ export class CodebaseIndexService {
 
         processed++
         const progress = 10 + Math.floor((processed / total) * 80)
-        onProgress?.(progress, 100, `索引文件 (含向量化): ${processed}/${total}`)
+        const message = this.embeddingService.isEnabled() 
+          ? `索引文件 (含向量化): ${processed}/${total}` 
+          : `索引文件: ${processed}/${total}`
+        onProgress?.(progress, 100, message)
       } catch (error) {
         console.error(`[CodebaseIndex] Failed to index ${meta.relativePath}:`, error)
       }
@@ -665,10 +661,6 @@ export class CodebaseIndexService {
 
     // Vector search enabled
     const queryEmbedding = await this.embeddingService.generateEmbedding(query)
-    if (!queryEmbedding) {
-      throw new Error('Failed to generate query embedding')
-    }
-
     const queryBuffer = Buffer.from(queryEmbedding.buffer)
 
     const results = db
