@@ -179,6 +179,40 @@ const defaultPreferences = {
   openProjectBehavior: 'ask' as const // 默认每次询问
 }
 
+function parsePreferences(raw: unknown): AppConfig['preferences'] {
+  const o =
+    raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {}
+  const autoRunMode =
+    o.autoRunMode === 'ask' || o.autoRunMode === 'auto-run' || o.autoRunMode === 'whitelist'
+      ? o.autoRunMode
+      : defaultPreferences.autoRunMode
+  const openProjectBehavior =
+    o.openProjectBehavior === 'ask' ||
+    o.openProjectBehavior === 'current' ||
+    o.openProjectBehavior === 'new'
+      ? o.openProjectBehavior
+      : defaultPreferences.openProjectBehavior
+  const wl = o.commandWhitelist
+  const commandWhitelist =
+    Array.isArray(wl) && wl.every((x) => typeof x === 'string')
+      ? (wl as string[])
+      : defaultPreferences.commandWhitelist
+
+  return {
+    autoSave: typeof o.autoSave === 'boolean' ? o.autoSave : defaultPreferences.autoSave,
+    debugMode: typeof o.debugMode === 'boolean' ? o.debugMode : defaultPreferences.debugMode,
+    sidebarCollapsed:
+      typeof o.sidebarCollapsed === 'boolean' ? o.sidebarCollapsed : defaultPreferences.sidebarCollapsed,
+    autoRunMode,
+    commandWhitelist,
+    enableFilePreviewOnSingleClick:
+      typeof o.enableFilePreviewOnSingleClick === 'boolean'
+        ? o.enableFilePreviewOnSingleClick
+        : defaultPreferences.enableFilePreviewOnSingleClick,
+    openProjectBehavior
+  }
+}
+
 /**
  * ConfigService - 使用 SQLite 存储配置
  */
@@ -305,12 +339,23 @@ export class ConfigService {
   }
 
   getPreferences(): AppConfig['preferences'] {
-    return this.db.getUIState<AppConfig['preferences']>('preferences', defaultPreferences)
+    const raw = this.db.getUIState<unknown>('preferences', {})
+    return parsePreferences(raw)
   }
 
   setPreferences(prefs: Partial<AppConfig['preferences']>): void {
     const current = this.getPreferences()
-    this.db.setUIState('preferences', { ...current, ...prefs })
+    const merged: AppConfig['preferences'] = {
+      autoSave: prefs.autoSave ?? current.autoSave,
+      debugMode: prefs.debugMode ?? current.debugMode,
+      sidebarCollapsed: prefs.sidebarCollapsed ?? current.sidebarCollapsed,
+      autoRunMode: prefs.autoRunMode ?? current.autoRunMode,
+      commandWhitelist: prefs.commandWhitelist ?? current.commandWhitelist,
+      enableFilePreviewOnSingleClick:
+        prefs.enableFilePreviewOnSingleClick ?? current.enableFilePreviewOnSingleClick,
+      openProjectBehavior: prefs.openProjectBehavior ?? current.openProjectBehavior
+    }
+    this.db.setUIState('preferences', merged)
   }
 
   setPreference(key: keyof AppConfig['preferences'], value: boolean): void {

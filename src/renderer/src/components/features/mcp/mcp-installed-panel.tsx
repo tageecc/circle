@@ -74,13 +74,11 @@ export function MCPInstalledPanel() {
   }
 
   useEffect(() => {
-    console.log('[MCP Installed] 组件挂载，开始加载服务')
     loadServers()
   }, [])
 
   const handleAuth = async (serverId: string, serverName: string) => {
     try {
-      console.log(`[MCP UI] 启动 OAuth 授权: ${serverName}`)
       const success = await window.api.mcp.startAuth(serverId)
 
       if (success) {
@@ -107,7 +105,6 @@ export function MCPInstalledPanel() {
       const result = await window.api.mcp.connect(serverId, server.configJson)
 
       if (result.requiresAuth) {
-        console.log(`[MCP UI] Server ${server.name} requires OAuth authorization`)
         setNeedsAuthMap((prev) => ({ ...prev, [serverId]: true }))
         setConnectionStatus(serverId, 'disconnected')
         return
@@ -355,10 +352,6 @@ export function MCPInstalledPanel() {
             (file) => getTabId(file) === activeFile && file.path === detailPath
           )
 
-          console.log(
-            `[MCP Installed] 渲染卡片: ${server.name}, status=${status}, tools=${tools.length}, serverId=${server.id}, isActive=${isActive}`
-          )
-
           return (
             <div
               key={server.id}
@@ -441,9 +434,6 @@ export function MCPInstalledPanel() {
                               loading={status === 'connecting'}
                               disabled={status === 'connecting'}
                               onCheckedChange={(checked) => {
-                                console.log(
-                                  `[MCP Installed] Switch 状态变化: ${server.name}, checked=${checked}, 当前status=${status}`
-                                )
                                 if (checked) {
                                   handleConnect(server.id)
                                 } else {

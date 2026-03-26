@@ -235,7 +235,6 @@ export function MCPDetailView({ serverId, usageCount }: MCPDetailViewProps) {
     if (!installedServerId || !detail) return
 
     try {
-      console.log(`[MCP Detail] 启动 OAuth 授权: ${detail.displayName}`)
       const success = await window.api.mcp.startAuth(installedServerId)
 
       if (success) {
@@ -265,7 +264,6 @@ export function MCPDetailView({ serverId, usageCount }: MCPDetailViewProps) {
       const result = await window.api.mcp.connect(installedServerId, server.configJson)
 
       if (result.requiresAuth) {
-        console.log(`[MCP Detail] Server requires OAuth authorization`)
         setNeedsAuth(true)
         setConnectionStatus(installedServerId, 'disconnected')
         return
