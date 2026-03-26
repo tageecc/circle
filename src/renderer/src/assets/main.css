@@ -591,6 +591,21 @@
     @apply font-sans!;
   }
 
+  /* 允许选择 toast 中的文本 */
+  [data-sonner-toast] {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  /* Toast 操作按钮样式 */
+  [data-button] {
+    @apply flex items-center justify-center h-7 w-7 rounded-md hover:bg-accent transition-colors;
+  }
+
+  [data-button]:active {
+    transform: scale(0.95);
+  }
+
   /* 隐藏 Monaco 查找组件的 hover 提示（如 "Find", "Replace"） */
   /* 只针对查找组件的简单文本 hover，不影响代码区域的类型提示、错误信息等 */
   .monaco-hover.workbench-hover.compact.fade-in {

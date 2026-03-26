@@ -4,7 +4,9 @@ import {
   InfoIcon,
   Loader2Icon,
   OctagonXIcon,
-  TriangleAlertIcon
+  TriangleAlertIcon,
+  Copy,
+  Check
 } from 'lucide-react'
 import { Toaster as Sonner, toast as sonnerToast, ExternalToast, ToasterProps } from 'sonner'
 import { NotificationType } from '@/contexts/notification-context'
@@ -50,7 +52,32 @@ function createWrappedToast() {
   }
 
   wrappedToast.error = (message: ReactNode, options?: ToastOptions) => {
-    const result = sonnerToast.error(message, options)
+    let copied = false
+    
+    const result = sonnerToast.error(message, {
+      ...options,
+      action: {
+        label: (
+          <Copy className="size-3.5" />
+        ),
+        onClick: async () => {
+          const textContent = extractTextContent(message)
+          const fullText = options?.description
+            ? `${textContent}\n\n${options.description}`
+            : textContent
+
+          try {
+            await navigator.clipboard.writeText(fullText)
+            if (!copied) {
+              copied = true
+              sonnerToast.success('已复制到剪贴板', { duration: 1500 })
+            }
+          } catch (error) {
+            console.error('Failed to copy:', error)
+          }
+        }
+      }
+    })
     globalAddNotification?.({
       type: 'error',
       title: extractTextContent(message),
@@ -60,7 +87,32 @@ function createWrappedToast() {
   }
 
   wrappedToast.warning = (message: ReactNode, options?: ToastOptions) => {
-    const result = sonnerToast.warning(message, options)
+    let copied = false
+    
+    const result = sonnerToast.warning(message, {
+      ...options,
+      action: {
+        label: (
+          <Copy className="size-3.5" />
+        ),
+        onClick: async () => {
+          const textContent = extractTextContent(message)
+          const fullText = options?.description
+            ? `${textContent}\n\n${options.description}`
+            : textContent
+
+          try {
+            await navigator.clipboard.writeText(fullText)
+            if (!copied) {
+              copied = true
+              sonnerToast.success('已复制到剪贴板', { duration: 1500 })
+            }
+          } catch (error) {
+            console.error('Failed to copy:', error)
+          }
+        }
+      }
+    })
     globalAddNotification?.({
       type: 'warning',
       title: extractTextContent(message),

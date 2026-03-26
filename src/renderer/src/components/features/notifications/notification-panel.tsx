@@ -7,13 +7,16 @@ import {
   Info,
   X,
   CheckCheck,
-  Trash2
+  Trash2,
+  Copy,
+  Check
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { useNotifications, NotificationType } from '@/contexts/notification-context'
+import { toast } from 'sonner'
 
 const typeConfig: Record<
   NotificationType,
@@ -78,9 +81,26 @@ export function NotificationPanel() {
     useNotifications()
 
   const [open, setOpen] = useState(false)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen)
+  }
+
+  const handleCopy = async (notification: { title: string; description?: string }, id: string) => {
+    const text = notification.description
+      ? `${notification.title}\n\n${notification.description}`
+      : notification.title
+
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedId(id)
+      setTimeout(() => setCopiedId(null), 2000)
+      toast.success('已复制到剪贴板')
+    } catch (error) {
+      console.error('Failed to copy:', error)
+      toast.error('复制失败')
+    }
   }
 
   return (
@@ -198,18 +218,40 @@ export function NotificationPanel() {
                       )}
                     </div>
 
-                    {/* 删除按钮 */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-1 top-1 h-5 w-5 p-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        removeNotification(notification.id)
-                      }}
-                    >
-                      <X className="size-3" />
-                    </Button>
+                    {/* 操作按钮 */}
+                    <div className="absolute right-1 top-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100">
+                      {/* 复制按钮 */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleCopy(notification, notification.id)
+                        }}
+                        title="复制内容"
+                      >
+                        {copiedId === notification.id ? (
+                          <Check className="size-3 text-green-500" />
+                        ) : (
+                          <Copy className="size-3" />
+                        )}
+                      </Button>
+
+                      {/* 删除按钮 */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeNotification(notification.id)
+                        }}
+                        title="删除通知"
+                      >
+                        <X className="size-3" />
+                      </Button>
+                    </div>
                   </div>
                 )
               })}
