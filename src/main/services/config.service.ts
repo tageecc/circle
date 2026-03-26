@@ -136,7 +136,6 @@ interface AppConfig {
   preferences: {
     autoSave: boolean
     debugMode: boolean
-    telemetry: boolean
     sidebarCollapsed: boolean
     autoRunMode?: 'ask' | 'auto-run' | 'whitelist' // 命令执行模式
     commandWhitelist?: string[] // 命令白名单
@@ -148,7 +147,6 @@ interface AppConfig {
 const defaultPreferences = {
   autoSave: true,
   debugMode: false,
-  telemetry: true,
   sidebarCollapsed: false,
   autoRunMode: 'ask' as const, // 默认：每次询问（更安全）
   commandWhitelist: [

@@ -232,7 +232,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           ...config.preferences,
           autoSave: localGeneralSettings.autoSave,
           debugMode: localGeneralSettings.debugMode,
-          telemetry: localGeneralSettings.telemetry,
           autoRunMode: localGeneralSettings.autoRunMode,
           commandWhitelist: localGeneralSettings.commandWhitelist,
           enableFilePreviewOnSingleClick: localGeneralSettings.enableFilePreviewOnSingleClick,
@@ -284,7 +283,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       language: 'zh-CN',
       autoSave: true,
       debugMode: false,
-      telemetry: true,
       autoRunMode: 'auto-run',
       commandWhitelist: [
         'npm',

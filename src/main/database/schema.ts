@@ -96,21 +96,6 @@ export const filesExclude = sqliteTable('files_exclude', {
 })
 
 /**
- * 设备用户表
- * 简化的用户系统，一个设备一个用户
- */
-export const deviceUser = sqliteTable('device_user', {
-  id: text('id').primaryKey(),
-  deviceId: text('device_id').notNull().unique(),
-  username: text('username').notNull(),
-  displayName: text('display_name').notNull(),
-  avatar: text('avatar'),
-  preferences: text('preferences').notNull(),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull()
-})
-
-/**
  * 会话表
  */
 export const sessions = sqliteTable('sessions', {
@@ -230,7 +215,6 @@ export type RecentBranch = typeof recentBranches.$inferSelect
 export type UIState = typeof uiState.$inferSelect
 export type UserRule = typeof userRules.$inferSelect
 export type FilesExclude = typeof filesExclude.$inferSelect
-export type DeviceUser = typeof deviceUser.$inferSelect
 export type Session = typeof sessions.$inferSelect
 export type Message = typeof messages.$inferSelect
 export type MCPServer = typeof mcpServers.$inferSelect

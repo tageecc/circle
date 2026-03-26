@@ -110,9 +110,6 @@ export function IDEPage(): React.ReactElement {
   // Git 状态同步到文件标签
   useFileGitSync({ workspaceRoot, gitFileStatus, fileManager })
 
-  // MCP Store - 预加载市场数据
-  const preloadMarketData = useMCPStore((state) => state.preloadMarketData)
-
   // 初始化项目状态
   useEffect(() => {
     let cancelled = false
@@ -133,12 +130,6 @@ export function IDEPage(): React.ReactElement {
           restoreEditorState(result.currentProject)
         }
 
-        // 后台预加载 MCP 市场数据（不阻塞 UI）
-        if (!cancelled) {
-          preloadMarketData().catch((err) => {
-            console.error('[IDE] 预加载 MCP 市场数据失败:', err)
-          })
-        }
       } catch (error) {
         console.error('Failed to initialize project:', error)
       }

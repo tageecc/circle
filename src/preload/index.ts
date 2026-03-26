@@ -204,14 +204,7 @@ const api = {
     getConnectionStatus: (serverId: string) =>
       ipcRenderer.invoke('mcp:getConnectionStatus', serverId),
     startAuth: (serverId: string) => ipcRenderer.invoke('mcp:startAuth', serverId),
-    clearAuth: (serverId: string) => ipcRenderer.invoke('mcp:clearAuth', serverId),
-    getMarketServers: (params: {
-      empId?: string
-      orderBy?: 'TIMESTAMP' | 'USAGE'
-      page?: number
-      pageSize?: number
-    }) => ipcRenderer.invoke('mcp:getMarketServers', params),
-    getServerDetail: (serverName: string) => ipcRenderer.invoke('mcp:getServerDetail', serverName)
+    clearAuth: (serverId: string) => ipcRenderer.invoke('mcp:clearAuth', serverId)
   },
 
   // File System APIs
@@ -834,16 +827,7 @@ const api = {
     scan: (projectPath?: string) => ipcRenderer.invoke('skills:scan', projectPath),
     toggle: (skillPath: string, enabled: boolean) =>
       ipcRenderer.invoke('skills:toggle', skillPath, enabled),
-    delete: (skillPath: string) => ipcRenderer.invoke('skills:delete', skillPath),
-    installFromGit: (
-      repoUrl: string,
-      skillName: string,
-      scope?: 'user' | 'project',
-      projectPath?: string
-    ) => ipcRenderer.invoke('skills:installFromGit', repoUrl, skillName, scope, projectPath),
-    search: (params: { q: string; page?: number; limit?: number }) =>
-      ipcRenderer.invoke('skills:search', params),
-    fetchContent: (githubUrl: string) => ipcRenderer.invoke('skills:fetchContent', githubUrl)
+    delete: (skillPath: string) => ipcRenderer.invoke('skills:delete', skillPath)
   },
 
   // Shell APIs

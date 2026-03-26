@@ -6,9 +6,7 @@
 import fs from 'fs/promises'
 import path from 'path'
 import os from 'os'
-import { spawn } from 'child_process'
 import matter from 'gray-matter'
-import AdmZip from 'adm-zip'
 import { getDb } from '../database/db'
 import { skillPreferences } from '../database/schema'
 import { eq, inArray } from 'drizzle-orm'
@@ -211,155 +209,6 @@ export class SkillsService {
     await db.delete(skillPreferences).where(eq(skillPreferences.skillPath, skillPath))
   }
 
-  async installFromGit(
-    repoUrl: string,
-    skillName: string,
-    scope: 'user' | 'project' = 'project',
-    projectPath?: string
-  ): Promise<void> {
-    console.log(`[Skills] Installing skill from git: ${repoUrl} (scope: ${scope})`)
-
-    // 确定安装目录
-    const config = this.configService.getSkillsSettings()
-    const scanDirs = config?.scanDirectories || [...DEFAULT_SKILL_SCAN_DIRECTORIES]
-    const firstDir = scanDirs[0] || '.circle'
-
-    let targetDir: string
-    if (scope === 'project' && projectPath) {
-      // 项目级安装
-      targetDir = path.join(projectPath, firstDir, 'skills')
-    } else {
-      // 用户级安装
-      targetDir = path.join(os.homedir(), firstDir, 'skills')
-    }
-
-    await this.ensureDir(targetDir)
-    const targetPath = path.join(targetDir, skillName)
-
-    // 检查是否已存在
-    const exists = await this.fileExists(targetPath)
-    if (exists) {
-      throw new Error(`Skill "${skillName}" already exists`)
-    }
-
-    // 解析 GitHub URL
-    // 支持: https://github.com/user/repo 或 https://github.com/user/repo/tree/branch/path
-    const match = repoUrl.replace(/\.git$/, '').match(
-      /github\.com\/([^/]+)\/([^/]+)(?:\/tree\/([^/]+))?(.*)$/
-    )
-
-    if (!match) {
-      throw new Error('Invalid GitHub URL')
-    }
-
-    const [, owner, repo, branch, subPath] = match
-
-    if (!subPath || subPath === '') {
-      // 完整仓库，使用 git clone
-      await this.cloneFullRepo(repoUrl, targetPath)
-    } else {
-      // 子目录，使用 GitHub API 下载
-      await this.downloadSubdirectory(owner, repo, branch || 'main', subPath, targetPath)
-    }
-
-    // 添加 homepage 到 SKILL.md 的 frontmatter 中
-    await this.addHomepageToSkill(targetPath, repoUrl)
-
-    console.log(`[Skills] Successfully installed skill: ${skillName}`)
-  }
-
-  private async cloneFullRepo(repoUrl: string, targetPath: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const gitProcess = spawn('git', ['clone', repoUrl, targetPath])
-
-      gitProcess.on('close', (code) => {
-        if (code === 0) {
-          resolve()
-        } else {
-          reject(new Error(`Git clone failed with code ${code}`))
-        }
-      })
-
-      gitProcess.on('error', (error) => {
-        reject(error)
-      })
-    })
-  }
-
-  private async downloadSubdirectory(
-    owner: string,
-    repo: string,
-    branch: string,
-    subPath: string,
-    targetPath: string
-  ): Promise<void> {
-    console.log(`[Skills] Downloading subdirectory: ${owner}/${repo}${subPath}`)
-
-    // 使用 GitHub Archive API 下载整个仓库的 zip
-    const zipUrl = `https://github.com/${owner}/${repo}/archive/${branch}.zip`
-    console.log(`[Skills] Downloading zip from: ${zipUrl}`)
-
-    const response = await fetch(zipUrl)
-    if (!response.ok) {
-      throw new Error(`Failed to download repository: HTTP ${response.status}`)
-    }
-
-    // 获取 zip 文件内容（二进制）
-    const zipBuffer = Buffer.from(await response.arrayBuffer())
-
-    // 创建临时目录
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'skill-install-'))
-
-    try {
-      // 直接从 buffer 解压 zip（无需写临时文件）
-      const zip = new AdmZip(zipBuffer)
-      zip.extractAllTo(tempDir, true)
-
-      // GitHub zip 解压后的目录名格式：{repo}-{branch}
-      const extractedDirName = `${repo}-${branch}`
-      const extractedPath = path.join(tempDir, extractedDirName)
-
-      // 获取子目录路径（去掉前导斜杠）
-      const normalizedSubPath = subPath.startsWith('/') ? subPath.substring(1) : subPath
-      const sourcePath = path.join(extractedPath, normalizedSubPath)
-
-      // 检查源路径是否存在
-      try {
-        await fs.access(sourcePath)
-      } catch {
-        throw new Error(`Skill directory not found in repository: ${normalizedSubPath}`)
-      }
-
-      // 复制到目标目录
-      await this.copyDirectory(sourcePath, targetPath)
-
-      console.log(`[Skills] Successfully extracted skill from zip`)
-    } finally {
-      // 清理临时目录
-      try {
-        await fs.rm(tempDir, { recursive: true, force: true })
-      } catch (error) {
-        console.warn(`[Skills] Failed to clean up temp directory: ${tempDir}`, error)
-      }
-    }
-  }
-
-  private async copyDirectory(source: string, target: string): Promise<void> {
-    await this.ensureDir(target)
-    const entries = await fs.readdir(source, { withFileTypes: true })
-
-    for (const entry of entries) {
-      const sourcePath = path.join(source, entry.name)
-      const targetPath = path.join(target, entry.name)
-
-      if (entry.isDirectory()) {
-        await this.copyDirectory(sourcePath, targetPath)
-      } else {
-        await fs.copyFile(sourcePath, targetPath)
-      }
-    }
-  }
-
   private deduplicateAll(
     skills: SkillDefinition[],
     failedSkills: FailedSkill[]
@@ -420,28 +269,4 @@ export class SkillsService {
     }
   }
 
-  private async addHomepageToSkill(skillPath: string, githubUrl: string): Promise<void> {
-    try {
-      const skillMdPath = path.join(skillPath, 'SKILL.md')
-      const content = await fs.readFile(skillMdPath, 'utf-8')
-      const { data, content: instructions } = matter(content)
-
-      // 如果已经有 homepage，不覆盖
-      if (data.homepage) {
-        return
-      }
-
-      // 添加 homepage 字段
-      data.homepage = githubUrl
-
-      // 重新生成 SKILL.md 文件
-      const newContent = matter.stringify(instructions, data)
-      await fs.writeFile(skillMdPath, newContent, 'utf-8')
-      
-      console.log(`[Skills] Added homepage to skill: ${githubUrl}`)
-    } catch (error) {
-      // 如果添加 homepage 失败，只记录日志，不影响安装流程
-      console.error(`[Skills] Failed to add homepage to skill:`, error)
-    }
-  }
 }

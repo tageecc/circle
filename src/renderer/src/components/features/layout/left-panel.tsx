@@ -5,7 +5,7 @@ import { GitCommitPanel } from '../git/git-commit-panel'
 import { GitStashPanel } from '../git/git-stash-panel'
 import { GitHistoryPanel } from '../git/git-history-panel'
 import { GitBranchComparePanel } from '../git/git-branch-compare-panel'
-import { MCPMarketPanel } from '../mcp/mcp-market-panel'
+import { MCPInstalledPanel } from '../mcp/mcp-installed-panel'
 import { SkillsPanel } from '../skills/skills-panel'
 import { EmptyState } from '../common/empty-state'
 import { GitBranch } from 'lucide-react'
@@ -30,7 +30,7 @@ const TAB_TITLES: Record<string, string> = {
   history: 'Git 历史',
   compare: '比较分支',
   skills: 'Skills',
-  mcp: 'MCP 市场'
+  mcp: 'MCP'
 }
 
 export const LeftPanel = memo(function LeftPanel({ workspaceRoot }: LeftPanelProps) {
@@ -270,7 +270,7 @@ export const LeftPanel = memo(function LeftPanel({ workspaceRoot }: LeftPanelPro
 
         {activeLeftTab === 'skills' && <SkillsPanel />}
 
-        {activeLeftTab === 'mcp' && <MCPMarketPanel />}
+        {activeLeftTab === 'mcp' && <MCPInstalledPanel />}
       </div>
     </div>
   )

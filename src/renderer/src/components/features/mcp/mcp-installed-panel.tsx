@@ -18,7 +18,6 @@ import { useMCPStore } from '@/stores/mcp.store'
 import { useFileStore, getTabId } from '@/stores/file.store'
 import { cn } from '@/lib/utils'
 import type { MCPServer, MCPTool } from '@/types/mcp'
-import { extractServerCode } from '@/utils/mcp'
 import { parseConfigJson } from '@/utils/mcp-helpers'
 
 export function MCPInstalledPanel() {
@@ -269,14 +268,9 @@ export function MCPInstalledPanel() {
     }
   }
 
-  // 打开详情页（市场服务或本地服务）
   const handleCardClick = (server: MCPServer) => {
-    const serverCode = server.configJson.url ? extractServerCode(server.configJson.url) : null
     const tools = serverTools[server.id] || []
-
-    // 市场服务：使用 serverCode
-    // 本地服务：使用 serverId
-    const detailPath = serverCode ? `mcp://market/${serverCode}` : `mcp://local/${server.id}`
+    const detailPath = `mcp://local/${server.id}`
     const existingFile = openFiles.find((file) => file.path === detailPath)
 
     if (existingFile) {
@@ -293,8 +287,7 @@ export function MCPInstalledPanel() {
         encoding: 'utf-8',
         lineEnding: 'LF',
         isMCPDetail: true,
-        mcpServerCode: serverCode || undefined,
-        mcpServerId: serverCode ? undefined : server.id,
+        mcpServerId: server.id,
         mcpUsageCount: tools.length
       })
     }
@@ -313,16 +306,7 @@ export function MCPInstalledPanel() {
       <div className="flex flex-col items-center justify-center h-full text-center p-6">
         <Power className="size-12 mb-4 text-muted-foreground opacity-50" />
         <h3 className="text-lg font-medium mb-2">暂无已安装的服务</h3>
-        <p className="text-sm text-muted-foreground">
-          前往
-          <button
-            onClick={() => useMCPStore.getState().setActiveTab('marketplace')}
-            className="mx-1 text-primary hover:underline underline-offset-4 font-medium"
-          >
-            市场
-          </button>
-          安装 MCP 服务
-        </p>
+        <p className="text-sm text-muted-foreground">点击「添加」配置本地或 HTTP MCP 服务</p>
       </div>
     )
   }
@@ -365,11 +349,8 @@ export function MCPInstalledPanel() {
           const status = connectionStates.get(server.id) || 'disconnected'
           const tools = serverTools[server.id] || []
           const needsAuth = needsAuthMap[server.id]
-          const serverCode = server.configJson.url ? extractServerCode(server.configJson.url) : null
           const isStdio = !server.configJson.url
-
-          // 判断是否是当前选中的服务
-          const detailPath = serverCode ? `mcp://market/${serverCode}` : `mcp://local/${server.id}`
+          const detailPath = `mcp://local/${server.id}`
           const isActive = openFiles.some(
             (file) => getTabId(file) === activeFile && file.path === detailPath
           )

@@ -171,49 +171,5 @@ export function registerMCPHandlers() {
     }
   })
 
-  // 获取 MCP 市场列表
-  ipcMain.handle(
-    'mcp:getMarketServers',
-    async (
-      _,
-      params: {
-        empId?: string
-        orderBy?: 'TIMESTAMP' | 'USAGE'
-        page?: number
-        pageSize?: number
-      }
-    ) => {
-      console.log('[MCP IPC] 收到 getMarketServers 请求, params:', params)
-      try {
-        const result = await mcpService.getMarketServers(params)
-        console.log('[MCP IPC] getMarketServers 成功返回')
-        return result
-      } catch (error) {
-        console.error('[MCP IPC] ❌ getMarketServers 失败:')
-        console.error('[MCP IPC] Error type:', error?.constructor?.name)
-        console.error(
-          '[MCP IPC] Error message:',
-          error instanceof Error ? error.message : String(error)
-        )
-        console.error('[MCP IPC] Error stack:', error instanceof Error ? error.stack : 'N/A')
-        throw error
-      }
-    }
-  )
-
-  // 获取 MCP 服务详情
-  ipcMain.handle('mcp:getServerDetail', async (_, serverName: string) => {
-    console.log('[MCP IPC] 收到 getServerDetail 请求, serverName:', serverName)
-    try {
-      const result = await mcpService.getServerDetail(serverName)
-      console.log('[MCP IPC] getServerDetail 成功返回')
-      return result
-    } catch (error) {
-      console.error('[MCP IPC] ❌ getServerDetail 失败:')
-      console.error('[MCP IPC] Error:', error instanceof Error ? error.message : String(error))
-      throw error
-    }
-  })
-
   console.log('[MCP] Handlers registered')
 }

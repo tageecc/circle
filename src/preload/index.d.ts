@@ -162,27 +162,6 @@ declare global {
         disconnect: (serverId: string) => Promise<void>
         callTool: (serverId: string, toolName: string, args: any) => Promise<any>
         listAllTools: () => Promise<any[]>
-        getMarketServers: (params: {
-          empId?: string
-          orderBy?: 'TIMESTAMP' | 'USAGE'
-          page?: number
-          pageSize?: number
-        }) => Promise<{
-          content: Array<{
-            code: string
-            name: string
-            description: string
-            ownerEmpId: string
-            platformCode: string
-            updateTimeStamp: string
-            icon: string
-            usageCount: number
-            toolsCount: number
-          }>
-          totalPages: number
-          totalElements: number
-        }>
-        getServerDetail: (serverName: string) => Promise<any>
         listAllResources: () => Promise<any[]>
         readResource: (serverId: string, resourceName: string, args: any) => Promise<any>
         listAllPrompts: () => Promise<any[]>
@@ -192,26 +171,6 @@ declare global {
         ) => Promise<'connecting' | 'connected' | 'disconnected' | 'error'>
         startAuth: (serverId: string) => Promise<boolean>
         clearAuth: (serverId: string) => Promise<void>
-      }
-      mcpMarket: {
-        getAll: (options?: {
-          category?: string
-          search?: string
-          sortBy?: 'downloads' | 'stars' | 'rating' | 'createdAt'
-          limit?: number
-          offset?: number
-        }) => Promise<any[]>
-        getBySlug: (slug: string) => Promise<any>
-        getCategories: () => Promise<Array<{ name: string; count: number }>>
-        install: (slug: string) => Promise<any>
-        getStats: () => Promise<{ total: number; installed: number; categories: number }>
-        triggerSync: () => Promise<{ success: boolean }>
-        getSyncStatus: () => Promise<{
-          isSyncing: boolean
-          lastSyncTime: Date | null
-          lastSyncResult: any
-          isRunning: boolean
-        }>
       }
       files: {
         read: (filePath: string) => Promise<string>
@@ -939,34 +898,6 @@ declare global {
         }>
         toggle: (skillPath: string, enabled: boolean) => Promise<{ success: boolean }>
         delete: (skillPath: string) => Promise<{ success: boolean }>
-        installFromGit: (
-          repoUrl: string,
-          skillName: string,
-          scope?: 'user' | 'project',
-          projectPath?: string
-        ) => Promise<{ success: boolean }>
-        search: (params: {
-          q: string
-          page?: number
-          limit?: number
-        }) => Promise<{
-          success: boolean
-          data: Array<{
-            id: string
-            name: string
-            description: string
-            author?: string
-            githubUrl?: string
-            skillUrl?: string
-            stars?: number
-            updatedAt?: number
-            [key: string]: unknown
-          }>
-          total: number
-          page: number
-          limit: number
-        }>
-        fetchContent: (githubUrl: string) => Promise<string>
       }
       shell: {
         openExternal: (url: string) => Promise<void>

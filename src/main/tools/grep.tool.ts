@@ -86,9 +86,9 @@ Escape these in patterns: \`. * + ? ^ $ { } ( ) [ ] | \\\`
 ### Decision Guide
 
 <example>
-  Query: Find where "UserService" is imported
+  Query: Find where "ConfigService" is imported
   Tool: grep
-  Pattern: "import.*UserService"
+  Pattern: "import.*ConfigService"
   <reasoning>
     Perfect: Exact symbol lookup with pattern matching
   </reasoning>

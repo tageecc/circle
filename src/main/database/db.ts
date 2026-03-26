@@ -127,18 +127,6 @@ class CircleDatabase {
         created_at INTEGER NOT NULL
       );
 
-      -- 设备用户表
-      CREATE TABLE IF NOT EXISTS device_user (
-        id TEXT PRIMARY KEY,
-        device_id TEXT NOT NULL UNIQUE,
-        username TEXT NOT NULL,
-        display_name TEXT NOT NULL,
-        avatar TEXT,
-        preferences TEXT NOT NULL,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      );
-
       -- 会话表
       CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY,
@@ -243,6 +231,11 @@ class CircleDatabase {
       );
     `)
     this.migrateSessionsAgentIdToModelId()
+    this.migrateDropLegacyDeviceUserTable()
+  }
+
+  private migrateDropLegacyDeviceUserTable(): void {
+    this.sqlite.exec('DROP TABLE IF EXISTS device_user')
   }
 
   private migrateSessionsAgentIdToModelId(): void {

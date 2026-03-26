@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import {
   Loader2,
   Package,
@@ -6,7 +6,6 @@ import {
   TrendingUp,
   FileText,
   Lock,
-  Download,
   User,
   XCircle,
   Key,
@@ -32,23 +31,20 @@ import { toast } from '@/components/ui/sonner'
 import { useMCPStore } from '@/stores/mcp.store'
 import { useMCPEdit } from '@/hooks/use-mcp-edit'
 import type { ConnectionStatus, MCPServerDetail } from '@/types/mcp'
-import { getMCPServerUrl } from '@/utils/mcp'
 
 interface MCPDetailViewProps {
-  serverCode?: string
-  serverId?: string
+  serverId: string
   usageCount?: number
 }
 
 type TabType = 'readme' | 'tools' | 'scopes' | 'config'
 
-export function MCPDetailView({ serverCode, serverId, usageCount }: MCPDetailViewProps) {
+export function MCPDetailView({ serverId, usageCount }: MCPDetailViewProps) {
   const [detail, setDetail] = useState<MCPServerDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<TabType>('readme')
   const [installing, setInstalling] = useState(false)
-  const [avatarError, setAvatarError] = useState(false)
   const [needsAuth, setNeedsAuth] = useState(false)
   const [isUninstalled, setIsUninstalled] = useState(false)
 
@@ -62,15 +58,7 @@ export function MCPDetailView({ serverCode, serverId, usageCount }: MCPDetailVie
     removeConnectionStatus
   } = useMCPStore()
 
-  // 响应式计算 installedServerId：当 installedServers 变化时会自动重新计算
-  const installedServerId = useMemo(() => {
-    if (serverCode) {
-      // 市场服务：从 store 获取
-      return installedServers.get(serverCode) || null
-    }
-    // 本地服务：直接使用传入的 serverId（不会随卸载而变化，需要额外检测）
-    return serverId || null
-  }, [serverCode, serverId, installedServers])
+  const installedServerId = serverId
 
   const connectionStatus = installedServerId
     ? getConnectionStatus(installedServerId)
@@ -87,11 +75,7 @@ export function MCPDetailView({ serverCode, serverId, usageCount }: MCPDetailVie
     handleUpdateServer: updateServer_,
     handleCloseDialog
   } = useMCPEdit(async () => {
-    // 更新后清除缓存并重新加载
-    const cacheKey = serverCode ? `market:${serverCode}` : serverId ? `local:${serverId}` : null
-    if (cacheKey) {
-      clearDetailCache(cacheKey)
-    }
+    clearDetailCache(`local:${serverId}`)
     await loadDetail()
     await loadInstalledServers()
   })
@@ -102,85 +86,46 @@ export function MCPDetailView({ serverCode, serverId, usageCount }: MCPDetailVie
   const loadDetail = useCallback(async () => {
     setLoading(true)
     setError(null)
-    setAvatarError(false)
-
     try {
-      if (serverId) {
-        // 本地服务 - 使用缓存
-        const cacheKey = `local:${serverId}`
+      const cacheKey = `local:${serverId}`
 
-        const detail = await getServerDetail(cacheKey, async () => {
-          const servers = await window.api.mcp.getAllServers()
-          const server = servers.find((s: any) => s.id === serverId)
+      const detail = await getServerDetail(cacheKey, async () => {
+        const servers = await window.api.mcp.getAllServers()
+        const server = servers.find((s: any) => s.id === serverId)
 
-          if (!server) {
-            throw new Error('服务不存在')
-          }
-
-          // 尝试从 npm 获取 README（带缓存）
-          let readme = ''
-          if (server.configJson.args && server.configJson.args[0]) {
-            const packageName = server.configJson.args[0].split('@')[0]
-            try {
-              const response = await fetch(`https://registry.npmjs.org/${packageName}/latest`)
-              const packageData = await response.json()
-              readme = packageData.readme || ''
-            } catch (npmError) {
-              console.warn('Failed to fetch npm README:', npmError)
-            }
-          }
-
-          // 获取工具列表 - 使用服务器 ID 或名称匹配
-          const allTools = await window.api.mcp.listAllTools()
-          const serverTools = allTools.filter(
-            (tool: any) =>
-              tool.serverId === serverId ||
-              tool.serverId === server.id ||
-              tool.serverName === server.name
-          )
-
-          return {
-            name: server.name,
-            displayName: server.name,
-            description: `本地 MCP 服务（${server.configJson.command}）`,
-            readme: readme || '暂无说明文档',
-            tools: serverTools.map((tool: any) => ({
-              name: tool.name,
-              description: tool.description,
-              inputSchema: tool.inputSchema
-            })),
-            scopes: []
-          }
-        })
-
-        setDetail(detail)
-
-        // 如果没有说明文档，默认显示工具
-        if (!detail.readme && detail.tools && detail.tools.length > 0) {
-          setActiveTab('tools')
+        if (!server) {
+          throw new Error('服务不存在')
         }
-        return
-      }
 
-      if (!serverCode) {
-        throw new Error('缺少服务信息')
-      }
+        const cfg = server.configJson as { command?: string; url?: string }
+        const summary = cfg.url ?? cfg.command ?? 'MCP'
 
-      // 市场服务 - 使用缓存
-      const cacheKey = `market:${serverCode}`
-      const result = await getServerDetail(cacheKey, async () => {
-        return await window.api.mcp.getServerDetail(serverCode)
+        const allTools = await window.api.mcp.listAllTools()
+        const serverTools = allTools.filter(
+          (tool: any) =>
+            tool.serverId === serverId ||
+            tool.serverId === server.id ||
+            tool.serverName === server.name
+        )
+
+        return {
+          name: server.name,
+          displayName: server.name,
+          description: `本地 MCP（${summary}）`,
+          readme: '暂无说明文档',
+          tools: serverTools.map((tool: any) => ({
+            name: tool.name,
+            description: tool.description,
+            inputSchema: tool.inputSchema
+          })),
+          scopes: []
+        }
       })
 
-      setDetail(result)
+      setDetail(detail)
 
-      // 如果没有说明文档，默认显示第一个可用的 tab
-      if (!result.readme) {
-        if (result.tools && result.tools.length > 0) {
-          setActiveTab('tools')
-        } else if (result.scopes && result.scopes.length > 0) {
-          setActiveTab('scopes')
-        }
+      if (!detail.readme && detail.tools && detail.tools.length > 0) {
+        setActiveTab('tools')
       }
     } catch (err) {
       console.error('[MCPDetailView] 加载详情失败:', err)
@@ -188,7 +133,7 @@ export function MCPDetailView({ serverCode, serverId, usageCount }: MCPDetailVie
     } finally {
       setLoading(false)
     }
-  }, [serverCode, serverId, getServerDetail])
+  }, [serverId, getServerDetail])
 
   // 加载连接状态和授权状态
   const loadServerStatus = useCallback(async () => {
@@ -265,30 +210,6 @@ export function MCPDetailView({ serverCode, serverId, usageCount }: MCPDetailVie
     }
   }, [installedServers, serverId, installedServerId, loadServerStatus])
 
-  const handleInstall = async () => {
-    if (!detail || !serverCode) return // 本地服务不支持安装
-
-    setInstalling(true)
-    try {
-      await window.api.mcp.addServer({
-        name: detail.displayName,
-        configJson: {
-          type: 'http' as const,
-          url: getMCPServerUrl(serverCode),
-          requiresAuth: true
-        }
-      })
-
-      await loadInstalledServers()
-      setIsUninstalled(false)
-      toast.success(`${detail.displayName} 安装成功`)
-    } catch (error) {
-      toast.error('安装失败')
-    } finally {
-      setInstalling(false)
-    }
-  }
-
   const handleUninstall = async () => {
     if (!detail || !installedServerId) return
 
@@ -298,8 +219,7 @@ export function MCPDetailView({ serverCode, serverId, usageCount }: MCPDetailVie
 
       // 清除连接状态和缓存
       removeConnectionStatus(installedServerId)
-      const cacheKey = serverCode ? `market:${serverCode}` : `local:${installedServerId}`
-      clearDetailCache(cacheKey)
+      clearDetailCache(`local:${installedServerId}`)
 
       await loadInstalledServers()
       setNeedsAuth(false)
@@ -355,16 +275,8 @@ export function MCPDetailView({ serverCode, serverId, usageCount }: MCPDetailVie
         setConnectionStatus(installedServerId, 'connected')
         toast.success('连接成功')
 
-        // 连接成功后，清除缓存并重新加载详情以获取工具列表
-        if (serverId) {
-          const cacheKey = `local:${serverId}`
-          clearDetailCache(cacheKey)
-          await loadDetail()
-        } else if (serverCode) {
-          const cacheKey = `market:${serverCode}`
-          clearDetailCache(cacheKey)
-          await loadDetail()
-        }
+        clearDetailCache(`local:${serverId}`)
+        await loadDetail()
       } else {
         setConnectionStatus(installedServerId, 'error')
         toast.error('连接失败')
@@ -465,28 +377,9 @@ export function MCPDetailView({ serverCode, serverId, usageCount }: MCPDetailVie
               {/* Actions: 编辑/卸载/授权/连接开关 */}
               <div className="shrink-0 flex items-center gap-2">
                 {isUninstalled ? (
-                  /* 已卸载状态 */
-                  <>
-                    <Badge variant="secondary" className="text-xs">
-                      已卸载
-                    </Badge>
-                    {/* 市场服务可以重新安装 */}
-                    {serverCode && (
-                      <Button size="sm" onClick={handleInstall} disabled={installing}>
-                        {installing ? (
-                          <>
-                            <Loader2 className="size-4 mr-2 animate-spin" />
-                            安装中...
-                          </>
-                        ) : (
-                          <>
-                            <Download className="size-4 mr-2" />
-                            重新安装
-                          </>
-                        )}
-                      </Button>
-                    )}
-                  </>
+                  <Badge variant="secondary" className="text-xs">
+                    已卸载
+                  </Badge>
                 ) : installedServerId ? (
                   <>
                     {/* 编辑按钮 - hover 时显示 */}
@@ -553,22 +446,7 @@ export function MCPDetailView({ serverCode, serverId, usageCount }: MCPDetailVie
                       </div>
                     )}
                   </>
-                ) : (
-                  /* 未安装状态 - 仅市场服务 */
-                  <Button size="sm" onClick={handleInstall} disabled={installing}>
-                    {installing ? (
-                      <>
-                        <Loader2 className="size-4 mr-2 animate-spin" />
-                        安装中...
-                      </>
-                    ) : (
-                      <>
-                        <Download className="size-4 mr-2" />
-                        安装
-                      </>
-                    )}
-                  </Button>
-                )}
+                ) : null}
               </div>
             </div>
 
@@ -576,26 +454,10 @@ export function MCPDetailView({ serverCode, serverId, usageCount }: MCPDetailVie
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4 text-xs text-muted-foreground">
                 {detail.creator && (
-                  <a
-                    href={`https://work.alibaba-inc.com/nwpipe/u/${detail.creator}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center overflow-hidden rounded-full"
-                    title={`创建者: ${detail.creator}`}
-                  >
-                    {!avatarError ? (
-                      <img
-                        src={`https://work.alibaba-inc.com/photo/${detail.creator}.140x140.jpg`}
-                        alt={detail.creator}
-                        className="size-6 rounded-full object-cover border border-border/30 cursor-pointer transition-transform duration-200 hover:scale-110"
-                        onError={() => setAvatarError(true)}
-                      />
-                    ) : (
-                      <div className="size-6 rounded-full bg-muted flex items-center justify-center border border-border/30">
-                        <User className="size-3 text-muted-foreground" />
-                      </div>
-                    )}
-                  </a>
+                  <span className="flex items-center gap-1" title="创建者">
+                    <User className="size-3" />
+                    {detail.creator}
+                  </span>
                 )}
                 {detail.gmtModified && (
                   <div className="flex items-center gap-1" title="最后更新时间">

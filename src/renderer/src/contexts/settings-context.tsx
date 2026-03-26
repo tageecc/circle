@@ -26,7 +26,6 @@ interface GeneralSettings {
   language: string
   autoSave: boolean
   debugMode: boolean
-  telemetry: boolean
   autoRunMode: AutoRunMode // 命令执行模式：ask=每次询问, auto-run=自动运行, whitelist=白名单
   commandWhitelist: string[] // 命令白名单（只在 whitelist 模式下生效）
   enableFilePreviewOnSingleClick: boolean // 单击文件预览模式（默认关闭）
@@ -87,7 +86,6 @@ const defaultGeneralSettings: GeneralSettings = {
   language: 'zh-CN',
   autoSave: true,
   debugMode: false,
-  telemetry: true,
   autoRunMode: 'auto-run', // 默认：自动运行（与 Cursor 的 Run Everything 一致）
   commandWhitelist: [
     'npm',
@@ -152,7 +150,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         language: config.language || 'zh-CN',
         autoSave: preferences.autoSave ?? true,
         debugMode: preferences.debugMode ?? false,
-        telemetry: preferences.telemetry ?? true,
         autoRunMode: preferences.autoRunMode ?? 'auto-run',
         commandWhitelist: preferences.commandWhitelist ?? defaultGeneralSettings.commandWhitelist,
         enableFilePreviewOnSingleClick: preferences.enableFilePreviewOnSingleClick ?? true,
@@ -320,7 +317,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         preferences: {
           autoSave: newSettings.autoSave,
           debugMode: newSettings.debugMode,
-          telemetry: newSettings.telemetry,
           autoRunMode: newSettings.autoRunMode,
           commandWhitelist: newSettings.commandWhitelist,
           enableFilePreviewOnSingleClick: newSettings.enableFilePreviewOnSingleClick,

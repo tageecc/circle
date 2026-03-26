@@ -72,13 +72,9 @@ export function EditorContent({
   }
 
   // MCP 详情页视图
-  if (currentFile.isMCPDetail && (currentFile.mcpServerCode || currentFile.mcpServerId)) {
+  if (currentFile.isMCPDetail && currentFile.mcpServerId) {
     return (
-      <MCPDetailView
-        serverCode={currentFile.mcpServerCode}
-        serverId={currentFile.mcpServerId}
-        usageCount={currentFile.mcpUsageCount}
-      />
+      <MCPDetailView serverId={currentFile.mcpServerId} usageCount={currentFile.mcpUsageCount} />
     )
   }
 

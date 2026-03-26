@@ -17,7 +17,7 @@ const baseTabs: Array<{ id: LeftTabType; icon: typeof Files; label: string }> = 
   { id: 'changes', icon: GitBranch, label: '源代码管理' },
   { id: 'history', icon: History, label: 'Git 历史' },
   { id: 'skills', icon: Puzzle, label: 'Skills' },
-  { id: 'mcp', icon: Unplug, label: 'MCP 市场' }
+  { id: 'mcp', icon: Unplug, label: 'MCP' }
 ]
 
 export function ActivityBar({

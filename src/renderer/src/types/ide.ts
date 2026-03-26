@@ -42,9 +42,7 @@ export interface FileTab {
   theirsBranch?: string
   /** 是否为 MCP 详情页 */
   isMCPDetail?: boolean
-  /** MCP 服务器代码（用于市场服务详情页） */
-  mcpServerCode?: string
-  /** MCP 服务器 ID（用于本地服务详情页） */
+  /** MCP 服务器 ID（本地已配置的服务） */
   mcpServerId?: string
   /** MCP 服务使用次数（近30天） */
   mcpUsageCount?: number

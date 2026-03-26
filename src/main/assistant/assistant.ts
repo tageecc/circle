@@ -5,7 +5,6 @@ import { globFileSearchTool } from '../tools/glob-file-search.tool'
 import { grepTool } from '../tools/grep.tool'
 import { codebaseSearchTool } from '../tools/codebase-search.tool'
 import { deleteFileTool } from '../tools/delete-file.tool'
-import { webSearchTool } from '../tools/web-search.tool'
 import { readLintsTool } from '../tools/read-lints.tool'
 import { runTerminalCmdTool } from '../tools/run-terminal-cmd.tool'
 import { updateMemoryTool } from '../tools/update-memory.tool'
@@ -197,7 +196,6 @@ export function getAssistantTools(): Record<string, any> {
     codebase_search: codebaseSearchTool,
     run_terminal_cmd: runTerminalCmdTool,
     read_lints: readLintsTool,
-    web_search: webSearchTool,
     update_memory: updateMemoryTool,
     todo_write: todoWriteTool,
     get_skill_details: getSkillDetailsTool,
