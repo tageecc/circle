@@ -112,6 +112,8 @@ interface ServiceSettings {
   languageServiceCompletionTimeout?: number
   /** Language Service Hover 超时（毫秒） */
   languageServiceHoverTimeout?: number
+  /** Embedding provider for code search */
+  embeddingProvider?: string
 }
 
 interface SkillsSettings {

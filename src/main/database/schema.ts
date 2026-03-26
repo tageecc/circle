@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
+import { sqliteTable, text, integer, blob } from 'drizzle-orm/sqlite-core'
 
 /**
  * 应用配置表
@@ -173,6 +173,7 @@ export const codebaseVectors = sqliteTable('codebase_vectors', {
   relativePath: text('relative_path').notNull(),
   text: text('text').notNull(),
   language: text('language').notNull(),
+  embedding: blob('embedding', { mode: 'buffer' }), // Float32Array stored as Buffer
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull()
 })
 

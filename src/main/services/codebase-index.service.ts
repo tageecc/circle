@@ -1,14 +1,15 @@
 /**
  * Codebase Index Service
- * 代码库索引服务 - 简化版本，使用 SQLite 本地存储
+ * 代码库索引服务 - 使用 SQLite + sqlite-vec 向量搜索
  */
 
 import { FileService } from './file.service'
+import { EmbeddingService } from './embedding.service'
 import { getDb } from '../database/db'
 import * as schema from '../database/schema'
 import * as path from 'path'
 import * as crypto from 'crypto'
-import { eq, like, and } from 'drizzle-orm'
+import { eq, like, and, sql, isNotNull } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 
 interface SearchResult {
@@ -43,6 +44,7 @@ interface FileMetadata {
 export class CodebaseIndexService {
   private static instance: CodebaseIndexService
   private db = getDb()
+  private embeddingService = EmbeddingService.getInstance()
 
   private readonly MAX_FILE_SIZE = 1024 * 1024
   private readonly CHUNK_MAX_SIZE = 512
@@ -371,8 +373,14 @@ export class CodebaseIndexService {
         const content = await FileService.readFile(filePath)
         const chunks = this.chunkText(content)
 
-        for (const chunkText of chunks) {
+        // Generate embeddings for all chunks in batch
+        const embeddings = await this.embeddingService.generateEmbeddings(chunks)
+
+        for (let i = 0; i < chunks.length; i++) {
+          const chunkText = chunks[i]
+          const embedding = embeddings[i]
           const now = new Date()
+
           db.insert(schema.codebaseVectors)
             .values({
               id: nanoid(),
@@ -381,6 +389,7 @@ export class CodebaseIndexService {
               relativePath: meta.relativePath,
               text: chunkText,
               language: meta.language,
+              embedding: embedding ? Buffer.from(embedding.buffer) : null,
               createdAt: now
             })
             .run()
@@ -413,7 +422,7 @@ export class CodebaseIndexService {
 
         processed++
         const progress = 10 + Math.floor((processed / total) * 80)
-        onProgress?.(progress, 100, `索引文件: ${processed}/${total}`)
+        onProgress?.(progress, 100, `索引文件 (含向量化): ${processed}/${total}`)
       } catch (error) {
         console.error(`[CodebaseIndex] Failed to index ${meta.relativePath}:`, error)
       }
@@ -590,30 +599,72 @@ export class CodebaseIndexService {
   async searchCodebase(
     projectPath: string,
     query: string,
-    options?: { limit?: number }
+    options?: { limit?: number; minScore?: number }
   ): Promise<SearchResult[]> {
     const db = this.db.getDb()
-    const { limit = 15 } = options || {}
+    const { limit = 15, minScore = 0.5 } = options || {}
 
+    // Generate embedding for query
+    const queryEmbedding = await this.embeddingService.generateEmbedding(query)
+
+    if (!queryEmbedding) {
+      console.warn('[CodebaseIndex] Failed to generate query embedding, falling back to text search')
+      // Fallback to text search if embedding fails
+      const results = db
+        .select()
+        .from(schema.codebaseVectors)
+        .where(
+          and(
+            eq(schema.codebaseVectors.projectPath, projectPath),
+            like(schema.codebaseVectors.text, `%${query}%`)
+          )
+        )
+        .limit(limit)
+        .all()
+
+      return results.map((row) => ({
+        filePath: row.filePath,
+        relativePath: row.relativePath,
+        text: row.text,
+        score: 0.8,
+        language: row.language
+      }))
+    }
+
+    // Vector similarity search using sqlite-vec
+    const queryBuffer = Buffer.from(queryEmbedding.buffer)
+    
     const results = db
-      .select()
+      .select({
+        id: schema.codebaseVectors.id,
+        filePath: schema.codebaseVectors.filePath,
+        relativePath: schema.codebaseVectors.relativePath,
+        text: schema.codebaseVectors.text,
+        language: schema.codebaseVectors.language,
+        embedding: schema.codebaseVectors.embedding,
+        distance: sql<number>`vec_distance_cosine(${schema.codebaseVectors.embedding}, ${queryBuffer})`
+      })
       .from(schema.codebaseVectors)
       .where(
         and(
           eq(schema.codebaseVectors.projectPath, projectPath),
-          like(schema.codebaseVectors.text, `%${query}%`)
+          isNotNull(schema.codebaseVectors.embedding)
         )
       )
+      .orderBy(sql`vec_distance_cosine(${schema.codebaseVectors.embedding}, ${queryBuffer})`)
       .limit(limit)
       .all()
 
-    return results.map((row) => ({
-      filePath: row.filePath,
-      relativePath: row.relativePath,
-      text: row.text,
-      score: 1.0,
-      language: row.language
-    }))
+    // Filter by minimum similarity score (1 - distance for cosine)
+    return results
+      .map((row) => ({
+        filePath: row.filePath,
+        relativePath: row.relativePath,
+        text: row.text,
+        score: 1 - row.distance,
+        language: row.language
+      }))
+      .filter((result) => result.score >= minScore)
   }
 
   async deleteProject(projectPath: string): Promise<void> {

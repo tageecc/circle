@@ -5,6 +5,7 @@ import Database from 'better-sqlite3'
 import { drizzle, BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { eq, desc, and, lt } from 'drizzle-orm'
 import * as schema from './schema'
+import * as sqliteVec from 'sqlite-vec'
 
 /**
  * SQLite 数据库服务
@@ -31,6 +32,14 @@ class CircleDatabase {
     this.sqlite = new Database(this.dbPath)
     this.sqlite.pragma('journal_mode = WAL')
     this.sqlite.pragma('foreign_keys = ON')
+
+    // Load sqlite-vec extension for vector search
+    try {
+      sqliteVec.load(this.sqlite)
+      console.log('   ✓ sqlite-vec extension loaded')
+    } catch (error) {
+      console.error('   ✗ Failed to load sqlite-vec extension:', error)
+    }
 
     this.db = drizzle(this.sqlite, { schema })
     this.initTables()
@@ -232,10 +241,21 @@ class CircleDatabase {
     `)
     this.migrateSessionsAgentIdToModelId()
     this.migrateDropLegacyDeviceUserTable()
+    this.migrateAddEmbeddingColumn()
   }
 
   private migrateDropLegacyDeviceUserTable(): void {
     this.sqlite.exec('DROP TABLE IF EXISTS device_user')
+  }
+
+  private migrateAddEmbeddingColumn(): void {
+    const cols = this.sqlite.prepare('PRAGMA table_info(codebase_vectors)').all() as { name: string }[]
+    const hasEmbedding = cols.some((c) => c.name === 'embedding')
+    if (!hasEmbedding) {
+      console.log('   ⚙️  Adding embedding column to codebase_vectors...')
+      this.sqlite.exec('ALTER TABLE codebase_vectors ADD COLUMN embedding BLOB')
+      console.log('   ✓ embedding column added')
+    }
   }
 
   private migrateSessionsAgentIdToModelId(): void {

@@ -9,10 +9,10 @@ const inputSchema = z.object({
 })
 
 /**
- * 代码库语义搜索工具
+ * 代码库语义搜索工具 - 使用 sqlite-vec 向量检索
  */
 export const codebaseSearchTool = tool({
-  description: `Semantic search that finds code by meaning, not exact text. Uses vector embeddings to understand code semantics.
+  description: `Semantic vector search that finds code by meaning using embeddings. Powered by sqlite-vec extension.
 
 ### When to Use This Tool
 
@@ -20,7 +20,7 @@ Use codebase_search when you need to:
 - Explore unfamiliar codebases to understand architecture
 - Ask "how/where/what" questions about behavior (e.g., "How is user authentication handled?")
 - Find code by concept rather than exact keywords (e.g., "error handling logic")
-- Discover related code across multiple files
+- Discover related code across multiple files based on semantic similarity
 - Understand data flow or component relationships
 
 ### When NOT to Use
@@ -31,12 +31,20 @@ Skip codebase_search for:
 - **Simple symbol lookups** → use \`grep\` with exact patterns
 - **Find files by name** → use \`glob_file_search\` or \`list_dir\`
 - **Project not indexed** → check if index exists first
+- **Embedding API not configured** → requires OpenAI/Voyage API key in settings
+
+### How It Works
+- Converts query into embeddings (text-embedding-3-small or voyage-code-2)
+- Uses cosine similarity to find semantically similar code chunks
+- Falls back to text search if embedding generation fails
+- Returns results sorted by similarity score (0-1, higher = more similar)
 
 ### Key Features
-- Searches across entire codebase or specific directories
-- Returns top 15 results with relevance scores
+- True semantic search using vector embeddings
+- Returns top 15 results with relevance scores (0.5+ threshold)
 - Includes file paths, code snippets, and programming language
 - Works with 20+ programming languages
+- Batched embedding generation for efficient indexing
 
 ### Decision Guide
 
@@ -44,7 +52,7 @@ Skip codebase_search for:
   Query: "How does the authentication middleware verify tokens?"
   Tool: codebase_search
   <reasoning>
-    Good: Semantic question about behavior, need to find relevant code across multiple files
+    Good: Semantic question about behavior, will find related auth/token code even with different naming
   </reasoning>
 </example>
 
@@ -60,15 +68,16 @@ Skip codebase_search for:
   Query: "Where are error boundaries implemented?"
   Tool: codebase_search
   <reasoning>
-    Good: Conceptual search for a pattern that might have different names
+    Good: Conceptual search - will find ErrorBoundary, error handling, fallback UI, etc.
   </reasoning>
 </example>
 
 ### Important Notes
 - Requires project to be indexed first (check with "Index Project" feature)
-- Results are ranked by semantic similarity (0-1 score)
-- May take 1-2 seconds for large codebases
-- Best for exploration and understanding, not precise symbol lookup`,
+- Requires embedding API configured in settings (OpenAI or Voyage AI)
+- Results ranked by cosine similarity (1 - distance), filtered at 0.5+ threshold
+- Indexing generates embeddings for all code chunks (slower but enables semantic search)
+- Query time: <100ms for most codebases, including embedding generation`,
   inputSchema,
   execute: async ({ query, target_directories, explanation }) => {
     try {
