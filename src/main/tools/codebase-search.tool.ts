@@ -12,7 +12,12 @@ const inputSchema = z.object({
  * 代码库语义搜索工具 - 使用 sqlite-vec 向量检索
  */
 export const codebaseSearchTool = tool({
-  description: `Semantic vector search that finds code by meaning using embeddings.
+  description: `Semantic code search - finds code by meaning (vector search) or text (LIKE search).
+
+### Mode Selection
+
+- **Vector search enabled**: Uses AI embeddings for true semantic search
+- **Vector search disabled**: Uses simple text LIKE matching
 
 ### When to Use
 
@@ -23,19 +28,13 @@ Use for:
 
 ### When NOT to Use
 
-- Exact text matches → use grep
+- Exact text matches → use grep (faster)
 - Reading known files → use read_file
-- Simple symbol lookups → use grep
 - Finding files by name → use glob
 
-### How It Works
-
-Converts query to embedding vector, finds similar code chunks using cosine similarity (sqlite-vec).
-Returns top 15 results with scores 0.5+.
-
 <example>
-  Query: "How does authentication middleware verify tokens?"
-  <reasoning>Good: Semantic question, finds related auth code</reasoning>
+  Query: "How does authentication work?"
+  <reasoning>Good: Semantic question, benefits from vector search</reasoning>
 </example>
 
 <example>

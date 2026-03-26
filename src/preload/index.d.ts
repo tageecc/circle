@@ -123,6 +123,8 @@ declare global {
         // Default Model
         getDefaultModel: () => Promise<string>
         setDefaultModel: (modelId: string) => Promise<{ success: boolean }>
+        getServiceSettings: () => Promise<any>
+        setServiceSettings: (settings: any) => Promise<{ success: boolean }>
       }
       memory: {
         getAll: () => Promise<Array<{

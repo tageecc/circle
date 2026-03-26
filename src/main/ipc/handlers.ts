@@ -334,6 +334,25 @@ export function registerIpcHandlers() {
     }
   })
 
+  ipcMain.handle('config:getServiceSettings', async () => {
+    try {
+      return configService.getServiceSettings()
+    } catch (error) {
+      console.error('Failed to get service settings:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('config:setServiceSettings', async (_, settings: any) => {
+    try {
+      configService.setServiceSettings(settings)
+      return { success: true }
+    } catch (error) {
+      console.error('Failed to set service settings:', error)
+      throw error
+    }
+  })
+
   // UI State handlers
   ipcMain.handle('config:getUIState', async () => {
     try {

@@ -26,6 +26,11 @@ export const EMBEDDING_PROVIDERS: Record<string, EmbeddingProvider> = {
     name: 'Voyage AI',
     model: 'voyage-code-2',
     dimensions: 1536
+  },
+  'qwen-embed': {
+    name: 'Alibaba (China)',
+    model: 'text-embedding-v3',
+    dimensions: 1024
   }
 }
 
@@ -47,7 +52,14 @@ export class EmbeddingService {
   /**
    * Check if embedding is properly configured
    */
+  isEnabled(): boolean {
+    const config = this.configService.getServiceSettings()
+    return config?.vectorSearchEnabled === true
+  }
+
   isConfigured(): boolean {
+    if (!this.isEnabled()) return false
+
     const config = this.configService.getServiceSettings()
     const embeddingConfig = config?.embeddingProvider || 'openai-small'
     const provider = EMBEDDING_PROVIDERS[embeddingConfig]
@@ -59,6 +71,8 @@ export class EmbeddingService {
       return !!apiKeys?.openai
     } else if (provider.name === 'Voyage AI') {
       return !!apiKeys?.['voyage']
+    } else if (provider.name === 'Alibaba (China)') {
+      return !!apiKeys?.dashscope
     }
     return false
   }
@@ -119,6 +133,8 @@ export class EmbeddingService {
       return await this.callOpenAI(provider.model, text)
     } else if (provider.name === 'Voyage AI') {
       return await this.callVoyageAI(provider.model, text)
+    } else if (provider.name === 'Alibaba (China)') {
+      return await this.callQwen(provider.model, text)
     }
     throw new Error(`Unsupported provider: ${provider.name}`)
   }
@@ -131,6 +147,8 @@ export class EmbeddingService {
       return await this.callOpenAIBatch(provider.model, texts)
     } else if (provider.name === 'Voyage AI') {
       return await this.callVoyageAIBatch(provider.model, texts)
+    } else if (provider.name === 'Alibaba (China)') {
+      return await this.callQwenBatch(provider.model, texts)
     }
     throw new Error(`Unsupported provider: ${provider.name}`)
   }
@@ -251,5 +269,63 @@ export class EmbeddingService {
 
     const data = await response.json()
     return data.data.map((item: any) => new Float32Array(item.embedding))
+  }
+
+  private async callQwen(model: string, text: string): Promise<Float32Array> {
+    const apiKeys = this.configService.getApiKeys()
+    const apiKey = apiKeys?.dashscope
+
+    if (!apiKey) {
+      throw new Error('Alibaba DashScope API key not configured')
+    }
+
+    const response = await fetch('https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model,
+        input: { texts: [text] }
+      })
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Alibaba DashScope API error: ${response.status} ${error}`)
+    }
+
+    const data = await response.json()
+    return new Float32Array(data.output.embeddings[0].embedding)
+  }
+
+  private async callQwenBatch(model: string, texts: string[]): Promise<Float32Array[]> {
+    const apiKeys = this.configService.getApiKeys()
+    const apiKey = apiKeys?.dashscope
+
+    if (!apiKey) {
+      throw new Error('Alibaba DashScope API key not configured')
+    }
+
+    const response = await fetch('https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model,
+        input: { texts }
+      })
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Alibaba DashScope API error: ${response.status} ${error}`)
+    }
+
+    const data = await response.json()
+    return data.output.embeddings.map((item: any) => new Float32Array(item.embedding))
   }
 }

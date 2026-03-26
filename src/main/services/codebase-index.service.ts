@@ -131,27 +131,33 @@ export class CodebaseIndexService {
   ): Promise<IndexStats> {
     console.log('[CodebaseIndex] Starting indexing:', projectPath)
 
-    if (!this.embeddingService.isConfigured()) {
-      throw new Error('Embedding API not configured. Configure API key in Settings → API Keys')
-    }
-
-    const embeddingConfig = this.embeddingService.getConfig()!
-    console.log(`[CodebaseIndex] Using ${embeddingConfig.model} (${embeddingConfig.dimensions}d)`)
-
+    const vectorEnabled = this.embeddingService.isEnabled()
     const db = this.db.getDb()
+    
+    if (vectorEnabled) {
+      if (!this.embeddingService.isConfigured()) {
+        throw new Error('Vector search enabled but embedding API not configured. Configure in Settings → API Keys')
+      }
 
-    // Check dimension mismatch
-    const existingVector = db
-      .select({ embedding: schema.codebaseVectors.embedding })
-      .from(schema.codebaseVectors)
-      .where(eq(schema.codebaseVectors.projectPath, projectPath))
-      .limit(1)
-      .get()
+      const embeddingConfig = this.embeddingService.getConfig()!
+      console.log(`[CodebaseIndex] Vector search enabled: ${embeddingConfig.model} (${embeddingConfig.dimensions}d)`)
 
-    if (existingVector?.embedding && existingVector.embedding.length / 4 !== embeddingConfig.dimensions) {
-      console.warn('[CodebaseIndex] Dimension mismatch, deleting old index...')
-      await this.deleteProject(projectPath)
+      // Check dimension mismatch
+      const existingVector = db
+        .select({ embedding: schema.codebaseVectors.embedding })
+        .from(schema.codebaseVectors)
+        .where(eq(schema.codebaseVectors.projectPath, projectPath))
+        .limit(1)
+        .get()
+
+      if (existingVector?.embedding && existingVector.embedding.length / 4 !== embeddingConfig.dimensions) {
+        console.warn('[CodebaseIndex] Dimension mismatch, deleting old index...')
+        await this.deleteProject(projectPath)
+      }
+    } else {
+      console.log('[CodebaseIndex] Vector search disabled, using text-only index')
     }
+
     const existingFiles = await this.loadFileMetadata(projectPath)
     const currentFiles = await this.scanFiles(projectPath, onProgress)
 
@@ -393,20 +399,22 @@ export class CodebaseIndexService {
         const content = await FileService.readFile(filePath)
         const chunks = this.chunkText(content)
 
-        // Generate embeddings for all chunks in batch
-        const embeddings = await this.embeddingService.generateEmbeddings(chunks)
+        // Generate embeddings if vector search is enabled
+        let embeddings: (Float32Array | null)[] = []
+        if (this.embeddingService.isEnabled()) {
+          embeddings = await this.embeddingService.generateEmbeddings(chunks)
 
-        // Check if any embeddings failed
-        const failedCount = embeddings.filter((e) => e === null).length
-        if (failedCount > 0) {
-          throw new Error(
-            `Failed to generate embeddings for ${meta.relativePath}: ${failedCount}/${chunks.length} chunks failed. Check API key and network connection.`
-          )
+          const failedCount = embeddings.filter((e) => e === null).length
+          if (failedCount > 0) {
+            throw new Error(
+              `Failed to generate embeddings for ${meta.relativePath}: ${failedCount}/${chunks.length} chunks failed`
+            )
+          }
         }
 
         for (let i = 0; i < chunks.length; i++) {
           const chunkText = chunks[i]
-          const embedding = embeddings[i]!
+          const embedding = embeddings[i]
           const now = new Date()
 
           db.insert(schema.codebaseVectors)
@@ -417,7 +425,7 @@ export class CodebaseIndexService {
               relativePath: meta.relativePath,
               text: chunkText,
               language: meta.language,
-              embedding: Buffer.from(embedding.buffer),
+              embedding: embedding ? Buffer.from(embedding.buffer) : null,
               createdAt: now
             })
             .run()

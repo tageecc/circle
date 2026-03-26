@@ -112,6 +112,8 @@ interface ServiceSettings {
   languageServiceCompletionTimeout?: number
   /** Language Service Hover 超时（毫秒） */
   languageServiceHoverTimeout?: number
+  /** 向量搜索功能开关 */
+  vectorSearchEnabled?: boolean
   /** Embedding provider for code search */
   embeddingProvider?: string
 }

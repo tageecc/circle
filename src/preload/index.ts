@@ -178,7 +178,9 @@ const api = {
       ipcRenderer.invoke('config:setApiKeys', apiKeys),
     // Default Model
     getDefaultModel: () => ipcRenderer.invoke('config:getDefaultModel'),
-    setDefaultModel: (modelId: string) => ipcRenderer.invoke('config:setDefaultModel', modelId)
+    setDefaultModel: (modelId: string) => ipcRenderer.invoke('config:setDefaultModel', modelId),
+    getServiceSettings: () => ipcRenderer.invoke('config:getServiceSettings'),
+    setServiceSettings: (settings: any) => ipcRenderer.invoke('config:setServiceSettings', settings)
   },
 
   // MCP APIs

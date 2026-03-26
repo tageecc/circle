@@ -1,39 +1,35 @@
 # 向量搜索配置指南
 
-Circle 现在使用 **sqlite-vec** 扩展实现真正的语义代码搜索，支持向量相似度检索。
+Circle 使用 **sqlite-vec** 扩展实现可选的语义代码搜索。
 
 ## 功能特点
 
+- ✅ **可选功能**：默认关闭，开启后使用 AI embeddings
 - ✅ **真语义搜索**：理解代码含义，不仅仅匹配关键词
-- ✅ **本地存储**：向量存在 SQLite（`circle.db`），无需独立向量库
-- ✅ **多提供商支持**：OpenAI、Voyage AI embeddings
+- ✅ **本地存储**：向量存在 SQLite，无需独立向量库
+- ✅ **多提供商支持**：OpenAI、Voyage AI、Qwen
 - ✅ **增量索引**：只对新增/修改文件生成向量
-- ✅ **维度检测**：切换 provider 时自动重建索引
 
 ## 快速开始
 
-### 1. 配置 API Key
+### 1. 启用向量搜索
 
-向量搜索需要 embedding API，在 **设置 → API Keys** 中配置：
+在 **设置 → 通用 → 代码搜索** 中：
+1. 开启"向量语义搜索"开关
+2. 选择 Embedding Provider：
+   - `OpenAI Small` (推荐)：1536 维，成本低速度快
+   - `OpenAI Large`：3072 维，更精确
+   - `Voyage AI Code`：1536 维，代码优化
+   - `Qwen Embedding`：1024 维，中文友好
 
-**OpenAI（推荐）**
-- Model: `text-embedding-3-small`（1536 维）
-- 成本低、速度快
-- 适合大多数场景
+### 2. 配置 API Key
 
-**Voyage AI（代码优化）**
-- Model: `voyage-code-2`（1536 维）
-- 专为代码优化
-- 需单独注册 Voyage AI 账号
+在 **设置 → API Keys** 中配置对应的 key：
+- OpenAI：需 OpenAI API key
+- Voyage AI：需 Voyage AI key
+- Qwen：需 Alibaba DashScope key
 
-### 2. 配置 Embedding 提供商
-
-在 **设置 → 服务设置** 中选择：
-- `openai-small`：OpenAI text-embedding-3-small（默认）
-- `openai-large`：OpenAI text-embedding-3-large（3072 维，更精确）
-- `voyage-code`：Voyage AI voyage-code-2（代码专用）
-
-### 3. 索引项目
+### 3. 索引项目（首次或代码变更后）
 
 点击状态栏的 **"索引项目"** 按钮，或使用命令面板 `⌘K` → "Index Project"
 

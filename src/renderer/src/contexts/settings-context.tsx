@@ -26,10 +26,12 @@ interface GeneralSettings {
   language: string
   autoSave: boolean
   debugMode: boolean
-  autoRunMode: AutoRunMode // 命令执行模式：ask=每次询问, auto-run=自动运行, whitelist=白名单
-  commandWhitelist: string[] // 命令白名单（只在 whitelist 模式下生效）
-  enableFilePreviewOnSingleClick: boolean // 单击文件预览模式（默认关闭）
-  openProjectBehavior: 'ask' | 'current' | 'new' // 打开项目行为：ask=每次询问, current=当前窗口, new=新窗口
+  autoRunMode: AutoRunMode
+  commandWhitelist: string[]
+  enableFilePreviewOnSingleClick: boolean
+  openProjectBehavior: 'ask' | 'current' | 'new'
+  vectorSearchEnabled?: boolean
+  embeddingProvider?: string
 }
 
 export interface SkillsSettings {
@@ -86,21 +88,23 @@ const defaultGeneralSettings: GeneralSettings = {
   language: 'zh-CN',
   autoSave: true,
   debugMode: false,
-  autoRunMode: 'auto-run', // 默认：自动运行（与 Cursor 的 Run Everything 一致）
+  autoRunMode: 'auto-run',
   commandWhitelist: [
     'npm',
     'pnpm',
-    'yarn', // 包管理器
+    'yarn',
     'ls',
     'cat',
     'echo',
-    'pwd', // 安全的查看命令
+    'pwd',
     'git status',
     'git diff',
-    'git log' // Git 只读命令
+    'git log'
   ],
-  enableFilePreviewOnSingleClick: true, // 默认开启单击预览功能
-  openProjectBehavior: 'ask' // 默认每次询问
+  enableFilePreviewOnSingleClick: true,
+  openProjectBehavior: 'ask',
+  vectorSearchEnabled: false,
+  embeddingProvider: 'openai-small'
 }
 
 const DEFAULT_SKILL_SCAN_DIRECTORIES = ['.circle', '.cursor', '.vscode', '.claude', 'skills']
@@ -146,6 +150,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       }
       setAppearanceSettings(appearanceSettings)
 
+      const serviceSettings = await window.api.config.getServiceSettings()
+
       setGeneralSettings({
         language: config.language || 'zh-CN',
         autoSave: preferences.autoSave ?? true,
@@ -153,7 +159,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         autoRunMode: preferences.autoRunMode ?? 'auto-run',
         commandWhitelist: preferences.commandWhitelist ?? defaultGeneralSettings.commandWhitelist,
         enableFilePreviewOnSingleClick: preferences.enableFilePreviewOnSingleClick ?? true,
-        openProjectBehavior: preferences.openProjectBehavior ?? 'ask'
+        openProjectBehavior: preferences.openProjectBehavior ?? 'ask',
+        vectorSearchEnabled: serviceSettings.vectorSearchEnabled ?? false,
+        embeddingProvider: serviceSettings.embeddingProvider ?? 'openai-small'
       })
 
       // 加载技能设置
@@ -324,6 +332,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
           sidebarCollapsed: config.preferences?.sidebarCollapsed ?? false
         }
       })
+
+      // Save vector search settings to serviceSettings
+      if ('vectorSearchEnabled' in settings || 'embeddingProvider' in settings) {
+        await window.api.config.setServiceSettings({
+          vectorSearchEnabled: newSettings.vectorSearchEnabled,
+          embeddingProvider: newSettings.embeddingProvider
+        })
+      }
     } catch (error) {
       console.error('Failed to save general settings:', error)
     }
