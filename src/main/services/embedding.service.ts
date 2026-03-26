@@ -45,6 +45,42 @@ export class EmbeddingService {
   }
 
   /**
+   * Check if embedding is properly configured
+   */
+  isConfigured(): boolean {
+    const config = this.configService.getServiceSettings()
+    const embeddingConfig = config?.embeddingProvider || 'openai-small'
+    const provider = EMBEDDING_PROVIDERS[embeddingConfig]
+
+    if (!provider) return false
+
+    const apiKeys = this.configService.getApiKeys()
+    if (provider.name === 'OpenAI') {
+      return !!apiKeys?.openai
+    } else if (provider.name === 'Voyage AI') {
+      return !!apiKeys?.['voyage']
+    }
+    return false
+  }
+
+  /**
+   * Get current embedding configuration
+   */
+  getConfig(): { provider: string; model: string; dimensions: number } | null {
+    const config = this.configService.getServiceSettings()
+    const embeddingConfig = config?.embeddingProvider || 'openai-small'
+    const provider = EMBEDDING_PROVIDERS[embeddingConfig]
+
+    if (!provider) return null
+
+    return {
+      provider: embeddingConfig,
+      model: provider.model,
+      dimensions: provider.dimensions
+    }
+  }
+
+  /**
    * Generate embedding for a single text
    */
   async generateEmbedding(text: string): Promise<Float32Array | null> {
@@ -67,6 +103,7 @@ export class EmbeddingService {
 
   /**
    * Generate embeddings for multiple texts (batch)
+   * Automatically splits into smaller batches to avoid API limits
    */
   async generateEmbeddings(texts: string[]): Promise<(Float32Array | null)[]> {
     const config = this.configService.getServiceSettings()
@@ -78,12 +115,23 @@ export class EmbeddingService {
       return texts.map(() => null)
     }
 
-    try {
-      return await this.callProviderBatch(provider, texts)
-    } catch (error) {
-      console.error('[Embedding] Failed to generate embeddings batch:', error)
-      return texts.map(() => null)
+    // Split into smaller batches to avoid API limits (max ~50 chunks per batch)
+    const BATCH_SIZE = 50
+    const results: (Float32Array | null)[] = []
+
+    for (let i = 0; i < texts.length; i += BATCH_SIZE) {
+      const batch = texts.slice(i, i + BATCH_SIZE)
+      try {
+        const batchResults = await this.callProviderBatch(provider, batch)
+        results.push(...batchResults)
+      } catch (error) {
+        console.error(`[Embedding] Batch ${i}-${i + batch.length} failed:`, error)
+        // On batch failure, fill with nulls for this batch
+        results.push(...batch.map(() => null))
+      }
     }
+
+    return results
   }
 
   private async callProvider(provider: EmbeddingProvider, text: string): Promise<Float32Array> {

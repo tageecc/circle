@@ -49,6 +49,13 @@ const PROVIDERS: ProviderConfig[] = [
     description: 'DeepSeek API Key',
     placeholder: 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
     docUrl: 'https://platform.deepseek.com/api_keys'
+  },
+  {
+    id: 'voyage',
+    name: 'Voyage AI',
+    description: 'Voyage AI API Key (for code embeddings)',
+    placeholder: 'pa-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+    docUrl: 'https://dash.voyageai.com/api-keys'
   }
 ]
 

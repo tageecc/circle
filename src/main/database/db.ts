@@ -15,6 +15,7 @@ class CircleDatabase {
   private sqlite: Database.Database
   private db: BetterSQLite3Database<typeof schema>
   private dbPath: string
+  private vecExtensionLoaded: boolean = false
 
   private constructor() {
     const userDataPath = app.getPath('userData')
@@ -36,9 +37,12 @@ class CircleDatabase {
     // Load sqlite-vec extension for vector search
     try {
       sqliteVec.load(this.sqlite)
+      this.vecExtensionLoaded = true
       console.log('   ✓ sqlite-vec extension loaded')
     } catch (error) {
+      this.vecExtensionLoaded = false
       console.error('   ✗ Failed to load sqlite-vec extension:', error)
+      console.error('   Vector search will not be available')
     }
 
     this.db = drizzle(this.sqlite, { schema })
@@ -52,6 +56,10 @@ class CircleDatabase {
       CircleDatabase.instance = new CircleDatabase()
     }
     return CircleDatabase.instance
+  }
+
+  isVecExtensionLoaded(): boolean {
+    return this.vecExtensionLoaded
   }
 
   private initTables(): void {
