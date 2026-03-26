@@ -102,7 +102,7 @@ export interface SessionMetadata {
 export interface Session {
   id: string
   title: string
-  agentId: string // modelId (格式: provider/model)
+  modelId: string
   messages: Message[]
   createdAt: Date
   metadata?: SessionMetadata

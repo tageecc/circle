@@ -54,10 +54,10 @@ export class AvatarService {
   /**
    * 保存头像文件到应用目录
    * @param sourcePath 源文件路径
-   * @param agentId Agent ID（用于生成唯一文件名）
+   * @param ownerId Stable id for filename prefix (e.g. user or profile key)
    * @returns 返回保存后的文件名（不含路径）
    */
-  static async saveAvatar(sourcePath: string, agentId: string): Promise<string> {
+  static async saveAvatar(sourcePath: string, ownerId: string): Promise<string> {
     // 读取源文件
     const fileBuffer = await fs.readFile(sourcePath)
 
@@ -73,14 +73,12 @@ export class AvatarService {
       throw new Error('不支持的图片格式')
     }
 
-    // 生成文件名：agentId + 时间戳 + hash（防止缓存问题）
     const timestamp = Date.now()
     const hash = crypto.createHash('md5').update(fileBuffer).digest('hex').substring(0, 8)
-    const fileName = `${agentId}_${timestamp}_${hash}${ext}`
+    const fileName = `${ownerId}_${timestamp}_${hash}${ext}`
     const targetPath = path.join(this.avatarDir, fileName)
 
-    // 删除该 agent 的旧头像
-    await this.deleteAgentAvatars(agentId)
+    await this.deleteAvatarsForOwner(ownerId)
 
     // 保存新头像
     await fs.writeFile(targetPath, fileBuffer)
@@ -90,27 +88,26 @@ export class AvatarService {
   }
 
   /**
-   * 删除 agent 的所有头像文件
-   * @param agentId Agent ID
+   * 删除指定 owner 前缀下的所有头像文件
    */
-  static async deleteAgentAvatars(agentId: string): Promise<void> {
+  static async deleteAvatarsForOwner(ownerId: string): Promise<void> {
     try {
       const files = await fs.readdir(this.avatarDir)
-      const agentFiles = files.filter((file) => file.startsWith(`${agentId}_`))
+      const owned = files.filter((file) => file.startsWith(`${ownerId}_`))
 
       await Promise.all(
-        agentFiles.map((file) =>
+        owned.map((file) =>
           fs
             .unlink(path.join(this.avatarDir, file))
             .catch((err) => console.warn('Failed to delete avatar:', file, err))
         )
       )
 
-      if (agentFiles.length > 0) {
-        console.log(`✅ Deleted ${agentFiles.length} old avatar(s) for agent ${agentId}`)
+      if (owned.length > 0) {
+        console.log(`✅ Deleted ${owned.length} old avatar(s) for owner ${ownerId}`)
       }
     } catch (error) {
-      console.error('Failed to delete agent avatars:', error)
+      console.error('Failed to delete avatars for owner:', error)
     }
   }
 
@@ -163,19 +160,17 @@ export class AvatarService {
   }
 
   /**
-   * 清理孤立的头像文件（没有对应的 agent）
-   * @param existingAgentIds 当前存在的所有 agent ID 列表
+   * 清理孤立的头像文件（前缀不在已知 owner 列表中）
    */
-  static async cleanupOrphanedAvatars(existingAgentIds: string[]): Promise<void> {
+  static async cleanupOrphanedAvatars(existingOwnerIds: string[]): Promise<void> {
     try {
       const files = await fs.readdir(this.avatarDir)
       let deletedCount = 0
 
       for (const file of files) {
-        // 提取 agentId（文件名格式：agentId_timestamp_hash.ext）
-        const agentId = file.split('_')[0]
+        const ownerId = file.split('_')[0]
 
-        if (!existingAgentIds.includes(agentId)) {
+        if (!existingOwnerIds.includes(ownerId)) {
           await fs.unlink(path.join(this.avatarDir, file))
           deletedCount++
         }

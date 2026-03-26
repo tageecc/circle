@@ -543,13 +543,13 @@ declare global {
       }
       avatar: {
         select: () => Promise<string | null>
-        save: (sourcePath: string, agentId: string) => Promise<string>
-        delete: (agentId: string) => Promise<void>
+        save: (sourcePath: string, ownerId: string) => Promise<string>
+        delete: (ownerId: string) => Promise<void>
         getPath: (fileName: string) => Promise<string>
         readAsBase64: (fileName: string) => Promise<string>
         readFileAsBase64: (filePath: string) => Promise<string>
       }
-      codingAgent: {
+      projectCreate: {
         selectProjectFolder: () => Promise<{ canceled: boolean; path?: string }>
         createProject: (
           userPrompt: string,

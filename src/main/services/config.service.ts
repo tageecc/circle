@@ -79,8 +79,8 @@ interface FilesExclude {
 
 interface UIState {
   activeView?: string
-  selectedAgentId?: string
-  agentActiveTab?: string
+  selectedModelId?: string
+  skillsActiveTab?: string
   layout?: LayoutState
   codeEditor?: {
     openFiles?: EditorFileState[]
@@ -354,15 +354,15 @@ export class ConfigService {
   getUIState(): UIState {
     // UI 状态存储为多个键值对
     const activeView = this.db.getUIState('activeView', undefined)
-    const selectedAgentId = this.db.getUIState('selectedAgentId', undefined)
-    const agentActiveTab = this.db.getUIState('agentActiveTab', undefined)
+    const selectedModelId = this.db.getUIState('selectedModelId', undefined)
+    const skillsActiveTab = this.db.getUIState('skillsActiveTab', undefined)
     const layout = this.db.getUIState<LayoutState | undefined>('layout', undefined)
     const codeEditor = this.db.getUIState<UIState['codeEditor']>('codeEditor', undefined)
 
     return {
       activeView,
-      selectedAgentId,
-      agentActiveTab,
+      selectedModelId,
+      skillsActiveTab,
       layout,
       codeEditor
     }
@@ -372,11 +372,11 @@ export class ConfigService {
     if (state.activeView !== undefined) {
       this.db.setUIState('activeView', state.activeView)
     }
-    if (state.selectedAgentId !== undefined) {
-      this.db.setUIState('selectedAgentId', state.selectedAgentId)
+    if (state.selectedModelId !== undefined) {
+      this.db.setUIState('selectedModelId', state.selectedModelId)
     }
-    if (state.agentActiveTab !== undefined) {
-      this.db.setUIState('agentActiveTab', state.agentActiveTab)
+    if (state.skillsActiveTab !== undefined) {
+      this.db.setUIState('skillsActiveTab', state.skillsActiveTab)
     }
     if (state.layout !== undefined) {
       this.db.setUIState('layout', state.layout)
@@ -393,11 +393,11 @@ export class ConfigService {
       if (updates.activeView !== undefined) {
         this.db.setUIState('activeView', updates.activeView)
       }
-      if (updates.selectedAgentId !== undefined) {
-        this.db.setUIState('selectedAgentId', updates.selectedAgentId)
+      if (updates.selectedModelId !== undefined) {
+        this.db.setUIState('selectedModelId', updates.selectedModelId)
       }
-      if (updates.agentActiveTab !== undefined) {
-        this.db.setUIState('agentActiveTab', updates.agentActiveTab)
+      if (updates.skillsActiveTab !== undefined) {
+        this.db.setUIState('skillsActiveTab', updates.skillsActiveTab)
       }
       if (updates.layout !== undefined) {
         this.db.setUIState('layout', { ...current.layout, ...updates.layout })

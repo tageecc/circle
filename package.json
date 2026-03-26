@@ -1,12 +1,13 @@
 {
   "name": "circle",
   "version": "1.0.0",
-  "description": "A multi-agent platform for AI development",
+  "description": "Local-first AI-native desktop IDE: Monaco editor, Git, terminal, and a built-in coding assistant (Vercel AI SDK, MCP, SQLite).",
   "main": "./out/main/index.js",
   "author": "Circle",
   "homepage": "https://circle.com",
   "scripts": {
     "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "lint": "eslint --cache .",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
@@ -75,7 +76,6 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
-    "deepagents": "^1.1.1",
     "diff": "^8.0.2",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.44.7",

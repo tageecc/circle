@@ -1,4 +1,4 @@
-# Agent Skills 最终优化总结
+# Skills 最终优化总结
 
 ## 🎯 优化原则
 
@@ -172,9 +172,9 @@ useEffect(() => {
 
 ---
 
-## 📋 对比：Files: Exclude vs Agent Skills
+## 📋 对比：Files: Exclude vs Skills
 
-| 特性 | Files: Exclude | Agent Skills | 是否需要统一 |
+| 特性 | Files: Exclude | Skills | 是否需要统一 |
 |------|---------------|-------------|------------|
 | **数据量** | 大（10-50+） | 小（5-10） | ❌ |
 | **数据结构** | `Record<string, boolean>` | `string[]` | ❌ |

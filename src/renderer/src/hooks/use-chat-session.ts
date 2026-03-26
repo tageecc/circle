@@ -26,7 +26,7 @@ export function useChatSession(workspaceRoot: string | null) {
         const historySessions: Session[] = sessionsData.map((session: any) => ({
           id: session.id,
           title: session.title,
-          agentId: session.agentId,
+          modelId: session.modelId,
           messages: [],
           createdAt: new Date(session.createdAt)
         }))
@@ -133,7 +133,7 @@ export function useChatSession(workspaceRoot: string | null) {
       const newSession: Session = {
         id: sessionId,
         title: 'New Chat',
-        agentId: 'assistant',
+        modelId: 'assistant',
         messages: [],
         createdAt: new Date()
       }

@@ -266,7 +266,7 @@ export function useChatMessages(
         const newSession: Session = {
           id: sessionId,
           title: message.substring(0, 50) + (message.length > 50 ? '...' : ''),
-          agentId: modelId,
+          modelId,
           messages: [],
           createdAt: new Date()
         }

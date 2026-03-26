@@ -29,7 +29,7 @@ export function registerIpcHandlers() {
   // 获取全局配置服务实例
   const configService = getConfigService()
 
-  // 创建 ChatService 实例(统一管理聊天和 Agent)
+  // ChatService: streaming chat and tools
   const chatService = new ChatService(configService)
 
   // 创建 BugReportService 实例
@@ -66,10 +66,9 @@ export function registerIpcHandlers() {
           finalSessionId = chunk.sessionId
         }
 
-        // 如果是 interrupt，Agent 会等待用户决策
-        // 流式响应会自动暂停，等待 resumeInterrupt 调用
+        // interrupt: assistant waits for user decision; stream pauses until resume
         if (chunk.type === 'interrupt') {
-          console.log('[IPC] ⏸️  Agent interrupted, waiting for user decision')
+          console.log('[IPC] ⏸️  Assistant interrupted, waiting for user decision')
           // 继续发送 chunk 到前端，但不结束流
         }
       }
@@ -1457,18 +1456,18 @@ export function registerIpcHandlers() {
     }
   })
 
-  ipcMain.handle('avatar:save', async (_, sourcePath: string, agentId: string) => {
+  ipcMain.handle('avatar:save', async (_, sourcePath: string, ownerId: string) => {
     try {
-      return await AvatarService.saveAvatar(sourcePath, agentId)
+      return await AvatarService.saveAvatar(sourcePath, ownerId)
     } catch (error) {
       console.error('Failed to save avatar:', error)
       throw error
     }
   })
 
-  ipcMain.handle('avatar:delete', async (_, agentId: string) => {
+  ipcMain.handle('avatar:delete', async (_, ownerId: string) => {
     try {
-      await AvatarService.deleteAgentAvatars(agentId)
+      await AvatarService.deleteAvatarsForOwner(ownerId)
     } catch (error) {
       console.error('Failed to delete avatar:', error)
       throw error
@@ -1521,8 +1520,8 @@ export function registerIpcHandlers() {
     }
   })
 
-  // Coding Agent handlers - AI 项目创建
-  ipcMain.handle('coding-agent:selectProjectFolder', async (event) => {
+  // AI project bootstrap (welcome flow)
+  ipcMain.handle('project-create:selectProjectFolder', async (event) => {
     try {
       const window = BrowserWindow.fromWebContents(event.sender)
       if (!window) throw new Error('No active window')
@@ -1546,7 +1545,7 @@ export function registerIpcHandlers() {
   })
 
   ipcMain.handle(
-    'coding-agent:createProject',
+    'project-create:createProject',
     async (event, userPrompt: string, projectPath: string) => {
       try {
         const window = BrowserWindow.fromWebContents(event.sender)
@@ -1555,7 +1554,6 @@ export function registerIpcHandlers() {
         const defaultModelId = 'Alibaba (China)/qwen-plus'
         const sessionId = await sessionService.createSession(defaultModelId, projectPath)
 
-        // 使用系统 Coding Agent
         const stream = chatService.streamChat({
           sessionId,
           message: userPrompt,
@@ -1564,7 +1562,7 @@ export function registerIpcHandlers() {
 
         for await (const chunk of stream) {
           if (chunk.type === 'text') {
-            sendToRenderer('coding-agent:stream:chunk', { content: chunk.content })
+            sendToRenderer('project-create:stream:chunk', { content: chunk.content })
           }
         }
 

@@ -26,7 +26,7 @@ export const RightPanel = memo(function RightPanel({ workspaceRoot }: RightPanel
     handleClearSessionPendingEdits
   } = usePendingEditsActions({ workspaceRoot, fileManager, refreshFileTree })
 
-  // 监听 Agent 命令执行请求
+  // Terminal: run-command requests from tools
   useEffect(() => {
     const cleanup = window.api.terminal.onRunCommand((command) => {
       setPendingTerminalCommand(command)

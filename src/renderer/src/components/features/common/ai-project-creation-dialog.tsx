@@ -43,7 +43,7 @@ export function AIProjectCreationDialog({
 
   const handleSelectFolder = async () => {
     try {
-      const result = await window.api.codingAgent.selectProjectFolder()
+      const result = await window.api.projectCreate.selectProjectFolder()
 
       if (result.canceled || !result.path) {
         onClose()
@@ -59,10 +59,10 @@ export function AIProjectCreationDialog({
         setAiResponse((prev) => prev + chunk)
       }
 
-      window.electron.ipcRenderer.on('coding-agent:stream:chunk', listener)
+      window.electron.ipcRenderer.on('project-create:stream:chunk', listener)
 
       try {
-        await window.api.codingAgent.createProject(userPrompt, result.path)
+        await window.api.projectCreate.createProject(userPrompt, result.path)
         setStage('completed')
         setAiResponse((prev) => prev + '\n\n✅ 项目创建完成！')
       } catch (err: any) {
@@ -70,7 +70,7 @@ export function AIProjectCreationDialog({
         setError(err.message || '创建项目时发生错误')
         setAiResponse((prev) => prev + `\n\n❌ 错误：${err.message}`)
       } finally {
-        window.electron.ipcRenderer.removeListener('coding-agent:stream:chunk', listener)
+        window.electron.ipcRenderer.removeListener('project-create:stream:chunk', listener)
       }
     } catch (err: any) {
       setStage('error')

@@ -1,5 +1,5 @@
 /**
- * Agent Skills 类型定义
+ * Skills 类型定义
  */
 
 export interface SkillMetadata {

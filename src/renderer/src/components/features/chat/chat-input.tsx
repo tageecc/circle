@@ -49,6 +49,7 @@ interface ChatInputProps {
   defaultProvider?: string
   defaultModel?: string
   autoFocus?: boolean
+  minHeight?: string
   // Context usage
   maxTokens?: number
   usedTokens?: number
@@ -71,6 +72,7 @@ export function ChatInput({
   defaultProvider = 'Alibaba (China)',
   defaultModel = 'qwen-plus',
   autoFocus = false,
+  minHeight,
   maxTokens,
   usedTokens,
   usage
@@ -107,7 +109,7 @@ export function ChatInput({
   )
 
   return (
-    <div>
+    <div style={minHeight ? { minHeight } : undefined}>
       <InputGroup ref={inputGroupRef} className="[--radius:1.5rem]">
         <RichTextInput
           placeholder={placeholder}

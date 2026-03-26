@@ -29,7 +29,7 @@ const TAB_TITLES: Record<string, string> = {
   changes: '源代码管理',
   history: 'Git 历史',
   compare: '比较分支',
-  skills: 'Agent Skills',
+  skills: 'Skills',
   mcp: 'MCP 市场'
 }
 

@@ -143,7 +143,7 @@ class CircleDatabase {
       CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY,
         project_path TEXT NOT NULL,
-        agent_id TEXT NOT NULL,
+        model_id TEXT NOT NULL,
         title TEXT NOT NULL DEFAULT 'New Chat',
         metadata TEXT NOT NULL DEFAULT '{}',
         last_message_at INTEGER,
@@ -236,12 +236,21 @@ class CircleDatabase {
       );
       CREATE INDEX IF NOT EXISTS idx_memories_updated ON memories(updated_at DESC);
 
-      -- Agent Skills 偏好表（仅存储启用状态）
+      -- Skills 偏好表（仅存储启用状态）
       CREATE TABLE IF NOT EXISTS skill_preferences (
         skill_path TEXT PRIMARY KEY,
         enabled INTEGER NOT NULL DEFAULT 1
       );
     `)
+    this.migrateSessionsAgentIdToModelId()
+  }
+
+  private migrateSessionsAgentIdToModelId(): void {
+    const cols = this.sqlite.prepare('PRAGMA table_info(sessions)').all() as { name: string }[]
+    const names = new Set(cols.map((c) => c.name))
+    if (names.has('agent_id') && !names.has('model_id')) {
+      this.sqlite.exec('ALTER TABLE sessions RENAME COLUMN agent_id TO model_id')
+    }
   }
 
   close(): void {

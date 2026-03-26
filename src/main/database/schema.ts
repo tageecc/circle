@@ -116,7 +116,7 @@ export const deviceUser = sqliteTable('device_user', {
 export const sessions = sqliteTable('sessions', {
   id: text('id').primaryKey(),
   projectPath: text('project_path').notNull(),
-  agentId: text('agent_id').notNull(),
+  modelId: text('model_id').notNull(),
   title: text('title').notNull().default('New Chat'),
   metadata: text('metadata').notNull().default('{}'),
   lastMessageAt: integer('last_message_at', { mode: 'timestamp' }),
@@ -212,7 +212,7 @@ export const memories = sqliteTable('memories', {
 })
 
 /**
- * Agent Skills 偏好表 - 仅存储启用状态
+ * Skills 偏好表 - 仅存储启用状态
  * 技能本身存储在文件系统，这里只存偏好
  */
 export const skillPreferences = sqliteTable('skill_preferences', {

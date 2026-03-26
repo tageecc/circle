@@ -14,7 +14,7 @@ import { ConfigService } from './config.service'
 import { SessionService } from './session.service'
 import { debugLogger } from './debug-logger.service'
 import type { ToolContext } from './tool-context'
-import { assistantConfig, getAssistantTools } from '../agents/assistant'
+import { assistantConfig, getAssistantTools } from '../assistant/assistant'
 import { createLanguageModel } from '../utils/model-factory'
 import { MessageSnapshotService, type FileSnapshot } from './message-snapshot.service'
 

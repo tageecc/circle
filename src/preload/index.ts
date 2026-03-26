@@ -507,19 +507,18 @@ const api = {
   // Avatar APIs
   avatar: {
     select: () => ipcRenderer.invoke('avatar:select'),
-    save: (sourcePath: string, agentId: string) =>
-      ipcRenderer.invoke('avatar:save', sourcePath, agentId),
-    delete: (agentId: string) => ipcRenderer.invoke('avatar:delete', agentId),
+    save: (sourcePath: string, ownerId: string) =>
+      ipcRenderer.invoke('avatar:save', sourcePath, ownerId),
+    delete: (ownerId: string) => ipcRenderer.invoke('avatar:delete', ownerId),
     getPath: (fileName: string) => ipcRenderer.invoke('avatar:getPath', fileName),
     readAsBase64: (fileName: string) => ipcRenderer.invoke('avatar:readAsBase64', fileName),
     readFileAsBase64: (filePath: string) => ipcRenderer.invoke('avatar:readFileAsBase64', filePath)
   },
 
-  // Coding Agent APIs
-  codingAgent: {
-    selectProjectFolder: () => ipcRenderer.invoke('coding-agent:selectProjectFolder'),
+  projectCreate: {
+    selectProjectFolder: () => ipcRenderer.invoke('project-create:selectProjectFolder'),
     createProject: (userPrompt: string, projectPath: string) =>
-      ipcRenderer.invoke('coding-agent:createProject', userPrompt, projectPath)
+      ipcRenderer.invoke('project-create:createProject', userPrompt, projectPath)
   },
 
   // Terminal APIs

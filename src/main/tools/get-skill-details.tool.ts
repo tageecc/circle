@@ -12,11 +12,8 @@ const inputSchema = z.object({
 })
 
 /**
- * 获取 Agent Skill 的完整指令内容
- * 
- * 遵循 Progressive Disclosure 原则：
- * - System prompt 中只包含 skill 的 metadata（name + description）
- * - 通过此 tool 按需加载完整的 instructions
+ * Load full skill instructions on demand (Progressive Disclosure).
+ * System prompt only lists skill metadata; this tool returns the body.
  */
 export const getSkillDetailsTool = tool({
   description: 'Get the full instructions for a specific skill. Use when you need detailed guidance to complete a task that aligns with a skill\'s domain.',

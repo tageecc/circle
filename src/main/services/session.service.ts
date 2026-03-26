@@ -17,7 +17,7 @@ export interface ChatMessage {
 
 export interface ChatSession {
   id: string
-  agentId: string
+  modelId: string
   title: string
   messages: ChatMessage[]
   createdAt: number
@@ -41,7 +41,7 @@ export class SessionService {
       .values({
         id: newSessionId,
         projectPath,
-        agentId: modelId,
+        modelId,
         title: 'New Chat',
         metadata: '{}',
         lastMessageAt: now,
@@ -66,7 +66,7 @@ export class SessionService {
 
     return dbSessions.map((session) => ({
       id: session.id,
-      agentId: session.agentId,
+      modelId: session.modelId,
       title: session.title,
       messages: [],
       createdAt: new Date(session.createdAt).getTime(),
@@ -76,7 +76,7 @@ export class SessionService {
 
   async getSession(sessionId: string): Promise<{
     id: string
-    agentId: string
+    modelId: string
     title: string
     metadata: Record<string, unknown>
     createdAt: number
@@ -97,7 +97,7 @@ export class SessionService {
 
     return {
       id: session.id,
-      agentId: session.agentId,
+      modelId: session.modelId,
       title: session.title,
       metadata: JSON.parse(session.metadata) as Record<string, unknown>,
       createdAt: new Date(session.createdAt).getTime(),
@@ -146,7 +146,7 @@ export class SessionService {
 
     return {
       id: sessionId,
-      agentId: session.agentId,
+      modelId: session.modelId,
       title: session.title,
       messages: dbMessages,
       createdAt: new Date(session.createdAt).getTime(),

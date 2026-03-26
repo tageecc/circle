@@ -1,5 +1,5 @@
 /**
- * Agent Skills IPC Handlers
+ * Skills IPC handlers
  */
 
 import { ipcMain } from 'electron'

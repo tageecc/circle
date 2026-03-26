@@ -109,7 +109,7 @@ export class GitWatcherService {
     // ⭐ 监听 .git 目录本身（检测删除）
     try {
       // 监听项目根目录，只关注 .git 目录的变化
-      const gitDirWatcher = watch(projectPath, { persistent: false }, (eventType, filename) => {
+      const gitDirWatcher = watch(projectPath, { persistent: false }, (_eventType, filename) => {
         if (filename === '.git' && !existsSync(gitDir)) {
           console.log(`[GitWatcher] .git directory removed`)
           this.stopWatching(projectPath)

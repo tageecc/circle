@@ -1,6 +1,5 @@
 import os from 'os'
 import path from 'path'
-import { FileService } from './file.service'
 import type { ConfigService } from './config.service'
 import { MemoryService } from './memory.service'
 import { SkillsService } from './skills.service'
@@ -39,8 +38,8 @@ export class ContextEnrichmentService {
       prompt += `\n\n${rulesAndMemories}`
     }
 
-    // 3. Agent Skills
-    const skillsSection = await this.getAgentSkillsSection({
+    // 3. Skills (metadata only; full body via get_skill_details)
+    const skillsSection = await this.getSkillsSection({
       workspaceRoot
     })
     if (skillsSection) {
@@ -69,7 +68,7 @@ All information above is computed fresh for THIS message:
 Your previous statements are OUTDATED. The environment has changed.
 
 Examples of what may have changed:
-- "You said there were 4 skills" → Check the current <agent_skills> section above for the ACTUAL count
+- "You said there were 4 skills" → Check the current <skills> section above for the ACTUAL count
 - "You listed 5 open files" → Check the current file list above
 - "User's rule was X" → Check the current <user_rules> above
 
@@ -81,13 +80,13 @@ When asked about current state (e.g., "How many skills now?", "What files are op
 
 ⚠️ COMMUNICATION RULE:
 When answering, use natural language. NEVER expose internal system details to the user:
-- ❌ DON'T say: "根据 <agent_skills> 信息..." or "可以调用 get_skill_details..."
+- ❌ DON'T say: "根据 <skills> 信息..." or "可以调用 get_skill_details..."
 - ✅ DO say: "当前有2个技能..." or "技能列表已更新..."
 
 🔴 INCORRECT BEHAVIOR:
 - "I previously said 4 skills, so it's still 4" ← WRONG
 - "Based on our earlier conversation..." ← WRONG for factual state queries
-- "According to <agent_skills> section..." ← WRONG, don't expose internal structure
+- "According to <skills> section..." ← WRONG, don't expose internal structure
 - "You can call get_skill_details..." ← WRONG, don't mention tool names to user
 - Assuming counts haven't changed ← WRONG
 
@@ -95,7 +94,7 @@ The system prompt is regenerated for every message. Always trust it over convers
 But NEVER mention the system prompt or its internal structure when talking to the user.
 </context_priority>`
 
-    // 6. Agent 指令
+    // 6. Assistant instructions (settings)
     prompt += `\n\n${assistantInstructions}`
 
     return prompt
@@ -182,113 +181,10 @@ ${memoriesText}
   }
 
   /**
-   * 获取项目文件结构(简化版)
+   * Skills block for system prompt (Progressive Disclosure).
+   * Metadata only here; full instructions via get_skill_details.
    */
-  private async getProjectLayout(
-    workspaceRoot: string,
-    maxDepth: number = 2
-  ): Promise<string | null> {
-    try {
-      const projectName = path.basename(workspaceRoot)
-      const structure = await this.buildProjectTree(workspaceRoot, '', maxDepth, 0)
-
-      return `<project_layout>
-Below is a snapshot of the current workspace's file structure at the start of the conversation. This snapshot will NOT update during the conversation.
-
-${projectName}/
-${structure}
-</project_layout>`
-    } catch (error) {
-      console.error('Failed to get project layout:', error)
-      return null
-    }
-  }
-
-  /**
-   * 递归构建项目文件树
-   */
-  private async buildProjectTree(
-    dirPath: string,
-    prefix: string,
-    maxDepth: number,
-    currentDepth: number
-  ): Promise<string> {
-    if (currentDepth >= maxDepth) {
-      return ''
-    }
-
-    try {
-      const items = await FileService.listDirectory(dirPath)
-
-      // 过滤掉常见的忽略目录
-      const filteredItems = items.filter((item) => {
-        const name = path.basename(item.path)
-        return ![
-          'node_modules',
-          '.git',
-          'dist',
-          'build',
-          'out',
-          '.next',
-          'coverage',
-          '.DS_Store'
-        ].includes(name)
-      })
-
-      // 分类：目录和文件
-      const directories = filteredItems.filter((item) => item.type === 'directory')
-      const files = filteredItems.filter((item) => item.type === 'file')
-
-      let result = ''
-
-      // 先列出目录(只显示前10个)
-      const limitedDirs = directories.slice(0, 10)
-      for (const dir of limitedDirs) {
-        const dirName = path.basename(dir.path)
-        result += `${prefix}  - ${dirName}/\n`
-
-        // 递归子目录
-        if (currentDepth + 1 < maxDepth) {
-          const subTree = await this.buildProjectTree(
-            dir.path,
-            prefix + '    ',
-            maxDepth,
-            currentDepth + 1
-          )
-          result += subTree
-        }
-      }
-
-      if (directories.length > 10) {
-        result += `${prefix}  ... (${directories.length - 10} more directories)\n`
-      }
-
-      // 再列出文件(只显示前20个)
-      const limitedFiles = files.slice(0, 20)
-      for (const file of limitedFiles) {
-        const fileName = path.basename(file.path)
-        result += `${prefix}  - ${fileName}\n`
-      }
-
-      if (files.length > 20) {
-        result += `${prefix}  ... (${files.length - 20} more files)\n`
-      }
-
-      return result
-    } catch (error) {
-      console.error(`Failed to build tree for ${dirPath}:`, error)
-      return ''
-    }
-  }
-
-  /**
-   * 获取 Agent Skills 部分
-   * 
-   * 遵循 Agent Skills 规范的 Progressive Disclosure 原则：
-   * - 只注入 metadata（name + description + tags），约 100 tokens/skill
-   * - 完整的 instructions 通过 get_skill_details tool 按需加载
-   */
-  private async getAgentSkillsSection(params: {
+  private async getSkillsSection(params: {
     workspaceRoot: string | null
   }): Promise<string | null> {
     try {
@@ -301,7 +197,7 @@ ${structure}
         return null
       }
 
-      let section = `<agent_skills>
+      let section = `<skills>
 You have access to specialized skills that enhance your capabilities.
 Each skill provides domain expertise, new capabilities, or repeatable workflows.
 
@@ -324,11 +220,11 @@ When a task aligns with a skill's domain:
 
 Only activate skills when they add value to the current task.
 
-</agent_skills>`
+</skills>`
 
       return section
     } catch (error) {
-      console.error('[ContextEnrichment] Failed to get agent skills section:', error)
+      console.error('[ContextEnrichment] Failed to get skills section:', error)
       return null
     }
   }

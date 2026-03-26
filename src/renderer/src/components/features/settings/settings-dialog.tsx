@@ -727,7 +727,7 @@ function GeneralSettingsContent({
         <div>
           <Label className="block mb-1.5">Skills: Scan Directories</Label>
           <p className="text-xs text-muted-foreground">
-            配置扫描 Agent Skills 的目录名称（会在用户主目录和项目根目录下查找）
+            配置扫描技能目录的名称（会在用户主目录和项目根目录下查找）
           </p>
         </div>
         <div className="rounded-md border divide-y">
@@ -995,8 +995,6 @@ function EditorSettingsContent({
             height="500px"
             language="typescript"
             value={`// Circle IDE 示例代码
-import { Agent } from '@/types'
-
 interface Config {
   model: string
   temperature: number
@@ -1008,11 +1006,8 @@ const config: Config = {
 }
 
 export class Circle {
-  private agents: Agent[] = []
-  
   async run(): Promise<void> {
     console.log('Starting Circle...')
-    // 实现逻辑
   }
 }`}
             path="/settings-preview.ts"
