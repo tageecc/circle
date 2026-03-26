@@ -640,6 +640,30 @@ export class CodebaseIndexService {
     const db = this.db.getDb()
     const { limit = 15, minScore = 0.5 } = options || {}
 
+    // If vector search is disabled, use text LIKE search
+    if (!this.embeddingService.isEnabled()) {
+      const results = db
+        .select()
+        .from(schema.codebaseVectors)
+        .where(
+          and(
+            eq(schema.codebaseVectors.projectPath, projectPath),
+            sql`${schema.codebaseVectors.text} LIKE ${'%' + query + '%'}`
+          )
+        )
+        .limit(limit)
+        .all()
+
+      return results.map((row) => ({
+        filePath: row.filePath,
+        relativePath: row.relativePath,
+        text: row.text,
+        score: 1.0,
+        language: row.language
+      }))
+    }
+
+    // Vector search enabled
     const queryEmbedding = await this.embeddingService.generateEmbedding(query)
     if (!queryEmbedding) {
       throw new Error('Failed to generate query embedding')
