@@ -251,22 +251,4 @@ export class SkillsService {
 
     return { deduplicatedSkills, deduplicatedFailedSkills }
   }
-
-  private async ensureDir(dirPath: string): Promise<void> {
-    try {
-      await fs.access(dirPath)
-    } catch {
-      await fs.mkdir(dirPath, { recursive: true })
-    }
-  }
-
-  private async fileExists(filePath: string): Promise<boolean> {
-    try {
-      await fs.access(filePath)
-      return true
-    } catch {
-      return false
-    }
-  }
-
 }

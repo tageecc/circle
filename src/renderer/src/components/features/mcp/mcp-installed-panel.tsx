@@ -485,7 +485,7 @@ export function MCPInstalledPanel() {
                     </div>
 
                     {/* 服务 URL 或 Command */}
-                    {serverCode ? (
+                    {server.configJson.url ? (
                       <p className="text-xs text-muted-foreground truncate">
                         {server.configJson.url}
                       </p>
