@@ -1,4 +1,4 @@
-import { useEffect, useState, ReactNode } from 'react'
+import { useEffect, useState, ReactNode, useRef } from 'react'
 import {
   CircleCheckIcon,
   InfoIcon,
@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { Toaster as Sonner, toast as sonnerToast, ExternalToast, ToasterProps } from 'sonner'
 import { NotificationType } from '@/contexts/notification-context'
+import { cn } from '@/lib/utils'
 
 // 全局通知添加函数的引用，由 NotificationProvider 设置
 let globalAddNotification:
@@ -24,6 +25,58 @@ export function setGlobalNotificationHandler(handler: typeof globalAddNotificati
 // 包装后的 toast 函数，同时发送到 sonner 和通知历史
 type ToastOptions = ExternalToast & {
   description?: string
+}
+
+// Copy button component for toast
+function ToastCopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
+      
+      timeoutRef.current = setTimeout(() => {
+        setCopied(false)
+      }, 2000)
+    } catch (error) {
+      console.error('Failed to copy:', error)
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
+    }
+  }, [])
+
+  return (
+    <button
+      onClick={handleCopy}
+      className={cn(
+        'group-hover/toast:opacity-100 opacity-0 transition-opacity',
+        'absolute right-2 top-2 flex items-center justify-center',
+        'h-6 w-6 rounded-md hover:bg-black/5 dark:hover:bg-white/5',
+        'text-muted-foreground hover:text-foreground transition-colors'
+      )}
+      title="复制"
+    >
+      {copied ? (
+        <Check className="size-3.5 text-green-500" />
+      ) : (
+        <Copy className="size-3.5" />
+      )}
+    </button>
+  )
 }
 
 // 提取文本内容（如果是 ReactNode，尝试提取文本；否则返回原始字符串）
@@ -52,70 +105,54 @@ function createWrappedToast() {
   }
 
   wrappedToast.error = (message: ReactNode, options?: ToastOptions) => {
-    let copied = false
+    const textContent = extractTextContent(message)
+    const fullText = options?.description
+      ? `${textContent}\n\n${options.description}`
+      : textContent
     
-    const result = sonnerToast.error(message, {
-      ...options,
-      action: {
-        label: (
-          <Copy className="size-3.5" />
-        ),
-        onClick: async () => {
-          const textContent = extractTextContent(message)
-          const fullText = options?.description
-            ? `${textContent}\n\n${options.description}`
-            : textContent
-
-          try {
-            await navigator.clipboard.writeText(fullText)
-            if (!copied) {
-              copied = true
-              sonnerToast.success('已复制到剪贴板', { duration: 1500 })
-            }
-          } catch (error) {
-            console.error('Failed to copy:', error)
-          }
-        }
+    const result = sonnerToast.error(
+      <div className="group/toast relative pr-8">
+        <div>{message}</div>
+        {options?.description && (
+          <div className="text-xs opacity-80 mt-1">{options.description}</div>
+        )}
+        <ToastCopyButton text={fullText} />
+      </div>,
+      {
+        ...options,
+        description: undefined
       }
-    })
+    )
     globalAddNotification?.({
       type: 'error',
-      title: extractTextContent(message),
+      title: textContent,
       description: options?.description
     })
     return result
   }
 
   wrappedToast.warning = (message: ReactNode, options?: ToastOptions) => {
-    let copied = false
+    const textContent = extractTextContent(message)
+    const fullText = options?.description
+      ? `${textContent}\n\n${options.description}`
+      : textContent
     
-    const result = sonnerToast.warning(message, {
-      ...options,
-      action: {
-        label: (
-          <Copy className="size-3.5" />
-        ),
-        onClick: async () => {
-          const textContent = extractTextContent(message)
-          const fullText = options?.description
-            ? `${textContent}\n\n${options.description}`
-            : textContent
-
-          try {
-            await navigator.clipboard.writeText(fullText)
-            if (!copied) {
-              copied = true
-              sonnerToast.success('已复制到剪贴板', { duration: 1500 })
-            }
-          } catch (error) {
-            console.error('Failed to copy:', error)
-          }
-        }
+    const result = sonnerToast.warning(
+      <div className="group/toast relative pr-8">
+        <div>{message}</div>
+        {options?.description && (
+          <div className="text-xs opacity-80 mt-1">{options.description}</div>
+        )}
+        <ToastCopyButton text={fullText} />
+      </div>,
+      {
+        ...options,
+        description: undefined
       }
-    })
+    )
     globalAddNotification?.({
       type: 'warning',
-      title: extractTextContent(message),
+      title: textContent,
       description: options?.description
     })
     return result

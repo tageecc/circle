@@ -595,15 +595,12 @@
   [data-sonner-toast] {
     user-select: text;
     -webkit-user-select: text;
+    position: relative;
   }
 
-  /* Toast 操作按钮样式 */
-  [data-button] {
-    @apply flex items-center justify-center h-7 w-7 rounded-md hover:bg-accent transition-colors;
-  }
-
-  [data-button]:active {
-    transform: scale(0.95);
+  /* Toast 内容区域 */
+  [data-sonner-toast] [data-content] {
+    position: relative;
   }
 
   /* 隐藏 Monaco 查找组件的 hover 提示（如 "Find", "Replace"） */

@@ -96,7 +96,6 @@ export function NotificationPanel() {
       await navigator.clipboard.writeText(text)
       setCopiedId(id)
       setTimeout(() => setCopiedId(null), 2000)
-      toast.success('已复制到剪贴板')
     } catch (error) {
       console.error('Failed to copy:', error)
       toast.error('复制失败')
@@ -197,34 +196,36 @@ export function NotificationPanel() {
                     </div>
 
                     {/* 内容 */}
-                    <div className="flex-1 min-w-0 space-y-0.5">
-                      <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0 space-y-0.5 pr-14">
+                      <div className="flex items-start gap-2">
                         <p
                           className={cn(
-                            'text-sm leading-tight',
+                            'text-sm leading-tight flex-1',
                             !notification.read && 'font-medium'
                           )}
                         >
                           {notification.title}
                         </p>
-                        <span className="shrink-0 text-[10px] text-muted-foreground/70">
-                          {formatTime(notification.timestamp)}
-                        </span>
                       </div>
                       {notification.description && (
                         <p className="text-xs text-muted-foreground line-clamp-2">
                           {notification.description}
                         </p>
                       )}
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-muted-foreground/70">
+                          {formatTime(notification.timestamp)}
+                        </span>
+                      </div>
                     </div>
 
                     {/* 操作按钮 */}
-                    <div className="absolute right-1 top-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100">
+                    <div className="absolute right-1 top-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
                       {/* 复制按钮 */}
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+                        className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground transition-colors"
                         onClick={(e) => {
                           e.stopPropagation()
                           handleCopy(notification, notification.id)
@@ -242,7 +243,7 @@ export function NotificationPanel() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive"
+                        className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive transition-colors"
                         onClick={(e) => {
                           e.stopPropagation()
                           removeNotification(notification.id)
