@@ -8,6 +8,7 @@ import dialogs from './dialogs.json'
 import tools from './tools.json'
 import agent from './agent.json'
 import project from './project.json'
+import menu from './menu.json'
 
 export default {
   common,
@@ -19,5 +20,6 @@ export default {
   terminal,
   dialogs,
   tools,
-  agent
+  agent,
+  menu
 }

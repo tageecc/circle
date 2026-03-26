@@ -59,7 +59,8 @@ async function initializeI18n() {
       'terminal',
       'dialogs',
       'tools',
-      'agent'
+      'agent',
+      'menu'
     ],
     interpolation: {
       escapeValue: false // React 已经处理了 XSS

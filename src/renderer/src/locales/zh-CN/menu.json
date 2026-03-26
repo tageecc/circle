@@ -1,0 +1,42 @@
+{
+  "file": {
+    "label": "文件",
+    "newFile": "新建文本文件",
+    "open": "打开...",
+    "openFolder": "打开文件夹...",
+    "recentlyOpened": "最近打开",
+    "noRecentProjects": "无最近项目",
+    "save": "保存",
+    "saveAs": "另存为...",
+    "saveAll": "全部保存",
+    "autoSave": "自动保存",
+    "closeEditor": "关闭编辑器",
+    "closeFolder": "关闭文件夹"
+  },
+  "edit": {
+    "label": "编辑",
+    "undo": "撤销",
+    "redo": "重做",
+    "cut": "剪切",
+    "copy": "复制",
+    "paste": "粘贴",
+    "find": "查找",
+    "replace": "替换"
+  },
+  "view": {
+    "label": "视图",
+    "commandPalette": "命令面板",
+    "toggleSidebar": "切换侧边栏",
+    "togglePanel": "切换面板",
+    "zoomIn": "放大",
+    "zoomOut": "缩小",
+    "resetZoom": "重置缩放"
+  },
+  "help": {
+    "label": "帮助",
+    "welcome": "欢迎",
+    "documentation": "文档",
+    "debugConfig": "调试配置",
+    "about": "关于"
+  }
+}

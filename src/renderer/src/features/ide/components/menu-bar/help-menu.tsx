@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -12,31 +13,33 @@ interface HelpMenuProps {
 }
 
 export function HelpMenu({ onDebugConfig }: HelpMenuProps) {
+  const { t } = useTranslation('menu')
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="sm" className="h-7 px-3 text-xs font-normal">
-          帮助
+          {t('help.label')}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-[200px]">
         <DropdownMenuItem disabled>
-          <span>欢迎</span>
+          <span>{t('help.welcome')}</span>
         </DropdownMenuItem>
         <DropdownMenuItem disabled>
-          <span>文档</span>
+          <span>{t('help.documentation')}</span>
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />
 
         <DropdownMenuItem onClick={onDebugConfig}>
-          <span>调试配置</span>
+          <span>{t('help.debugConfig')}</span>
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />
 
         <DropdownMenuItem disabled>
-          <span>关于</span>
+          <span>{t('help.about')}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

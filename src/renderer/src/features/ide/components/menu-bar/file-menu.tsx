@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -41,17 +42,19 @@ export function FileMenu({
   onCloseWorkspace,
   onToggleAutoSave
 }: FileMenuProps) {
+  const { t } = useTranslation('menu')
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="sm" className="h-7 px-3 text-xs font-normal">
-          文件
+          {t('file.label')}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-[280px]">
         <DropdownMenuItem disabled>
           <FilePlus className="mr-2 size-4" />
-          <span>新建文本文件</span>
+          <span>{t('file.newFile')}</span>
           <DropdownMenuShortcut>⌘N</DropdownMenuShortcut>
         </DropdownMenuItem>
 
@@ -59,19 +62,19 @@ export function FileMenu({
 
         <DropdownMenuItem onClick={onOpenProject}>
           <FolderOpen className="mr-2 size-4" />
-          <span>打开...</span>
+          <span>{t('file.open')}</span>
           <DropdownMenuShortcut>⌘O</DropdownMenuShortcut>
         </DropdownMenuItem>
 
         <DropdownMenuItem onClick={onOpenProject}>
           <Folder className="mr-2 size-4" />
-          <span>打开文件夹...</span>
+          <span>{t('file.openFolder')}</span>
         </DropdownMenuItem>
 
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <Clock className="mr-2 size-4" />
-            <span>最近打开</span>
+            <span>{t('file.recentlyOpened')}</span>
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="w-[320px]">
             {recentProjects.length > 0 ? (
@@ -89,7 +92,7 @@ export function FileMenu({
               ))
             ) : (
               <DropdownMenuItem disabled>
-                <span className="text-muted-foreground">无最近项目</span>
+                <span className="text-muted-foreground">{t('file.noRecentProjects')}</span>
               </DropdownMenuItem>
             )}
           </DropdownMenuSubContent>
@@ -99,38 +102,38 @@ export function FileMenu({
 
         <DropdownMenuItem disabled={!activeFile} onClick={onSaveFile}>
           <Save className="mr-2 size-4" />
-          <span>保存</span>
+          <span>{t('file.save')}</span>
           <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
         </DropdownMenuItem>
 
         <DropdownMenuItem disabled={!activeFile}>
           <Save className="mr-2 size-4" />
-          <span>另存为...</span>
+          <span>{t('file.saveAs')}</span>
           <DropdownMenuShortcut>⇧⌘S</DropdownMenuShortcut>
         </DropdownMenuItem>
 
         <DropdownMenuItem disabled={!hasOpenFiles}>
           <Save className="mr-2 size-4" />
-          <span>全部保存</span>
+          <span>{t('file.saveAll')}</span>
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />
 
         <DropdownMenuCheckboxItem checked={autoSave} onCheckedChange={onToggleAutoSave}>
-          自动保存
+          {t('file.autoSave')}
         </DropdownMenuCheckboxItem>
 
         <DropdownMenuSeparator />
 
         <DropdownMenuItem disabled={!activeFile} onClick={onCloseFile}>
           <CloseIcon className="mr-2 size-4" />
-          <span>关闭编辑器</span>
+          <span>{t('file.closeEditor')}</span>
           <DropdownMenuShortcut>⌘W</DropdownMenuShortcut>
         </DropdownMenuItem>
 
         <DropdownMenuItem disabled={!workspaceRoot} onClick={onCloseWorkspace}>
           <Folder className="mr-2 size-4" />
-          <span>关闭文件夹</span>
+          <span>{t('file.closeFolder')}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
