@@ -8,7 +8,7 @@ Circle 现在使用 **sqlite-vec** 扩展实现真正的语义代码搜索，支
 - ✅ **本地存储**：向量存在 SQLite（`circle.db`），无需独立向量库
 - ✅ **多提供商支持**：OpenAI、Voyage AI embeddings
 - ✅ **增量索引**：只对新增/修改文件生成向量
-- ✅ **降级机制**：embedding 失败时自动降级到文本搜索
+- ✅ **维度检测**：切换 provider 时自动重建索引
 
 ## 快速开始
 
