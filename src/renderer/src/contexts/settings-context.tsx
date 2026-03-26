@@ -30,8 +30,6 @@ interface GeneralSettings {
   commandWhitelist: string[]
   enableFilePreviewOnSingleClick: boolean
   openProjectBehavior: 'ask' | 'current' | 'new'
-  vectorSearchEnabled?: boolean
-  embeddingProvider?: string
 }
 
 export interface SkillsSettings {
@@ -102,9 +100,7 @@ const defaultGeneralSettings: GeneralSettings = {
     'git log'
   ],
   enableFilePreviewOnSingleClick: true,
-  openProjectBehavior: 'ask',
-  vectorSearchEnabled: false,
-  embeddingProvider: 'openai-small'
+  openProjectBehavior: 'ask'
 }
 
 const DEFAULT_SKILL_SCAN_DIRECTORIES = ['.circle', '.cursor', '.vscode', '.claude', 'skills']
@@ -150,8 +146,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       }
       setAppearanceSettings(appearanceSettings)
 
-      const serviceSettings = await window.api.config.getServiceSettings()
-
       setGeneralSettings({
         language: config.language || 'zh-CN',
         autoSave: preferences.autoSave ?? true,
@@ -159,9 +153,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         autoRunMode: preferences.autoRunMode ?? 'auto-run',
         commandWhitelist: preferences.commandWhitelist ?? defaultGeneralSettings.commandWhitelist,
         enableFilePreviewOnSingleClick: preferences.enableFilePreviewOnSingleClick ?? true,
-        openProjectBehavior: preferences.openProjectBehavior ?? 'ask',
-        vectorSearchEnabled: serviceSettings.vectorSearchEnabled ?? false,
-        embeddingProvider: serviceSettings.embeddingProvider ?? 'openai-small'
+        openProjectBehavior: preferences.openProjectBehavior ?? 'ask'
       })
 
       // 加载技能设置
@@ -332,14 +324,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
           sidebarCollapsed: config.preferences?.sidebarCollapsed ?? false
         }
       })
-
-      // Save vector search settings to serviceSettings
-      if ('vectorSearchEnabled' in settings || 'embeddingProvider' in settings) {
-        await window.api.config.setServiceSettings({
-          vectorSearchEnabled: newSettings.vectorSearchEnabled,
-          embeddingProvider: newSettings.embeddingProvider
-        })
-      }
     } catch (error) {
       console.error('Failed to save general settings:', error)
     }

@@ -73,7 +73,7 @@ const NAV_ITEMS = [
   { name: '编辑器', icon: Code, key: 'editor' },
   { name: '终端', icon: Monitor, key: 'terminal' },
   { name: '快捷键', icon: Keyboard, key: 'keyboard' },
-  { name: 'API Keys', icon: Key, key: 'apikeys' },
+  { name: 'AI 配置', icon: Key, key: 'aiconfig' },
   { name: 'Rules', icon: FileText, key: 'rules' },
   { name: 'Memories', icon: Brain, key: 'memories' }
 ]
@@ -367,7 +367,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         )
       case 'keyboard':
         return <KeymapSettingsContent />
-      case 'apikeys':
+      case 'aiconfig':
         return <ApiKeysSettings />
       case 'rules':
         return <UserRulesSettingsContent />
@@ -573,48 +573,6 @@ function GeneralSettingsContent({
             onChange({ ...settings, enableFilePreviewOnSingleClick: checked })
           }
         />
-      </div>
-
-      <div className="border-t pt-6 mt-6">
-        <h3 className="text-sm font-semibold mb-4">代码搜索</h3>
-        
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <Label className="block mb-1.5">向量语义搜索</Label>
-            <p className="text-xs text-muted-foreground">
-              使用 AI Embeddings 实现真语义搜索（需配置 API Key）
-            </p>
-          </div>
-          <Switch
-            checked={settings.vectorSearchEnabled || false}
-            onCheckedChange={(checked) =>
-              onChange({ ...settings, vectorSearchEnabled: checked })
-            }
-          />
-        </div>
-
-        {settings.vectorSearchEnabled && (
-          <div className="space-y-2 ml-4">
-            <Label className="block mb-2">Embedding Provider</Label>
-            <Select
-              value={settings.embeddingProvider || 'openai-small'}
-              onValueChange={(value) => onChange({ ...settings, embeddingProvider: value })}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="openai-small">OpenAI Small (1536d, 推荐)</SelectItem>
-                <SelectItem value="openai-large">OpenAI Large (3072d, 更精确)</SelectItem>
-                <SelectItem value="voyage-code">Voyage AI Code (1536d, 代码优化)</SelectItem>
-                <SelectItem value="qwen-embed">Qwen Embedding (1024d, 中文友好)</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground mt-2">
-              需在 API Keys 中配置对应的 key，切换 provider 会自动重建索引
-            </p>
-          </div>
-        )}
       </div>
 
       <div className="space-y-2">

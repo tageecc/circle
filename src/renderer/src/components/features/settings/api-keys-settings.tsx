@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Switch } from '@/components/ui/switch'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from '@/components/ui/sonner'
 
 interface ProviderConfig {
@@ -64,19 +66,24 @@ export function ApiKeysSettings() {
   const [visibleKeys, setVisibleKeys] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
+  const [vectorSearchEnabled, setVectorSearchEnabled] = useState(false)
+  const [embeddingProvider, setEmbeddingProvider] = useState('openai-small')
 
-  // 加载 API Keys
   useEffect(() => {
-    loadApiKeys()
+    loadSettings()
   }, [])
 
-  const loadApiKeys = async () => {
+  const loadSettings = async () => {
     try {
       const keys = await window.api.config.getApiKeys()
       setApiKeys(keys || {})
+
+      const serviceSettings = await window.api.config.getServiceSettings()
+      setVectorSearchEnabled(serviceSettings.vectorSearchEnabled ?? false)
+      setEmbeddingProvider(serviceSettings.embeddingProvider ?? 'openai-small')
     } catch (error) {
-      console.error('Failed to load API keys:', error)
-      toast.error('加载 API Keys 失败')
+      console.error('Failed to load settings:', error)
+      toast.error('加载配置失败')
     } finally {
       setLoading(false)
     }
@@ -92,7 +99,7 @@ export function ApiKeysSettings() {
         await window.api.config.deleteApiKey(provider)
         toast.success(`${PROVIDERS.find((p) => p.id === provider)?.name} API Key 已删除`)
       }
-      await loadApiKeys()
+      await loadSettings()
     } catch (error) {
       console.error('Failed to save API key:', error)
       toast.error('保存失败')
@@ -119,12 +126,38 @@ export function ApiKeysSettings() {
     )
   }
 
+  const handleVectorSearchToggle = async (checked: boolean) => {
+    setVectorSearchEnabled(checked)
+    try {
+      await window.api.config.setServiceSettings({
+        vectorSearchEnabled: checked
+      })
+      toast.success(checked ? '向量搜索已启用' : '向量搜索已关闭')
+    } catch (error) {
+      console.error('Failed to save vector search setting:', error)
+      toast.error('保存失败')
+    }
+  }
+
+  const handleEmbeddingProviderChange = async (value: string) => {
+    setEmbeddingProvider(value)
+    try {
+      await window.api.config.setServiceSettings({
+        embeddingProvider: value
+      })
+      toast.success('Embedding Provider 已更新')
+    } catch (error) {
+      console.error('Failed to save embedding provider:', error)
+      toast.error('保存失败')
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium">API Keys 配置</h3>
+        <h3 className="text-lg font-medium">AI 配置</h3>
         <p className="text-sm text-muted-foreground mt-1">
-          配置各个模型提供商的 API Key，以使用对应的模型服务
+          配置 API Keys 和向量搜索，以使用 AI 服务
         </p>
       </div>
 
@@ -226,6 +259,72 @@ export function ApiKeysSettings() {
             </Card>
           )
         })}
+      </div>
+
+      <div className="border-t pt-6">
+        <h3 className="text-lg font-medium mb-4">向量语义搜索</h3>
+        
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base">启用向量搜索</CardTitle>
+                <CardDescription className="mt-1">
+                  使用 AI Embeddings 实现代码语义搜索（理解含义，不仅匹配关键词）
+                </CardDescription>
+              </div>
+              <Switch
+                checked={vectorSearchEnabled}
+                onCheckedChange={handleVectorSearchToggle}
+              />
+            </div>
+          </CardHeader>
+          
+          {vectorSearchEnabled && (
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Embedding Provider</Label>
+                <Select value={embeddingProvider} onValueChange={handleEmbeddingProviderChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="openai-small">
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">OpenAI Small</span>
+                        <span className="text-xs text-muted-foreground">1536 维，$0.02/1M tokens（推荐）</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="openai-large">
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">OpenAI Large</span>
+                        <span className="text-xs text-muted-foreground">3072 维，$0.13/1M tokens（更精确）</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="voyage-code">
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">Voyage AI Code</span>
+                        <span className="text-xs text-muted-foreground">1536 维，$0.10/1M tokens（代码优化）</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="qwen-embed">
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">Qwen Embedding</span>
+                        <span className="text-xs text-muted-foreground">1024 维，¥0.7/1M tokens（中文友好）</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground space-y-1">
+                <p>• 需配置对应 provider 的 API Key（见上方）</p>
+                <p>• 切换 provider 时会自动重建索引</p>
+                <p>• 关闭开关后仍可搜索（使用文本匹配）</p>
+              </div>
+            </CardContent>
+          )}
+        </Card>
       </div>
 
       <div className="rounded-lg border border-border bg-muted/30 p-4">
