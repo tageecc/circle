@@ -1,8 +1,15 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+const i18nextBackend = require('i18next-electron-fs-backend')
 
 // Custom API definition
 const api = {
+  // i18next backend
+  i18nextElectronBackend: i18nextBackend.preloadBindings(ipcRenderer),
+  
+  // Get system locale
+  getSystemLocale: () => ipcRenderer.invoke('system:getLocale'),
+  
   // Chat APIs
   chat: {
     send: (options: { sessionId?: string; message: string }) =>

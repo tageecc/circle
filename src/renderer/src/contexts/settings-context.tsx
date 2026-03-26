@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import type { editor } from 'monaco-editor'
+import { useTranslation } from 'react-i18next'
 
 interface TerminalSettings {
   fontSize: number
@@ -112,6 +113,7 @@ const defaultSkillsSettings: SkillsSettings = {
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined)
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
+  const { i18n } = useTranslation()
   const [editorOptions, setEditorOptions] =
     useState<Partial<editor.IStandaloneEditorConstructionOptions>>(defaultEditorOptions)
   const [terminalSettings, setTerminalSettings] =
@@ -308,6 +310,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const updateGeneralSettings = async (settings: Partial<GeneralSettings>) => {
     const newSettings = { ...generalSettings, ...settings }
     setGeneralSettings(newSettings)
+
+    // Update i18n language if changed
+    if (settings.language && settings.language !== generalSettings.language) {
+      const i18nLang = settings.language === 'zh-CN' ? 'zh' : 'en'
+      await i18n.changeLanguage(i18nLang)
+    }
 
     try {
       const config = await window.api.config.get()

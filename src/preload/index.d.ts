@@ -4,6 +4,8 @@ declare global {
   interface Window {
     electron: ElectronAPI
     api: {
+      i18nextElectronBackend: any
+      getSystemLocale: () => Promise<string>
       chat: {
         stream: (
           options: {

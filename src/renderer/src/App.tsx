@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { I18nextProvider } from 'react-i18next'
+import i18n from './i18n'
 import { SettingsProvider } from './contexts/settings-context'
 import { UrlSchemaProvider } from './contexts/url-schema-context'
 import { NotificationProvider } from './contexts/notification-context'
@@ -51,18 +53,20 @@ function App(): React.JSX.Element {
   }, [activeItem, isStateLoaded])
 
   return (
-    <SettingsProvider>
-      <UrlSchemaProvider>
-        <NotificationProvider>
-          <TooltipProvider delayDuration={300}>
-            <ConfirmProvider>
-              <IDEPage />
-              <Toaster />
-            </ConfirmProvider>
-          </TooltipProvider>
-        </NotificationProvider>
-      </UrlSchemaProvider>
-    </SettingsProvider>
+    <I18nextProvider i18n={i18n}>
+      <SettingsProvider>
+        <UrlSchemaProvider>
+          <NotificationProvider>
+            <TooltipProvider delayDuration={300}>
+              <ConfirmProvider>
+                <IDEPage />
+                <Toaster />
+              </ConfirmProvider>
+            </TooltipProvider>
+          </NotificationProvider>
+        </UrlSchemaProvider>
+      </SettingsProvider>
+    </I18nextProvider>
   )
 }
 

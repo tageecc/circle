@@ -15,6 +15,8 @@ import { ConfigService } from './services/config.service'
 import { WindowStateManager } from './services/window-state.service'
 import { AvatarService } from './services/avatar.service'
 import { MenuService } from './services/menu.service'
+const i18nextBackend = require('i18next-electron-fs-backend')
+import * as fs from 'fs'
 
 // 全局配置服务实例（在应用启动时初始化）
 let configService: ConfigService
@@ -80,6 +82,9 @@ function createWindow(): void {
   // 初始化原生菜单
   menuService = new MenuService(configService)
   menuService.createMenu()
+
+  // 初始化 i18n backend bindings
+  i18nextBackend.mainBindings(ipcMain, mainWindow, fs)
 
   // 初始化窗口状态管理器
   const windowStateManager = new WindowStateManager(mainWindow, configService)

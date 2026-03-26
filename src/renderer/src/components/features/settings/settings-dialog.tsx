@@ -67,16 +67,7 @@ interface SettingsDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-const NAV_ITEMS = [
-  { name: '通用', icon: Settings, key: 'general' },
-  { name: '外观', icon: Palette, key: 'appearance' },
-  { name: '编辑器', icon: Code, key: 'editor' },
-  { name: '终端', icon: Monitor, key: 'terminal' },
-  { name: '快捷键', icon: Keyboard, key: 'keyboard' },
-  { name: 'AI 配置', icon: Key, key: 'aiconfig' },
-  { name: 'Rules', icon: FileText, key: 'rules' },
-  { name: 'Memories', icon: Brain, key: 'memories' }
-]
+// NAV_ITEMS will be created inside component to access t() function
 
 // 字体选择器组件
 function FontSelector({

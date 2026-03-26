@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow, dialog, shell } from 'electron'
+import { ipcMain, BrowserWindow, dialog, shell, app } from 'electron'
 import { ChatService } from '../services/chat.service'
 import { FileService } from '../services/file.service'
 import { FileWatcherService } from '../services/file-watcher.service'
@@ -2291,6 +2291,11 @@ export function registerIpcHandlers() {
   // Shell: 在默认浏览器中打开外部链接
   ipcMain.handle('shell:openExternal', async (_, url: string) => {
     return await shell.openExternal(url)
+  })
+
+  // System: Get system locale for i18n
+  ipcMain.handle('system:getLocale', async () => {
+    return app.getLocale()
   })
 
   console.log('✅ IPC handlers registered')
