@@ -9,7 +9,7 @@ import { getDb } from '../database/db'
 import * as schema from '../database/schema'
 import * as path from 'path'
 import * as crypto from 'crypto'
-import { eq, like, and, sql, isNotNull } from 'drizzle-orm'
+import { eq, and, sql, isNotNull } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 
 interface SearchResult {
@@ -131,46 +131,26 @@ export class CodebaseIndexService {
   ): Promise<IndexStats> {
     console.log('[CodebaseIndex] Starting indexing:', projectPath)
 
-    // Check sqlite-vec extension
-    if (!this.db.isVecExtensionLoaded()) {
-      throw new Error('sqlite-vec extension failed to load. Vector search is required.')
-    }
-
-    // Check embedding API configuration
     if (!this.embeddingService.isConfigured()) {
-      throw new Error(
-        'Embedding API not configured. Please configure API key in Settings → API Keys first.'
-      )
+      throw new Error('Embedding API not configured. Configure API key in Settings → API Keys')
     }
 
     const embeddingConfig = this.embeddingService.getConfig()!
-    console.log(`[CodebaseIndex] Using embedding: ${embeddingConfig.model} (${embeddingConfig.dimensions}d)`)
+    console.log(`[CodebaseIndex] Using ${embeddingConfig.model} (${embeddingConfig.dimensions}d)`)
 
     const db = this.db.getDb()
 
-    // Check for dimension mismatch with existing vectors
+    // Check dimension mismatch
     const existingVector = db
-      .select()
+      .select({ embedding: schema.codebaseVectors.embedding })
       .from(schema.codebaseVectors)
-      .where(
-        and(
-          eq(schema.codebaseVectors.projectPath, projectPath),
-          isNotNull(schema.codebaseVectors.embedding)
-        )
-      )
+      .where(eq(schema.codebaseVectors.projectPath, projectPath))
       .limit(1)
       .get()
 
-    if (existingVector?.embedding) {
-      const existingDim = existingVector.embedding.length / 4
-      if (existingDim !== embeddingConfig.dimensions) {
-        console.warn(
-          `[CodebaseIndex] Dimension mismatch: existing=${existingDim}d, current=${embeddingConfig.dimensions}d`
-        )
-        console.warn('[CodebaseIndex] Deleting old index to regenerate...')
-        await this.deleteProject(projectPath)
-        console.log('[CodebaseIndex] ✓ Old index deleted')
-      }
+    if (existingVector?.embedding && existingVector.embedding.length / 4 !== embeddingConfig.dimensions) {
+      console.warn('[CodebaseIndex] Dimension mismatch, deleting old index...')
+      await this.deleteProject(projectPath)
     }
     const existingFiles = await this.loadFileMetadata(projectPath)
     const currentFiles = await this.scanFiles(projectPath, onProgress)
@@ -652,37 +632,13 @@ export class CodebaseIndexService {
     const db = this.db.getDb()
     const { limit = 15, minScore = 0.5 } = options || {}
 
-
-    // Generate embedding for query
     const queryEmbedding = await this.embeddingService.generateEmbedding(query)
-
     if (!queryEmbedding) {
-      console.warn('[CodebaseIndex] Failed to generate query embedding, falling back to text search')
-      // Fallback to text search if embedding fails
-      const results = db
-        .select()
-        .from(schema.codebaseVectors)
-        .where(
-          and(
-            eq(schema.codebaseVectors.projectPath, projectPath),
-            like(schema.codebaseVectors.text, `%${query}%`)
-          )
-        )
-        .limit(limit)
-        .all()
-
-      return results.map((row) => ({
-        filePath: row.filePath,
-        relativePath: row.relativePath,
-        text: row.text,
-        score: 0.8,
-        language: row.language
-      }))
+      throw new Error('Failed to generate query embedding')
     }
 
-    // Vector similarity search using sqlite-vec
     const queryBuffer = Buffer.from(queryEmbedding.buffer)
-    
+
     const results = db
       .select({
         id: schema.codebaseVectors.id,

@@ -80,55 +80,35 @@ export class EmbeddingService {
     }
   }
 
-  /**
-   * Generate embedding for a single text
-   */
-  async generateEmbedding(text: string): Promise<Float32Array | null> {
+  private getProvider(): EmbeddingProvider {
     const config = this.configService.getServiceSettings()
     const embeddingConfig = config?.embeddingProvider || 'openai-small'
     const provider = EMBEDDING_PROVIDERS[embeddingConfig]
 
     if (!provider) {
-      console.warn(`[Embedding] Unknown provider: ${embeddingConfig}`)
-      return null
+      throw new Error(`Unknown embedding provider: ${embeddingConfig}`)
     }
+    return provider
+  }
 
+  async generateEmbedding(text: string): Promise<Float32Array | null> {
     try {
-      return await this.callProvider(provider, text)
+      return await this.callProvider(this.getProvider(), text)
     } catch (error) {
-      console.error('[Embedding] Failed to generate embedding:', error)
+      console.error('[Embedding] Failed:', error)
       return null
     }
   }
 
-  /**
-   * Generate embeddings for multiple texts (batch)
-   * Automatically splits into smaller batches to avoid API limits
-   */
   async generateEmbeddings(texts: string[]): Promise<(Float32Array | null)[]> {
-    const config = this.configService.getServiceSettings()
-    const embeddingConfig = config?.embeddingProvider || 'openai-small'
-    const provider = EMBEDDING_PROVIDERS[embeddingConfig]
-
-    if (!provider) {
-      console.warn(`[Embedding] Unknown provider: ${embeddingConfig}`)
-      return texts.map(() => null)
-    }
-
-    // Split into smaller batches to avoid API limits (max ~50 chunks per batch)
+    const provider = this.getProvider()
     const BATCH_SIZE = 50
-    const results: (Float32Array | null)[] = []
+    const results: Float32Array[] = []
 
     for (let i = 0; i < texts.length; i += BATCH_SIZE) {
       const batch = texts.slice(i, i + BATCH_SIZE)
-      try {
-        const batchResults = await this.callProviderBatch(provider, batch)
-        results.push(...batchResults)
-      } catch (error) {
-        console.error(`[Embedding] Batch ${i}-${i + batch.length} failed:`, error)
-        // On batch failure, fill with nulls for this batch
-        results.push(...batch.map(() => null))
-      }
+      const batchResults = await this.callProviderBatch(provider, batch)
+      results.push(...batchResults)
     }
 
     return results
@@ -146,7 +126,7 @@ export class EmbeddingService {
   private async callProviderBatch(
     provider: EmbeddingProvider,
     texts: string[]
-  ): Promise<(Float32Array | null)[]> {
+  ): Promise<Float32Array[]> {
     if (provider.name === 'OpenAI') {
       return await this.callOpenAIBatch(provider.model, texts)
     } else if (provider.name === 'Voyage AI') {
@@ -185,10 +165,7 @@ export class EmbeddingService {
     return new Float32Array(data.data[0].embedding)
   }
 
-  private async callOpenAIBatch(
-    model: string,
-    texts: string[]
-  ): Promise<(Float32Array | null)[]> {
+  private async callOpenAIBatch(model: string, texts: string[]): Promise<Float32Array[]> {
     const apiKeys = this.configService.getApiKeys()
     const apiKey = apiKeys?.openai
 
@@ -247,10 +224,7 @@ export class EmbeddingService {
     return new Float32Array(data.data[0].embedding)
   }
 
-  private async callVoyageAIBatch(
-    model: string,
-    texts: string[]
-  ): Promise<(Float32Array | null)[]> {
+  private async callVoyageAIBatch(model: string, texts: string[]): Promise<Float32Array[]> {
     const apiKeys = this.configService.getApiKeys()
     const apiKey = apiKeys?.['voyage']
 
@@ -277,15 +251,5 @@ export class EmbeddingService {
 
     const data = await response.json()
     return data.data.map((item: any) => new Float32Array(item.embedding))
-  }
-
-  /**
-   * Get configured embedding dimensions
-   */
-  getDimensions(): number {
-    const config = this.configService.getServiceSettings()
-    const embeddingConfig = config?.embeddingProvider || 'openai-small'
-    const provider = EMBEDDING_PROVIDERS[embeddingConfig]
-    return provider?.dimensions || 1536
   }
 }

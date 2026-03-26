@@ -15,13 +15,11 @@ class CircleDatabase {
   private sqlite: Database.Database
   private db: BetterSQLite3Database<typeof schema>
   private dbPath: string
-  private vecExtensionLoaded: boolean = false
 
   private constructor() {
     const userDataPath = app.getPath('userData')
     this.dbPath = path.join(userDataPath, 'circle.db')
 
-    // 确保目录存在
     const dir = path.dirname(this.dbPath)
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true })
@@ -34,16 +32,8 @@ class CircleDatabase {
     this.sqlite.pragma('journal_mode = WAL')
     this.sqlite.pragma('foreign_keys = ON')
 
-    // Load sqlite-vec extension for vector search
-    try {
-      sqliteVec.load(this.sqlite)
-      this.vecExtensionLoaded = true
-      console.log('   ✓ sqlite-vec extension loaded')
-    } catch (error) {
-      this.vecExtensionLoaded = false
-      console.error('   ✗ Failed to load sqlite-vec extension:', error)
-      console.error('   Vector search will not be available')
-    }
+    sqliteVec.load(this.sqlite)
+    console.log('   ✓ sqlite-vec loaded')
 
     this.db = drizzle(this.sqlite, { schema })
     this.initTables()
@@ -56,10 +46,6 @@ class CircleDatabase {
       CircleDatabase.instance = new CircleDatabase()
     }
     return CircleDatabase.instance
-  }
-
-  isVecExtensionLoaded(): boolean {
-    return this.vecExtensionLoaded
   }
 
   private initTables(): void {

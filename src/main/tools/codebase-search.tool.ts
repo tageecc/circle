@@ -12,72 +12,36 @@ const inputSchema = z.object({
  * 代码库语义搜索工具 - 使用 sqlite-vec 向量检索
  */
 export const codebaseSearchTool = tool({
-  description: `Semantic vector search that finds code by meaning using embeddings. Powered by sqlite-vec extension.
+  description: `Semantic vector search that finds code by meaning using embeddings.
 
-### When to Use This Tool
+### When to Use
 
-Use codebase_search when you need to:
-- Explore unfamiliar codebases to understand architecture
-- Ask "how/where/what" questions about behavior (e.g., "How is user authentication handled?")
-- Find code by concept rather than exact keywords (e.g., "error handling logic")
-- Discover related code across multiple files based on semantic similarity
-- Understand data flow or component relationships
+Use for:
+- "How/where/what" questions about code behavior
+- Finding code by concept (e.g., "error handling", "authentication")
+- Exploring unfamiliar codebases
 
 ### When NOT to Use
 
-Skip codebase_search for:
-- **Exact text matches** → use \`grep\` (faster and more precise)
-- **Reading known files** → use \`read_file\` (no need to search)
-- **Simple symbol lookups** → use \`grep\` with exact patterns
-- **Find files by name** → use \`glob_file_search\` or \`list_dir\`
-- **Project not indexed** → check if index exists first
-- **Embedding API not configured** → requires OpenAI/Voyage API key in settings
+- Exact text matches → use grep
+- Reading known files → use read_file
+- Simple symbol lookups → use grep
+- Finding files by name → use glob
 
 ### How It Works
-- Converts query into embeddings (text-embedding-3-small or voyage-code-2)
-- Uses cosine similarity to find semantically similar code chunks
-- Falls back to text search if embedding generation fails
-- Returns results sorted by similarity score (0-1, higher = more similar)
 
-### Key Features
-- True semantic search using vector embeddings
-- Returns top 15 results with relevance scores (0.5+ threshold)
-- Includes file paths, code snippets, and programming language
-- Works with 20+ programming languages
-- Batched embedding generation for efficient indexing
-
-### Decision Guide
+Converts query to embedding vector, finds similar code chunks using cosine similarity (sqlite-vec).
+Returns top 15 results with scores 0.5+.
 
 <example>
-  Query: "How does the authentication middleware verify tokens?"
-  Tool: codebase_search
-  <reasoning>
-    Good: Semantic question about behavior, will find related auth/token code even with different naming
-  </reasoning>
+  Query: "How does authentication middleware verify tokens?"
+  <reasoning>Good: Semantic question, finds related auth code</reasoning>
 </example>
 
 <example>
-  Query: Find all occurrences of "validateUser"
-  Tool: grep
-  <reasoning>
-    Bad for codebase_search: Exact symbol lookup, grep is faster and more accurate
-  </reasoning>
-</example>
-
-<example>
-  Query: "Where are error boundaries implemented?"
-  Tool: codebase_search
-  <reasoning>
-    Good: Conceptual search - will find ErrorBoundary, error handling, fallback UI, etc.
-  </reasoning>
-</example>
-
-### Important Notes
-- Requires project to be indexed first (check with "Index Project" feature)
-- Requires embedding API configured in settings (OpenAI or Voyage AI)
-- Results ranked by cosine similarity (1 - distance), filtered at 0.5+ threshold
-- Indexing generates embeddings for all code chunks (slower but enables semantic search)
-- Query time: <100ms for most codebases, including embedding generation`,
+  Query: Find all "validateUser"
+  <reasoning>Bad: Exact match, use grep instead</reasoning>
+</example>`,
   inputSchema,
   execute: async ({ query, target_directories, explanation }) => {
     try {
