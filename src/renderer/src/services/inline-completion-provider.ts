@@ -1,80 +1,120 @@
-import type { Monaco } from '@monaco-editor/react'
-import type { CancellationToken, Position, editor, languages } from 'monaco-editor'
-import { completionDebug } from '../lib/completion-debug'
+/**
+ * Monaco inline completion provider (FIM): completion at any position with project context.
+ */
+
+const DEBUG = process.env.NODE_ENV === 'development' || process.env.DEBUG_COMPLETION === 'true'
+const debug = (...args: any[]) => DEBUG && console.log('[InlineCompletion]', ...args)
+
+import type * as monaco from 'monaco-editor'
 import { getCompletionRequestManager, type CompletionContext } from './completion-request-manager'
 
 export interface InlineCompletionProviderOptions {
+  enabled?: boolean
+  /** Shadow workspace validation (default off for latency). */
   enableValidation?: boolean
 }
 
-class InlineCompletionProvider implements languages.InlineCompletionsProvider {
+export class InlineCompletionProvider implements monaco.languages.InlineCompletionsProvider {
+  private options: {
+    enabled: boolean
+    enableValidation: boolean
+  }
   private requestManager = getCompletionRequestManager()
 
-  constructor(private options: InlineCompletionProviderOptions = {}) {}
+  constructor(_monacoInstance: typeof monaco, options?: InlineCompletionProviderOptions) {
+    this.options = {
+      enabled: options?.enabled ?? true,
+      enableValidation: options?.enableValidation ?? false
+    }
+  }
 
   async provideInlineCompletions(
-    model: editor.ITextModel,
-    position: Position,
-    context: languages.InlineCompletionContext,
-    token: CancellationToken
-  ): Promise<languages.InlineCompletions | undefined> {
-    if (token.isCancellationRequested) return undefined
+    model: monaco.editor.ITextModel,
+    position: monaco.Position,
+    context: monaco.languages.InlineCompletionContext,
+    token: monaco.CancellationToken
+  ): Promise<monaco.languages.InlineCompletions | undefined> {
+    if (!this.options.enabled || token.isCancellationRequested) {
+      return undefined
+    }
 
     if (context.selectedSuggestionInfo) {
       return undefined
     }
 
-    const filePath = model.uri.fsPath
-    const fileContent = model.getValue()
+    try {
+      const completionContext = this.buildCompletionContext(model, position)
+      const response = await this.requestManager.requestCompletion(completionContext)
 
-    const ctx: CompletionContext = {
-      filePath,
-      fileContent,
-      line: position.lineNumber,
-      column: position.column,
-      enableValidation: this.options.enableValidation === true
-    }
+      if (!response || !response.completionText || token.isCancellationRequested) {
+        return undefined
+      }
 
-    const res = await this.requestManager.requestCompletion(ctx)
-    if (token.isCancellationRequested || !res?.completionText) return undefined
-
-    if (completionDebug) console.log('[InlineCompletion] len=', res.completionText.length)
-
-    return {
-      items: [
-        {
-          insertText: res.completionText,
-          range: {
-            startLineNumber: position.lineNumber,
-            startColumn: position.column,
-            endLineNumber: position.lineNumber,
-            endColumn: position.column
+      return {
+        items: [
+          {
+            insertText: response.completionText,
+            range: {
+              startLineNumber: position.lineNumber,
+              startColumn: position.column,
+              endLineNumber: position.lineNumber,
+              endColumn: position.column
+            }
           }
-        }
-      ],
-      enableForwardStability: true
+        ],
+        enableForwardStability: true
+      }
+    } catch {
+      return undefined
     }
   }
 
-  disposeInlineCompletions(_completions: languages.InlineCompletions, _reason: unknown): void {}
+  freeInlineCompletions(): void {}
+  handleItemDidShow(): void {}
+  disposeInlineCompletions(): void {}
+
+  private buildCompletionContext(
+    model: monaco.editor.ITextModel,
+    position: monaco.Position
+  ): CompletionContext {
+    return {
+      filePath: model.uri.path,
+      fileContent: model.getValue(),
+      language: model.getLanguageId(),
+      cursorPosition: {
+        line: position.lineNumber,
+        column: position.column
+      },
+      enableValidation: this.options.enableValidation
+    }
+  }
 
   dispose(): void {
     this.requestManager.cancelAll()
   }
 }
 
+// Retain provider reference so it is not collected while registered.
+let globalProvider: InlineCompletionProvider | null = null
+
 export function registerInlineCompletionProvider(
-  monacoInstance: Monaco,
+  monacoInstance: typeof monaco,
   options?: InlineCompletionProviderOptions
-): { dispose: () => void } {
-  const provider = new InlineCompletionProvider(options ?? {})
+): monaco.IDisposable {
+  const provider = new InlineCompletionProvider(monacoInstance, options)
+  globalProvider = provider
 
   const disposable = monacoInstance.languages.registerInlineCompletionsProvider('*', provider)
+  debug('Provider registered')
 
   return {
     dispose: () => {
       disposable.dispose()
       provider.dispose()
+      globalProvider = null
+      debug('Provider disposed')
     }
   }
 }
+
+export { globalProvider }

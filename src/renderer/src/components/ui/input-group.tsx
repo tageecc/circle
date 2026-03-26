@@ -6,33 +6,52 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 
-function InputGroup({ className, ...props }: React.ComponentProps<'div'>) {
-  return (
-    <div
-      data-slot="input-group"
-      role="group"
-      className={cn(
-        'group/input-group border-input dark:bg-input/30 relative flex w-full items-center rounded-md border shadow-xs transition-[color,box-shadow] outline-none',
-        'h-9 min-w-0 has-[>textarea]:h-auto',
+const InputGroup = React.forwardRef<HTMLDivElement, React.ComponentProps<'div'>>(
+  ({ className, ...props }, ref) => {
+    const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+      // 如果点击的是按钮或输入控件，不做处理
+      if ((e.target as HTMLElement).closest('button, [data-slot=input-group-control], [data-slot=rich-text-input]')) {
+        return
+      }
+      
+      // 点击空白区域时，聚焦输入控件或触发富文本编辑器点击
+      const input = e.currentTarget.querySelector('[data-slot=input-group-control]') as HTMLInputElement | HTMLTextAreaElement
+      const richTextInput = e.currentTarget.querySelector('[data-slot=rich-text-input]') as HTMLElement
+      
+      input?.focus()
+      richTextInput?.click()
+    }
 
-        // Variants based on alignment.
-        'has-[>[data-align=inline-start]]:[&>input]:pl-2',
-        'has-[>[data-align=inline-end]]:[&>input]:pr-2',
-        'has-[>[data-align=block-start]]:h-auto has-[>[data-align=block-start]]:flex-col has-[>[data-align=block-start]]:[&>input]:pb-3',
-        'has-[>[data-align=block-end]]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-end]]:[&>input]:pt-3',
+    return (
+      <div
+        ref={ref}
+        data-slot="input-group"
+        role="group"
+        className={cn(
+          'group/input-group border-input dark:bg-input/30 relative flex w-full items-center rounded-md border shadow-xs transition-[color,box-shadow] outline-none cursor-text',
+          'h-9 min-w-0 has-[>textarea]:h-auto has-[[data-slot=rich-text-input]]:h-auto',
 
-        // Focus state.
-        'has-[[data-slot=input-group-control]:focus-visible]:border-ring has-[[data-slot=input-group-control]:focus-visible]:ring-ring/50 has-[[data-slot=input-group-control]:focus-visible]:ring-[3px]',
+          // Variants based on alignment.
+          'has-[>[data-align=inline-start]]:[&>input]:pl-2',
+          'has-[>[data-align=inline-end]]:[&>input]:pr-2',
+          'has-[>[data-align=block-start]]:h-auto has-[>[data-align=block-start]]:flex-col has-[>[data-align=block-start]]:[&>input]:pb-3',
+          'has-[>[data-align=block-end]]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-end]]:[&>input]:pt-3',
 
-        // Error state.
-        'has-[[data-slot][aria-invalid=true]]:ring-destructive/20 has-[[data-slot][aria-invalid=true]]:border-destructive dark:has-[[data-slot][aria-invalid=true]]:ring-destructive/40',
+          // Focus state.
+          'has-[[data-slot=input-group-control]:focus-visible]:border-ring has-[[data-slot=input-group-control]:focus-visible]:ring-ring/50 has-[[data-slot=input-group-control]:focus-visible]:ring-[3px]',
 
-        className
-      )}
-      {...props}
-    />
-  )
-}
+          // Error state.
+          'has-[[data-slot][aria-invalid=true]]:ring-destructive/20 has-[[data-slot][aria-invalid=true]]:border-destructive dark:has-[[data-slot][aria-invalid=true]]:ring-destructive/40',
+
+          className
+        )}
+        onClick={handleClick}
+        {...props}
+      />
+    )
+  }
+)
+InputGroup.displayName = 'InputGroup'
 
 const inputGroupAddonVariants = cva(
   "text-muted-foreground flex h-auto cursor-text items-center justify-center gap-2 py-1.5 text-sm font-medium select-none [&>svg:not([class*='size-'])]:size-4 [&>kbd]:rounded-[calc(var(--radius)-5px)] group-data-[disabled=true]/input-group:opacity-50",
@@ -64,12 +83,6 @@ function InputGroupAddon({
       data-slot="input-group-addon"
       data-align={align}
       className={cn(inputGroupAddonVariants({ align }), className)}
-      onClick={(e) => {
-        if ((e.target as HTMLElement).closest('button')) {
-          return
-        }
-        e.currentTarget.parentElement?.querySelector('input')?.focus()
-      }}
       {...props}
     />
   )
@@ -94,15 +107,24 @@ function InputGroupButton({
   type = 'button',
   variant = 'ghost',
   size = 'xs',
+  onClick,
   ...props
 }: Omit<React.ComponentProps<typeof Button>, 'size'> &
   VariantProps<typeof inputGroupButtonVariants>) {
+  
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    // 阻止事件冒泡，防止触发 InputGroup 的点击聚焦
+    e.stopPropagation()
+    onClick?.(e)
+  }
+
   return (
     <Button
       type={type}
       data-size={size}
       variant={variant}
       className={cn(inputGroupButtonVariants({ size }), className)}
+      onClick={handleClick}
       {...props}
     />
   )

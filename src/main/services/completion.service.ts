@@ -1,276 +1,384 @@
-import * as path from 'path'
+/**
+ * 代码补全服务
+ *
+ * FIM (Fill-in-the-Middle) 代码补全：
+ * - 上下文窗口（前30行+后10行）
+ * - 多模型支持
+ * - 超时保护（5秒）
+ * - 可选的 Shadow Workspace 验证（提升准确率）
+ */
+
+const DEBUG = process.env.NODE_ENV === 'development' || process.env.DEBUG_COMPLETION === 'true'
+const debug = (...args: any[]) => DEBUG && console.log('[CompletionService]', ...args)
+debug // prevent unused warning
+
 import { generateText } from 'ai'
-import { createOpenAI } from '@ai-sdk/openai'
-import { createAnthropic } from '@ai-sdk/anthropic'
-import { createGoogleGenerativeAI } from '@ai-sdk/google'
-import type { LanguageModel } from 'ai'
 import type { ConfigService } from './config.service'
-import { AgentService } from './agent.service'
-import { COMPLETION } from '../constants/completion.constants'
-import { getProjectRootForFile, getShadowWorkspace } from './shadow-workspace.service'
-import { t } from '../utils/i18n'
+import { getShadowWorkspace } from './shadow-workspace.service'
+import type { Diagnostic } from './language-service'
+import { createLanguageModel } from '../utils/model-factory'
+import { COMPLETION } from '../constants/service.constants'
+import * as path from 'path'
+import * as fs from 'fs'
 
 export interface CompletionRequest {
   filePath: string
   fileContent: string
-  line: number
-  column: number
-  enableValidation?: boolean
+  language: string
+  cursorPosition: {
+    line: number
+    column: number
+  }
+  modelId?: string
+  enableValidation?: boolean // 🔥 可选：启用 Shadow Workspace 验证
 }
 
-export type CompletionChunk =
-  | {
-      type: 'done'
-      text: string
-      metrics?: { validated?: boolean; attempts?: number; errors?: number }
-    }
-  | { type: 'error'; error: string }
+export interface CompletionChunk {
+  type: 'done' | 'error'
+  text?: string
+  error?: string
+  metrics?: {
+    requestTime: number
+    completeTime?: number
+    tokenCount?: number
+    validated?: boolean // 是否经过验证
+    attempts?: number // 重试次数
+    errors?: number // 错误数量
+  }
+}
+
+// 使用常量配置
+const TIMEOUT_MS = COMPLETION.TIMEOUT
+const PREFIX_CONTEXT_LINES = COMPLETION.PREFIX_CONTEXT_LINES
+const SUFFIX_CONTEXT_LINES = COMPLETION.SUFFIX_CONTEXT_LINES
+const TEMPERATURE = COMPLETION.TEMPERATURE
+const MAX_RETRY_ATTEMPTS = COMPLETION.MAX_RETRY_ATTEMPTS
 
 export class CompletionService {
-  private agentService = new AgentService()
+  private configService: ConfigService
 
-  constructor(private configService: ConfigService) {}
-
-  async generateCompletion(request: CompletionRequest): Promise<CompletionChunk> {
-    if (this.configService.getCompletionSettings()?.enabled === false) {
-      return { type: 'error', error: 'completion_disabled' }
-    }
-
-    const ext = path.extname(request.filePath).toLowerCase()
-    const tsJs = ['.ts', '.tsx', '.js', '.jsx'].includes(ext)
-
-    if (request.enableValidation && tsJs) {
-      try {
-        return await this.generateWithValidation(request)
-      } catch (e) {
-        console.warn('[Completion] validation path failed, fallback:', e)
-      }
-    }
-
-    return this.generateWithoutValidation(request)
+  constructor(configService: ConfigService) {
+    this.configService = configService
   }
 
-  private async generateWithValidation(request: CompletionRequest): Promise<CompletionChunk> {
-    const projectRoot = getProjectRootForFile(request.filePath) || path.dirname(request.filePath)
-    const shadow = getShadowWorkspace(projectRoot)
+  async generateCompletion(
+    request: CompletionRequest,
+    abortSignal?: AbortSignal
+  ): Promise<CompletionChunk> {
+    const startTime = Date.now()
 
-    let previousErrors: Array<{ line: number; message: string }> | undefined
-    let lastText = ''
-    let attempts = 0
-    let errorCount = 0
+    // 🔥 如果启用验证 + 是 TS/JS 文件，使用 Shadow Workspace
+    if (request.enableValidation && request.filePath.match(/\.(ts|tsx|js|jsx)$/)) {
+      return await this.generateWithValidation(request, abortSignal, startTime)
+    }
 
-    for (let attempt = 1; attempt <= COMPLETION.MAX_RETRY_ATTEMPTS; attempt++) {
-      attempts = attempt
-      const text = await this.generateText(request, previousErrors)
-      if (!text) {
-        return { type: 'error', error: t('error.completion.modelEmpty') }
+    // 否则，直接生成（快速模式）
+    return await this.generateWithoutValidation(request, abortSignal, startTime)
+  }
+
+  /**
+   * 带验证的补全生成（使用 Shadow Workspace）
+   */
+  private async generateWithValidation(
+    request: CompletionRequest,
+    abortSignal: AbortSignal | undefined,
+    startTime: number
+  ): Promise<CompletionChunk> {
+    try {
+      // 1. 获取 Shadow Workspace
+      const projectRoot = this.getProjectRoot(request.filePath)
+      if (!projectRoot) {
+        debug('No project root found, fallback to no validation')
+        return await this.generateWithoutValidation(request, abortSignal, startTime)
       }
-      lastText = text
 
-      const v = await shadow.validateCompletion({
-        filePath: request.filePath,
-        originalContent: request.fileContent,
-        cursorLine: request.line,
-        column: request.column,
-        completionText: text
-      })
+      const shadowWorkspace = await getShadowWorkspace(projectRoot)
 
-      if (v.isValid) {
-        return {
-          type: 'done',
-          text,
-          metrics: { validated: true, attempts, errors: 0 }
+      // 2. 生成 + 验证（带重试）
+      let attempt = 0
+      let lastErrors: Diagnostic[] = []
+
+      while (attempt <= MAX_RETRY_ATTEMPTS) {
+        if (abortSignal?.aborted) {
+          return { type: 'error', error: 'Aborted' }
+        }
+
+        // 生成补全
+        const completion = await this.generateText(request, lastErrors, abortSignal)
+        if (!completion) {
+          return { type: 'error', error: 'Generation failed' }
+        }
+
+        // 验证补全
+        const validation = await shadowWorkspace.validateCompletion(
+          request.filePath,
+          request.fileContent,
+          completion,
+          request.cursorPosition
+        )
+
+        if (validation.isValid) {
+          // ✅ 验证通过
+          debug(`Validation passed on attempt ${attempt + 1}`)
+          return {
+            type: 'done',
+            text: completion,
+            metrics: {
+              requestTime: startTime,
+              completeTime: Date.now(),
+              tokenCount: this.estimateTokenCount(completion),
+              validated: true,
+              attempts: attempt + 1,
+              errors: 0
+            }
+          }
+        } else {
+          // ❌ 有错误
+          lastErrors = validation.errors
+          attempt++
+
+          debug(`Validation failed on attempt ${attempt}, errors:`, lastErrors.length)
+
+          if (attempt > MAX_RETRY_ATTEMPTS) {
+            // 达到最大重试，返回最后的补全（即使有错误）
+            debug('Max retry reached, returning with errors')
+            return {
+              type: 'done',
+              text: completion,
+              metrics: {
+                requestTime: startTime,
+                completeTime: Date.now(),
+                tokenCount: this.estimateTokenCount(completion),
+                validated: true,
+                attempts: attempt,
+                errors: lastErrors.length
+              }
+            }
+          }
         }
       }
 
-      errorCount = v.errors.length
-      previousErrors = v.errors
-    }
-
-    return {
-      type: 'done',
-      text: lastText,
-      metrics: { validated: false, attempts, errors: errorCount }
+      throw new Error('Unexpected: should not reach here')
+    } catch (error) {
+      console.error('[CompletionService] Validation failed:', error)
+      // Fallback 到无验证模式
+      return await this.generateWithoutValidation(request, abortSignal, startTime)
     }
   }
 
-  private async generateWithoutValidation(request: CompletionRequest): Promise<CompletionChunk> {
+  /**
+   * 不带验证的补全生成（快速模式）
+   */
+  private async generateWithoutValidation(
+    request: CompletionRequest,
+    abortSignal: AbortSignal | undefined,
+    startTime: number
+  ): Promise<CompletionChunk> {
     try {
-      const text = await this.generateText(request, undefined)
-      if (!text) {
-        return { type: 'error', error: t('error.completion.modelEmpty') }
+      const completion = await this.generateText(request, [], abortSignal)
+      if (!completion) {
+        return { type: 'error', error: 'Generation failed' }
       }
+
       return {
         type: 'done',
-        text,
-        metrics: { validated: false, attempts: 1 }
+        text: completion,
+        metrics: {
+          requestTime: startTime,
+          completeTime: Date.now(),
+          tokenCount: this.estimateTokenCount(completion),
+          validated: false
+        }
       }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e)
-      if (!/abort/i.test(msg)) {
-        console.error('[Completion] generateWithoutValidation:', e)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+
+      if (!errorMessage.includes('timeout') && !errorMessage.includes('abort')) {
+        console.error('[CompletionService] Error:', {
+          error: errorMessage,
+          file: request.filePath,
+          line: request.cursorPosition.line
+        })
       }
-      return { type: 'error', error: msg }
+
+      return {
+        type: 'error',
+        error: errorMessage
+      }
     }
   }
 
+  /**
+   * 生成文本（核心 LLM 调用）
+   */
   private async generateText(
     request: CompletionRequest,
-    previousErrors?: Array<{ line: number; message: string }>
+    previousErrors: Diagnostic[],
+    abortSignal?: AbortSignal
   ): Promise<string | null> {
-    const model = await this.resolveModel()
-    const userPrompt = this.buildPrompt(request)
-
-    const system =
-      previousErrors && previousErrors.length > 0
-        ? `Complete code at <|fim_middle|>. Output only code, no markdown.\n\nFIX THESE ERRORS:\n${this.formatErrors(previousErrors)}`
-        : 'Complete code at <|fim_middle|>. Output only code, no markdown, no explanation.'
-
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), COMPLETION.TIMEOUT_MS)
-
     try {
-      const result = await generateText({
-        model,
-        system,
-        prompt: userPrompt,
-        temperature: COMPLETION.TEMPERATURE,
-        maxOutputTokens: 512,
-        abortSignal: controller.signal
+      const model = this.getModel(request.modelId || this.configService.getCompletionModel())
+      const prompt = this.buildPrompt(request)
+
+      // 如果有错误，增强 system prompt
+      const systemPrompt =
+        previousErrors.length > 0
+          ? `Complete code at <|fim_middle|>. Output only code.\n\n🔥 FIX THESE ERRORS:\n${this.formatErrors(previousErrors)}`
+          : 'Complete code at <|fim_middle|>. Output only code.'
+
+      // 超时保护
+      let timeoutId: NodeJS.Timeout | null = null
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error('Timeout')), TIMEOUT_MS)
       })
 
-      let out = (result.text || '').trim()
-      out = finalizeCompletionOutput(out, request)
-      return out || null
-    } catch (e) {
-      if (e instanceof Error && e.name === 'AbortError') {
-        return null
+      const textPromise = generateText({
+        model,
+        system: systemPrompt,
+        prompt,
+        temperature: TEMPERATURE,
+        abortSignal,
+        providerOptions: {
+          dashscope: {
+            enableThinking: false
+          }
+        }
+      })
+
+      let result
+      try {
+        result = await Promise.race([textPromise, timeoutPromise])
+      } finally {
+        if (timeoutId) clearTimeout(timeoutId)
       }
-      throw e
-    } finally {
-      clearTimeout(timeout)
+
+      return result.text
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      if (!errorMessage.includes('timeout') && !errorMessage.includes('abort')) {
+        console.error('[CompletionService] Generation error:', errorMessage)
+      }
+      return null
     }
   }
 
   private buildPrompt(request: CompletionRequest): string {
-    const lines = request.fileContent.split(/\r?\n/)
-    const lineIdx = request.line - 1
-    const currentLine = lines[lineIdx] ?? ''
-    const beforeCursor = currentLine.slice(0, request.column - 1)
-    const afterCursor = currentLine.slice(request.column - 1)
+    const { fileContent, filePath, cursorPosition } = request
 
-    const prefix = this.buildPrefix(lines, lineIdx, beforeCursor)
-    const suffix = this.buildSuffix(lines, lineIdx, afterCursor)
+    const lines = fileContent.split('\n')
+    const currentLine = lines[cursorPosition.line - 1] || ''
+    const beforeCursor = currentLine.substring(0, cursorPosition.column - 1)
+    const afterCursor = currentLine.substring(cursorPosition.column - 1)
 
-    const fileSep = `<|file_sep|>${request.filePath}`
-    let body = `${fileSep}\n<|fim_prefix|>${prefix}`
-    if (this.shouldStartNewLine(afterCursor, prefix)) {
-      body += '\n'
+    let prompt = `<|file_sep|>${filePath}\n`
+
+    let prefix = this.buildPrefix(lines, cursorPosition, beforeCursor)
+    if (this.shouldStartNewLine(beforeCursor, afterCursor)) {
+      prefix += '\n'
     }
-    body += `<|fim_suffix|>${suffix}\n<|fim_middle|>`
-    return body
+    prompt += `<|fim_prefix|>${prefix}`
+
+    const suffix = this.buildSuffix(lines, cursorPosition, afterCursor)
+    prompt += `<|fim_suffix|>${suffix}`
+
+    prompt += `<|fim_middle|>`
+
+    return prompt
   }
 
-  private buildPrefix(lines: string[], lineIdx: number, beforeOnLine: string): string {
-    const start = Math.max(0, lineIdx - COMPLETION.PREFIX_CONTEXT_LINES)
-    const above = lines.slice(start, lineIdx)
-    if (above.length === 0) return beforeOnLine
-    return `${above.join('\n')}\n${beforeOnLine}`
+  private buildPrefix(
+    lines: string[],
+    cursorPosition: { line: number; column: number },
+    beforeCursor: string
+  ): string {
+    const startLine = Math.max(0, cursorPosition.line - PREFIX_CONTEXT_LINES - 1)
+    const beforeLines = lines.slice(startLine, cursorPosition.line - 1)
+
+    let prefix = ''
+    if (beforeLines.length > 0) {
+      prefix += beforeLines.join('\n') + '\n'
+    }
+    prefix += beforeCursor
+
+    return prefix
   }
 
-  private buildSuffix(lines: string[], lineIdx: number, afterOnLine: string): string {
-    const restOfLine = afterOnLine
-    const end = Math.min(lines.length, lineIdx + 1 + COMPLETION.SUFFIX_CONTEXT_LINES)
-    const below = lines.slice(lineIdx + 1, end)
-    if (below.length === 0) return restOfLine
-    return `${restOfLine}\n${below.join('\n')}`
+  private buildSuffix(
+    lines: string[],
+    cursorPosition: { line: number; column: number },
+    afterCursor: string
+  ): string {
+    let suffix = afterCursor
+
+    const endLine = Math.min(lines.length, cursorPosition.line + SUFFIX_CONTEXT_LINES)
+    const afterLines = lines.slice(cursorPosition.line, endLine)
+
+    if (afterLines.length > 0) {
+      suffix += '\n' + afterLines.join('\n')
+    }
+
+    return suffix
   }
 
-  private shouldStartNewLine(after: string, prefixBlock: string): boolean {
-    if (after.length > 0) return false
-    const lastLine = prefixBlock.split('\n').pop() || ''
-    if (lastLine.trim().length === 0) return false
-    return lastLine.trim().length > 20
+  private shouldStartNewLine(beforeCursor: string, afterCursor: string): boolean {
+    const before = beforeCursor.trim()
+    const after = afterCursor.trim()
+
+    // 行中间或空行，不换行
+    if (after !== '' || before === '') {
+      return false
+    }
+
+    // 行尾且有一定长度，换行
+    return before.length > 20
   }
 
-  private formatErrors(errors: Array<{ line: number; message: string }>): string {
+  private getModel(modelId?: string) {
+    const targetModelId = modelId || this.configService.getDefaultModel()
+    return createLanguageModel(targetModelId, this.configService)
+  }
+
+  private estimateTokenCount(text: string): number {
+    return Math.ceil(text.length / 4)
+  }
+
+  /**
+   * 获取项目根目录（基于文件路径向上查找项目标识文件）
+   */
+  private getProjectRoot(filePath: string): string | null {
+    let currentDir = path.dirname(filePath)
+    let depth = 0
+    const maxDepth = 10
+
+    while (depth < maxDepth) {
+      // 检查是否存在项目标识文件
+      const indicators = ['package.json', 'tsconfig.json', 'jsconfig.json', '.git']
+      for (const indicator of indicators) {
+        const indicatorPath = path.join(currentDir, indicator)
+        if (fs.existsSync(indicatorPath)) {
+          return currentDir
+        }
+      }
+
+      const parentDir = path.dirname(currentDir)
+      if (parentDir === currentDir) {
+        break
+      }
+
+      currentDir = parentDir
+      depth++
+    }
+
+    return null
+  }
+
+  /**
+   * 格式化错误信息（用于重试时的 prompt）
+   */
+  private formatErrors(errors: Diagnostic[]): string {
     return errors
-      .slice(0, 3)
+      .slice(0, 3) // 最多显示 3 个错误
       .map((e) => `Line ${e.line}: ${e.message}`)
       .join('\n')
   }
-
-  private async resolveModel(): Promise<LanguageModel> {
-    const cs = this.configService.getCompletionSettings()
-    if (cs?.provider && cs?.model) {
-      return buildLanguageModel(cs.provider, cs.model, cs.apiKey)
-    }
-
-    const agent = await this.agentService.getDefaultAgent()
-    return buildLanguageModel(agent.provider, agent.model, agent.apiKey)
-  }
-}
-
-async function buildLanguageModel(
-  provider: string,
-  model: string,
-  apiKey?: string | null
-): Promise<LanguageModel> {
-  const m = model.includes('/') ? model.split('/').pop()! : model
-  const p = provider.toLowerCase()
-  const key = apiKey?.trim()
-
-  if (p === 'openai') {
-    if (!key) throw new Error(t('error.completion.openaiKeyMissing'))
-    return createOpenAI({ apiKey: key })(m)
-  }
-  if (p === 'anthropic') {
-    if (!key) throw new Error(t('error.completion.anthropicKeyMissing'))
-    return createAnthropic({ apiKey: key })(m)
-  }
-  if (p === 'google') {
-    if (!key) throw new Error(t('error.completion.googleKeyMissing'))
-    return createGoogleGenerativeAI({ apiKey: key })(m)
-  }
-  if (p === 'dashscope') {
-    if (!key) throw new Error(t('error.completion.dashscopeKeyMissing'))
-    return createOpenAI({
-      baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-      apiKey: key
-    })(m)
-  }
-
-  throw new Error(t('error.completion.unsupportedProvider', { provider }))
-}
-
-function finalizeCompletionOutput(text: string, request: CompletionRequest): string {
-  let t = text.trim()
-
-  const fence = /^```[\w]*\n([\s\S]*?)\n```$/m
-  const fm = t.match(fence)
-  if (fm) t = fm[1].trim()
-
-  t = t.replace(/<\|fim_[^|]+\|>/g, '')
-  t = t.replace(/<\|endoftext\|>/gi, '')
-  const ot = '<' + 'think' + '>'
-  const ct = '<' + '/' + 'think' + '>'
-  t = t.replace(new RegExp(ot + '[\\s\\S]*?' + ct, 'gi'), '')
-  t = t.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
-
-  const lines = request.fileContent.split(/\r?\n/)
-  const lineIdx = request.line - 1
-  const line = lines[lineIdx] ?? ''
-  const before = line.slice(0, request.column - 1)
-  const lastThree = before.trim().split(/\s+/).filter(Boolean).slice(-3)
-  if (lastThree.length) {
-    const prefix = lastThree.join(' ')
-    if (t.startsWith(prefix)) t = t.slice(prefix.length)
-  }
-
-  const parts = t.split('\n')
-  if (parts.length > COMPLETION.MAX_COMPLETION_LINES) {
-    t = parts.slice(0, COMPLETION.MAX_COMPLETION_LINES).join('\n')
-  }
-
-  return t.trim()
 }

@@ -135,10 +135,18 @@ export class WindowStateManager {
       this.saveWindowState({ isFullScreen: false })
     })
 
-    // 监听窗口关闭，确保保存最终状态
+    // 监听窗口关闭，添加详细日志
     this.window.on('close', () => {
+      const now = new Date().toISOString().split('T')[1].slice(0, -1)
+      const startTime = Date.now()
+      console.log(`[${now}] 🪟 [WindowState] Window closing, saving state...`)
       this.cancelDebounce()
-      this.saveCurrentWindowState()
+      try {
+        this.saveCurrentWindowState()
+        console.log(`[${now}] ✅ [WindowState] State saved in ${Date.now() - startTime}ms`)
+      } catch (error) {
+        console.error(`[${now}] ❌ [WindowState] Failed to save state:`, error)
+      }
     })
   }
 
@@ -188,10 +196,15 @@ export class WindowStateManager {
   }
 
   /**
-   * 保存窗口状态到配置
+   * 保存窗口状态到配置（快速，不阻塞）
    */
   private saveWindowState(state: Partial<WindowState>): void {
-    this.configService.setWindowState(state)
+    try {
+      this.configService.setWindowState(state)
+    } catch (error) {
+      // 静默失败，不阻塞退出
+      console.error('[WindowState] Failed to save:', error)
+    }
   }
 
   /**

@@ -2,7 +2,6 @@ import { app, dialog } from 'electron'
 import fs from 'fs/promises'
 import path from 'path'
 import crypto from 'crypto'
-import { t } from '../utils/i18n'
 
 /**
  * 头像管理服务
@@ -40,13 +39,8 @@ export class AvatarService {
    */
   static async selectAvatarFile(): Promise<string | null> {
     const result = await dialog.showOpenDialog({
-      title: t('dialog.selectAvatarTitle'),
-      filters: [
-        {
-          name: t('dialog.imageFilesFilter'),
-          extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']
-        }
-      ],
+      title: '选择头像',
+      filters: [{ name: '图片', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'] }],
       properties: ['openFile']
     })
 
@@ -70,13 +64,13 @@ export class AvatarService {
     // 验证文件大小（限制为 5MB）
     const maxSize = 5 * 1024 * 1024 // 5MB
     if (fileBuffer.length > maxSize) {
-      throw new Error(t('error.avatar.fileTooLarge'))
+      throw new Error('图片文件太大，请选择小于 5MB 的图片')
     }
 
     // 获取文件扩展名
     const ext = path.extname(sourcePath).toLowerCase()
     if (!['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'].includes(ext)) {
-      throw new Error(t('error.avatar.unsupportedFormat'))
+      throw new Error('不支持的图片格式')
     }
 
     // 生成文件名：agentId + 时间戳 + hash（防止缓存问题）
@@ -144,42 +138,15 @@ export class AvatarService {
     }
   }
 
-  /**
-   * 读取头像文件为 Base64
-   * @param fileName 文件名
-   * @returns 返回 Base64 编码的字符串（包含 data URI 前缀）
-   */
   static async readAvatarAsBase64(fileName: string): Promise<string> {
     const filePath = this.getAvatarPath(fileName)
-    const buffer = await fs.readFile(filePath)
-    const ext = path.extname(fileName).toLowerCase()
-
-    // 确定 MIME 类型
-    const mimeTypes: Record<string, string> = {
-      '.jpg': 'image/jpeg',
-      '.jpeg': 'image/jpeg',
-      '.png': 'image/png',
-      '.gif': 'image/gif',
-      '.webp': 'image/webp',
-      '.svg': 'image/svg+xml'
-    }
-
-    const mimeType = mimeTypes[ext] || 'image/png'
-    const base64 = buffer.toString('base64')
-
-    return `data:${mimeType};base64,${base64}`
+    return this.readFileAsBase64(filePath)
   }
 
-  /**
-   * 读取任意路径的图片文件为 Base64（用于预览）
-   * @param filePath 文件的完整路径
-   * @returns 返回 Base64 编码的字符串（包含 data URI 前缀）
-   */
   static async readFileAsBase64(filePath: string): Promise<string> {
     const buffer = await fs.readFile(filePath)
     const ext = path.extname(filePath).toLowerCase()
 
-    // 确定 MIME 类型
     const mimeTypes: Record<string, string> = {
       '.jpg': 'image/jpeg',
       '.jpeg': 'image/jpeg',

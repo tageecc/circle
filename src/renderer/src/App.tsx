@@ -1,58 +1,67 @@
 import { useState, useEffect } from 'react'
-import { IDEPage } from './pages/ide-page'
+import { SettingsProvider } from './contexts/settings-context'
+import { UrlSchemaProvider } from './contexts/url-schema-context'
+import { NotificationProvider } from './contexts/notification-context'
+import { ConfirmProvider } from './components/features/common/confirm-provider'
+import { TooltipProvider } from './components/ui/tooltip'
 import { Toaster } from './components/ui/sonner'
-import { SettingsProvider } from './contexts/SettingsContext'
-import { SettingsDialog } from './components/dialogs/SettingsDialog'
-import { ConfirmProvider } from './components/shared/ConfirmProvider'
+import { IDEPage } from './pages/ide'
 
 function App(): React.JSX.Element {
+  const [activeItem, setActiveItem] = useState('code')
   const [isStateLoaded, setIsStateLoaded] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
 
+  // 加载保存的 UI 状态
   useEffect(() => {
-    window.api.config
-      .getUIState()
-      .then(() => setIsStateLoaded(true))
-      .catch(console.error)
-  }, [])
+    const loadUIState = async (): Promise<void> => {
+      try {
+        const uiState = await window.api.config.getUIState()
+        console.log('📂 Loading UI state:', uiState)
 
-  // 监听快捷键 Cmd+, 打开设置
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === ',') {
-        e.preventDefault()
-        setSettingsOpen(true)
+        if (uiState.activeView) {
+          setActiveItem(uiState.activeView)
+        }
+
+        setIsStateLoaded(true)
+      } catch (error) {
+        console.error('Failed to load UI state:', error)
+        setIsStateLoaded(true)
       }
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    loadUIState()
   }, [])
 
-  // 监听 URL Schema 唤起（仅用于唤起时聚焦窗口，协议逻辑在 main 进程）
+  // 保存主视图状态
   useEffect(() => {
-    const handleOpenUrl = (url: string) => {
-      window.dispatchEvent(new CustomEvent('app:open-url', { detail: url }))
+    if (!isStateLoaded) return
+
+    const saveState = async (): Promise<void> => {
+      try {
+        await window.api.config.updateUIState({
+          activeView: activeItem
+        })
+        console.log('💾 Saved active view:', activeItem)
+      } catch (error) {
+        console.error('Failed to save active view:', error)
+      }
     }
-    const removeListener = window.api.app?.onOpenUrl(handleOpenUrl)
-    return () => removeListener?.()
-  }, [])
+
+    saveState()
+  }, [activeItem, isStateLoaded])
 
   return (
     <SettingsProvider>
-      <ConfirmProvider>
-        {!isStateLoaded ? (
-          <div className="flex h-screen items-center justify-center bg-background text-muted-foreground">
-            Loading…
-          </div>
-        ) : (
-          <div className="flex h-screen overflow-hidden bg-background">
-            <IDEPage onOpenSettings={() => setSettingsOpen(true)} />
-            <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
-            <Toaster />
-          </div>
-        )}
-      </ConfirmProvider>
+      <UrlSchemaProvider>
+        <NotificationProvider>
+          <TooltipProvider delayDuration={300}>
+            <ConfirmProvider>
+              <IDEPage />
+              <Toaster />
+            </ConfirmProvider>
+          </TooltipProvider>
+        </NotificationProvider>
+      </UrlSchemaProvider>
     </SettingsProvider>
   )
 }

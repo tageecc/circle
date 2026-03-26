@@ -1,6 +1,4 @@
-# Circle desktop packaging (electron-builder)
-# Auto-update: add a `publish` block when you have a stable release feed URL.
-appId: com.circle.desktop
+appId: com.electron.app
 productName: circle
 directories:
   buildResources: build
@@ -39,10 +37,13 @@ linux:
     - AppImage
     - snap
     - deb
-  maintainer: Circle Contributors
+  maintainer: electronjs.org
   category: Utility
 appImage:
   artifactName: ${name}-${version}.${ext}
-npmRebuild: false
+npmRebuild: true
+publish:
+  provider: generic
+  url: https://example.com/auto-updates
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/

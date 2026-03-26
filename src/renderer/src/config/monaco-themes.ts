@@ -70,14 +70,22 @@ function createMonacoTheme(config: ThemeConfig): editor.IStandaloneThemeData {
   }
 }
 
+// 全局单例：确保主题只注册一次
+let themesRegistered = false
+
 /**
  * 注册Monaco编辑器主题
  * 使用统一的主题配置，确保与应用主题保持一致
+ * 使用单例模式，确保主题只注册一次，避免重复注册
  */
 export function registerMonacoThemes(monacoInstance: Monaco): void {
+  if (themesRegistered) return
+
   // 注册 One Dark Pro 主题（暗色）
   monacoInstance.editor.defineTheme(oneDarkProConfig.name, createMonacoTheme(oneDarkProConfig))
 
   // 注册 One Light 主题（亮色）
   monacoInstance.editor.defineTheme(oneLightConfig.name, createMonacoTheme(oneLightConfig))
+
+  themesRegistered = true
 }

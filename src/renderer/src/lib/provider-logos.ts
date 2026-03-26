@@ -1,6 +1,5 @@
 /**
  * AI 提供商的 Logo 映射表
- * Logo 来源: https://mastra.ai/models/providers
  * 所有 Logo 托管在: https://models.dev/logos/
  */
 

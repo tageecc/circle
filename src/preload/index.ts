@@ -3,38 +3,48 @@ import { electronAPI } from '@electron-toolkit/preload'
 
 // Custom API definition
 const api = {
-  // Agent APIs
-  agents: {
-    getAll: () => ipcRenderer.invoke('agents:getAll'),
-    getDefault: () => ipcRenderer.invoke('agents:getDefault'),
-    getById: (id: string) => ipcRenderer.invoke('agents:getById', id),
-    create: (data: any) => ipcRenderer.invoke('agents:create', data),
-    update: (id: string, data: any) => ipcRenderer.invoke('agents:update', id, data),
-    delete: (id: string) => ipcRenderer.invoke('agents:delete', id)
-  },
-
   // Chat APIs
   chat: {
-    send: (options: { agentId: string; threadId?: string; resourceId?: string; message: string }) =>
+    send: (options: { sessionId?: string; message: string }) =>
       ipcRenderer.invoke('chat:send', options),
 
     stream: (
       options: {
-        agentId: string
-        threadId?: string
-        resourceId?: string
+        sessionId?: string
         message: string
         workspaceRoot?: string | null
+        images?: Array<{ id: string; dataUrl: string; name: string; size: number }>
       },
       onChunk: (chunk: {
-        type: 'text' | 'reasoning' | 'tool-call' | 'tool-result'
+        type: 'text' | 'reasoning' | 'tool-call' | 'tool-result' | 'tool-output-stream' | 'error' | 'session-id' | 'message-start' | 'interrupt' | 'finish' | 'usage'
         content?: string
+        sessionId?: string
+        messages?: Array<{
+          id: number
+          role: 'user' | 'assistant' | 'system' | 'tool'
+          content: any[]
+          timestamp?: number
+          images?: Array<{ id: string; dataUrl: string; name: string; size: number }>
+        }>
         toolCall?: { id: string; name: string; args: any }
         toolResult?: {
-          id: string
-          result: any
+          tool_call_id: string
+          content: any
           isError?: boolean
           isPending?: boolean
+          isApplied?: boolean
+          appliedAction?: {
+            type: 'file-edit'
+            data: {
+              toolName?: string
+              filePath: string
+              absolutePath: string
+              oldContent: string
+              newContent: string
+              fileExists: boolean
+              stats?: { linesAdded?: number; linesRemoved?: number; linesTotal?: number }
+            }
+          }
           pendingAction?: {
             type: 'file-edit'
             data: {
@@ -42,39 +52,39 @@ const api = {
               absolutePath: string
               oldContent: string
               newContent: string
-              diff: string
-              instructions: string
               fileExists: boolean
-              stats?: { linesAdded: number; linesTotal: number }
+              stats?: { linesAdded?: number; linesRemoved?: number; linesTotal?: number }
             }
           }
         }
+        toolOutputStream?: {
+          toolCallId: string
+          terminalId: string
+          output: string
+          isError?: boolean
+        }
+        interrupt?: any
+        error?: string
+        finishReason?: string
+        usage?: {
+          promptTokens: number
+          completionTokens: number
+          totalTokens: number
+        }
       }) => void,
-      onEnd: (threadId: string) => void,
+      onEnd: (sessionId: string) => void,
       onError: (error: string) => void
     ) => {
       const streamId = `stream-${Date.now()}-${Math.random()}`
       ipcRenderer.send('chat:stream', { ...options, streamId })
 
-      const chunkListener = (
-        _: any,
-        chunk: {
-          type: 'text' | 'reasoning' | 'tool-call' | 'tool-result'
-          content?: string
-          toolCall?: { id: string; name: string; args: any }
-          toolResult?: {
-            id: string
-            result: any
-            isError?: boolean
-            isPending?: boolean
-            pendingAction?: any
-          }
-        }
-      ) => onChunk(chunk)
-      const endListener = (_: any, threadId: string) => {
-        onEnd(threadId)
+      const chunkListener = (_: any, chunk: any) => onChunk(chunk)
+
+      const endListener = (_: any, sessionId: string) => {
+        onEnd(sessionId)
         cleanup()
       }
+
       const errorListener = (_: any, error: string) => {
         onError(error)
         cleanup()
@@ -88,7 +98,7 @@ const api = {
 
       const stop = () => {
         ipcRenderer.send('chat:stream:stop', streamId)
-        cleanup()
+        // 等待流正常结束，error/end 事件会触发 cleanup
       }
 
       ipcRenderer.on('chat:stream:chunk', chunkListener)
@@ -96,24 +106,47 @@ const api = {
       ipcRenderer.once('chat:stream:error', errorListener)
 
       return { cleanup, stop }
-    }
+    },
+
+    // HITL: Resume interrupt
+    resumeInterrupt: (sessionId: string, toolCallId: string, decision: string) =>
+      ipcRenderer.invoke('chat:resume-interrupt', { sessionId, toolCallId, decision })
   },
 
-  // Thread APIs (替代原 Conversation APIs)
-  threads: {
-    getByAgent: (agentId: string) => ipcRenderer.invoke('threads:getByAgent', agentId),
-    getWithMessages: (threadId: string) => ipcRenderer.invoke('threads:getWithMessages', threadId),
-    delete: (threadId: string) => ipcRenderer.invoke('threads:delete', threadId)
+  // Session APIs
+  sessions: {
+    create: (modelId: string, projectPath: string) =>
+      ipcRenderer.invoke('sessions:create', modelId, projectPath),
+    getByProject: (projectPath: string) => ipcRenderer.invoke('sessions:getByProject', projectPath),
+    getWithMessages: (sessionId: string) =>
+      ipcRenderer.invoke('sessions:getWithMessages', sessionId),
+    update: (sessionId: string, updates: { title?: string }) =>
+      ipcRenderer.invoke('sessions:update', sessionId, updates),
+    delete: (sessionId: string) => ipcRenderer.invoke('sessions:delete', sessionId),
+    deleteMessagesAfter: (sessionId: string, messageId: number) =>
+      ipcRenderer.invoke('sessions:deleteMessagesAfter', sessionId, messageId),
   },
 
-  completion: {
-    generate: (request: {
-      filePath: string
-      fileContent: string
-      line: number
-      column: number
-      enableValidation?: boolean
-    }) => ipcRenderer.invoke('completion:generate', request)
+  // Message Snapshot APIs
+  message: {
+    getAffectedFiles: (messageId: number) =>
+      ipcRenderer.invoke('message:getAffectedFiles', messageId),
+    revertFiles: (messageId: number) => ipcRenderer.invoke('message:revertFiles', messageId)
+  },
+
+  // Memory APIs
+  memory: {
+    getAll: () => ipcRenderer.invoke('memory:getAll'),
+    create: (content: string) => ipcRenderer.invoke('memory:create', content),
+    update: (id: string, content: string) => ipcRenderer.invoke('memory:update', id, content),
+    delete: (id: string) => ipcRenderer.invoke('memory:delete', id)
+  },
+
+  userRule: {
+    getAll: () => ipcRenderer.invoke('userRule:getAll'),
+    create: (content: string) => ipcRenderer.invoke('userRule:create', content),
+    update: (id: string, content: string) => ipcRenderer.invoke('userRule:update', id, content),
+    delete: (id: string) => ipcRenderer.invoke('userRule:delete', id)
   },
 
   // Config APIs
@@ -131,36 +164,69 @@ const api = {
     getUIState: () => ipcRenderer.invoke('config:getUIState'),
     setUIState: (state: any) => ipcRenderer.invoke('config:setUIState', state),
     updateUIState: (updates: any) => ipcRenderer.invoke('config:updateUIState', updates),
-    debug: () => ipcRenderer.invoke('config:debug')
+    // Layout State APIs
+    getLayoutState: () => ipcRenderer.invoke('config:getLayoutState'),
+    setLayoutState: (layout: any) => ipcRenderer.invoke('config:setLayoutState', layout),
+    debug: () => ipcRenderer.invoke('config:debug'),
+    // API Keys
+    getApiKeys: () => ipcRenderer.invoke('config:getApiKeys'),
+    getApiKey: (provider: string) => ipcRenderer.invoke('config:getApiKey', provider),
+    setApiKey: (provider: string, apiKey: string) =>
+      ipcRenderer.invoke('config:setApiKey', provider, apiKey),
+    deleteApiKey: (provider: string) => ipcRenderer.invoke('config:deleteApiKey', provider),
+    setApiKeys: (apiKeys: Record<string, string>) =>
+      ipcRenderer.invoke('config:setApiKeys', apiKeys),
+    // Default Model
+    getDefaultModel: () => ipcRenderer.invoke('config:getDefaultModel'),
+    setDefaultModel: (modelId: string) => ipcRenderer.invoke('config:setDefaultModel', modelId)
   },
 
-  // Tool APIs (支持 MCP/Custom)
-  tools: {
-    getAll: (agentId?: string) => ipcRenderer.invoke('tools:getAll', agentId),
-    getTop: (limit?: number, agentId?: string) =>
-      ipcRenderer.invoke('tools:getTop', limit, agentId),
-    getStatsByServer: (agentId?: string) => ipcRenderer.invoke('tools:getStatsByServer', agentId),
-    importFromMCP: (serverId: string) => ipcRenderer.invoke('tools:importFromMCP', serverId),
-    syncMCPServer: (serverId: string) => ipcRenderer.invoke('tools:syncMCPServer', serverId),
-    createCustom: (data: any) => ipcRenderer.invoke('tools:createCustom', data),
-    update: (id: string, data: any) => ipcRenderer.invoke('tools:update', id, data),
-    delete: (id: string) => ipcRenderer.invoke('tools:delete', id)
-  },
-
-  // MCP Server APIs
+  // MCP APIs
   mcp: {
-    getAll: () => ipcRenderer.invoke('mcp:getAll'),
-    create: (data: any) => ipcRenderer.invoke('mcp:create', data),
-    update: (id: string, data: any) => ipcRenderer.invoke('mcp:update', id, data),
-    delete: (id: string) => ipcRenderer.invoke('mcp:delete', id)
+    getAllServers: () => ipcRenderer.invoke('mcp:getAllServers'),
+    addServer: (server: { name: string; configJson: any }) =>
+      ipcRenderer.invoke('mcp:addServer', server),
+    updateServer: (serverId: string, name: string, configJson: any) =>
+      ipcRenderer.invoke('mcp:updateServer', serverId, name, configJson),
+    deleteServer: (serverId: string) => ipcRenderer.invoke('mcp:deleteServer', serverId),
+    connect: (serverId: string, serverConfig: any) =>
+      ipcRenderer.invoke('mcp:connect', serverId, serverConfig),
+    disconnect: (serverId: string) => ipcRenderer.invoke('mcp:disconnect', serverId),
+    callTool: (serverId: string, toolName: string, args: any) =>
+      ipcRenderer.invoke('mcp:callTool', serverId, toolName, args),
+    listAllTools: () => ipcRenderer.invoke('mcp:listAllTools'),
+    listAllResources: () => ipcRenderer.invoke('mcp:listAllResources'),
+    readResource: (serverId: string, resourceName: string, args: any) =>
+      ipcRenderer.invoke('mcp:readResource', serverId, resourceName, args),
+    listAllPrompts: () => ipcRenderer.invoke('mcp:listAllPrompts'),
+    getPrompt: (serverId: string, promptName: string, args: any) =>
+      ipcRenderer.invoke('mcp:getPrompt', serverId, promptName, args),
+    getConnectionStatus: (serverId: string) =>
+      ipcRenderer.invoke('mcp:getConnectionStatus', serverId),
+    startAuth: (serverId: string) => ipcRenderer.invoke('mcp:startAuth', serverId),
+    clearAuth: (serverId: string) => ipcRenderer.invoke('mcp:clearAuth', serverId),
+    getMarketServers: (params: {
+      empId?: string
+      orderBy?: 'TIMESTAMP' | 'USAGE'
+      page?: number
+      pageSize?: number
+    }) => ipcRenderer.invoke('mcp:getMarketServers', params),
+    getServerDetail: (serverName: string) => ipcRenderer.invoke('mcp:getServerDetail', serverName)
   },
 
   // File System APIs
   files: {
     read: (filePath: string) => ipcRenderer.invoke('files:read', filePath),
+    quickOpen: (projectPath: string, query: string, limit?: number) =>
+      ipcRenderer.invoke('files:quickOpen', projectPath, query, limit),
+    readWithEncoding: (filePath: string, encoding: string) =>
+      ipcRenderer.invoke('files:readWithEncoding', filePath, encoding),
+    detectEncoding: (filePath: string) => ipcRenderer.invoke('files:detectEncoding', filePath),
     readBinary: (filePath: string) => ipcRenderer.invoke('files:readBinary', filePath),
     write: (filePath: string, content: string) =>
       ipcRenderer.invoke('files:write', filePath, content),
+    writeWithEncoding: (filePath: string, content: string, encoding: string) =>
+      ipcRenderer.invoke('files:writeWithEncoding', filePath, content, encoding),
     listDirectory: (dirPath: string) => ipcRenderer.invoke('files:listDirectory', dirPath),
     createFile: (filePath: string, content: string) =>
       ipcRenderer.invoke('files:createFile', filePath, content),
@@ -172,12 +238,20 @@ const api = {
     getInfo: (filePath: string) => ipcRenderer.invoke('files:getInfo', filePath),
     stat: (filePath: string) => ipcRenderer.invoke('files:getInfo', filePath),
     revealInFinder: (filePath: string) => ipcRenderer.invoke('files:revealInFinder', filePath),
+    openPath: (path: string) => ipcRenderer.invoke('files:openPath', path),
 
     // 文件变化监听
     onFileChanged: (callback: (event: { type: string; path: string }) => void) => {
       const listener = (_: any, event: { type: string; path: string }) => callback(event)
       ipcRenderer.on('file:changed', listener)
       return () => ipcRenderer.removeListener('file:changed', listener)
+    },
+
+    // ⭐ Git外部变化监听（git checkout, git pull等）
+    onGitExternalChange: (callback: (event: { projectPath: string }) => void) => {
+      const listener = (_: any, event: { projectPath: string }) => callback(event)
+      ipcRenderer.on('git:external-change', listener)
+      return () => ipcRenderer.removeListener('git:external-change', listener)
     }
   },
 
@@ -188,7 +262,77 @@ const api = {
     getCurrent: () => ipcRenderer.invoke('project:getCurrent'),
     setCurrent: (projectPath: string | null) =>
       ipcRenderer.invoke('project:setCurrent', projectPath),
-    close: () => ipcRenderer.invoke('project:close')
+    close: () => ipcRenderer.invoke('project:close'),
+    openInNewWindow: (projectPath: string) =>
+      ipcRenderer.invoke('project:openInNewWindow', projectPath)
+  },
+
+  // Window APIs
+  window: {
+    onOpenProject: (callback: (data: { projectPath: string }) => void) => {
+      const listener = (_: any, data: { projectPath: string }) => callback(data)
+      ipcRenderer.on('window:open-project', listener)
+      return () => ipcRenderer.removeListener('window:open-project', listener)
+    },
+    onFullscreenChange: (callback: (isFullscreen: boolean) => void) => {
+      const listener = (_: any, isFullscreen: boolean) => callback(isFullscreen)
+      ipcRenderer.on('window:fullscreen-change', listener)
+      return () => ipcRenderer.removeListener('window:fullscreen-change', listener)
+    }
+  },
+
+  // Menu event listeners
+  menu: {
+    onOpenProject: (callback: () => void) => {
+      const listener = () => callback()
+      ipcRenderer.on('menu:open-project', listener)
+      return () => ipcRenderer.removeListener('menu:open-project', listener)
+    },
+    onOpenRecentProject: (callback: (path: string) => void) => {
+      const listener = (_: any, data: { path: string }) => callback(data.path)
+      ipcRenderer.on('menu:open-recent-project', listener)
+      return () => ipcRenderer.removeListener('menu:open-recent-project', listener)
+    },
+    onSaveFile: (callback: () => void) => {
+      const listener = () => callback()
+      ipcRenderer.on('menu:save-file', listener)
+      return () => ipcRenderer.removeListener('menu:save-file', listener)
+    },
+    onSaveAll: (callback: () => void) => {
+      const listener = () => callback()
+      ipcRenderer.on('menu:save-all', listener)
+      return () => ipcRenderer.removeListener('menu:save-all', listener)
+    },
+    onCloseWorkspace: (callback: () => void) => {
+      const listener = () => callback()
+      ipcRenderer.on('menu:close-workspace', listener)
+      return () => ipcRenderer.removeListener('menu:close-workspace', listener)
+    },
+    onOpenSettings: (callback: () => void) => {
+      const listener = () => callback()
+      ipcRenderer.on('menu:open-settings', listener)
+      return () => ipcRenderer.removeListener('menu:open-settings', listener)
+    },
+    onToggleSidebar: (callback: () => void) => {
+      const listener = () => callback()
+      ipcRenderer.on('menu:toggle-sidebar', listener)
+      return () => ipcRenderer.removeListener('menu:toggle-sidebar', listener)
+    },
+    onToggleChat: (callback: () => void) => {
+      const listener = () => callback()
+      ipcRenderer.on('menu:toggle-chat', listener)
+      return () => ipcRenderer.removeListener('menu:toggle-chat', listener)
+    },
+    onToggleTerminal: (callback: () => void) => {
+      const listener = () => callback()
+      ipcRenderer.on('menu:toggle-terminal', listener)
+      return () => ipcRenderer.removeListener('menu:toggle-terminal', listener)
+    },
+    onReportBug: (callback: () => void) => {
+      const listener = () => callback()
+      ipcRenderer.on('menu:report-bug', listener)
+      return () => ipcRenderer.removeListener('menu:report-bug', listener)
+    }
   },
 
   // Git APIs
@@ -209,15 +353,41 @@ const api = {
 
     // Repository & Branch operations
     isRepository: (projectPath: string) => ipcRenderer.invoke('git:isRepository', projectPath),
+    initRepository: (projectPath: string) => ipcRenderer.invoke('git:initRepository', projectPath),
     getCurrentBranch: (projectPath: string) =>
       ipcRenderer.invoke('git:getCurrentBranch', projectPath),
     getAllBranches: (projectPath: string) => ipcRenderer.invoke('git:getAllBranches', projectPath),
     checkoutBranch: (projectPath: string, branchName: string) =>
       ipcRenderer.invoke('git:checkoutBranch', projectPath, branchName),
-    createBranch: (projectPath: string, branchName: string, checkout: boolean) =>
-      ipcRenderer.invoke('git:createBranch', projectPath, branchName, checkout),
+    createBranch: (
+      projectPath: string,
+      branchName: string,
+      checkout: boolean,
+      startPoint?: string
+    ) => ipcRenderer.invoke('git:createBranch', projectPath, branchName, checkout, startPoint),
+    getBranchCommit: (projectPath: string, branchName: string) =>
+      ipcRenderer.invoke('git:getBranchCommit', projectPath, branchName),
     deleteBranch: (projectPath: string, branchName: string, force: boolean) =>
       ipcRenderer.invoke('git:deleteBranch', projectPath, branchName, force),
+    deleteRemoteBranch: (projectPath: string, remoteName: string, branchName: string) =>
+      ipcRenderer.invoke('git:deleteRemoteBranch', projectPath, remoteName, branchName),
+    getTrackingBranch: (projectPath: string, branchName: string) =>
+      ipcRenderer.invoke('git:getTrackingBranch', projectPath, branchName),
+    unsetUpstream: (projectPath: string, branchName: string) =>
+      ipcRenderer.invoke('git:unsetUpstream', projectPath, branchName),
+    renameBranch: (projectPath: string, oldName: string, newName: string) =>
+      ipcRenderer.invoke('git:renameBranch', projectPath, oldName, newName),
+    mergeBranch: (projectPath: string, branchName: string) =>
+      ipcRenderer.invoke('git:mergeBranch', projectPath, branchName),
+    compareBranches: (projectPath: string, baseBranch: string, compareBranch: string) =>
+      ipcRenderer.invoke('git:compareBranches', projectPath, baseBranch, compareBranch),
+    getBranchFileDiff: (
+      projectPath: string,
+      baseBranch: string,
+      compareBranch: string,
+      filePath: string
+    ) =>
+      ipcRenderer.invoke('git:getBranchFileDiff', projectPath, baseBranch, compareBranch, filePath),
 
     // Status & Changes
     getStatus: (projectPath: string) => ipcRenderer.invoke('git:getStatus', projectPath),
@@ -233,15 +403,19 @@ const api = {
     // Remote operations
     push: (projectPath: string, remote: string, branch?: string, setUpstream?: boolean) =>
       ipcRenderer.invoke('git:push', projectPath, remote, branch, setUpstream),
+    pushToRef: (projectPath: string, remote: string, refspec: string, setUpstream?: boolean) =>
+      ipcRenderer.invoke('git:pushToRef', projectPath, remote, refspec, setUpstream),
     pull: (projectPath: string, remote: string, branch?: string) =>
       ipcRenderer.invoke('git:pull', projectPath, remote, branch),
     fetch: (projectPath: string, remote: string) =>
       ipcRenderer.invoke('git:fetch', projectPath, remote),
     getRemotes: (projectPath: string) => ipcRenderer.invoke('git:getRemotes', projectPath),
+    addRemote: (projectPath: string, name: string, url: string) =>
+      ipcRenderer.invoke('git:addRemote', projectPath, name, url),
 
     // File operations
-    revertFile: (projectPath: string, filePath: string) =>
-      ipcRenderer.invoke('git:revertFile', projectPath, filePath),
+    discardFileChanges: (projectPath: string, filePath: string) =>
+      ipcRenderer.invoke('git:discardFileChanges', projectPath, filePath),
     getFileHistory: (projectPath: string, filePath: string, limit?: number) =>
       ipcRenderer.invoke('git:getFileHistory', projectPath, filePath, limit),
     compareWithBranch: (projectPath: string, filePath: string, branch: string) =>
@@ -249,7 +423,85 @@ const api = {
     getWorkingDiff: (projectPath: string, filePath: string) =>
       ipcRenderer.invoke('git:getWorkingDiff', projectPath, filePath),
     getBlame: (projectPath: string, filePath: string) =>
-      ipcRenderer.invoke('git:getBlame', projectPath, filePath)
+      ipcRenderer.invoke('git:getBlame', projectPath, filePath),
+    getFileFromHead: (projectPath: string, filePath: string) =>
+      ipcRenderer.invoke('git:getFileFromHead', projectPath, filePath),
+
+    // Stash operations
+    stash: (projectPath: string, message?: string, includeUntracked?: boolean) =>
+      ipcRenderer.invoke('git:stash', projectPath, message, includeUntracked),
+    stashList: (projectPath: string) => ipcRenderer.invoke('git:stashList', projectPath),
+    stashApply: (projectPath: string, index: number) =>
+      ipcRenderer.invoke('git:stashApply', projectPath, index),
+    stashPop: (projectPath: string, index: number) =>
+      ipcRenderer.invoke('git:stashPop', projectPath, index),
+    stashDrop: (projectPath: string, index: number) =>
+      ipcRenderer.invoke('git:stashDrop', projectPath, index),
+    stashClear: (projectPath: string) => ipcRenderer.invoke('git:stashClear', projectPath),
+    stashShowFiles: (projectPath: string, index: number) =>
+      ipcRenderer.invoke('git:stashShowFiles', projectPath, index),
+    stashShowDiff: (projectPath: string, index: number) =>
+      ipcRenderer.invoke('git:stashShowDiff', projectPath, index),
+    stashGetFileContent: (projectPath: string, index: number, filePath: string) =>
+      ipcRenderer.invoke('git:stashGetFileContent', projectPath, index, filePath),
+
+    // History operations
+    getCommitHistory: (
+      projectPath: string,
+      options?: {
+        limit?: number
+        skip?: number
+        branch?: string
+        author?: string
+        search?: string
+      }
+    ) => ipcRenderer.invoke('git:getCommitHistory', projectPath, options),
+    getCommitDetail: (projectPath: string, commitHash: string) =>
+      ipcRenderer.invoke('git:getCommitDetail', projectPath, commitHash),
+    getCommitFileDiff: (projectPath: string, commitHash: string, filePath: string) =>
+      ipcRenderer.invoke('git:getCommitFileDiff', projectPath, commitHash, filePath),
+    amendCommit: (projectPath: string, message?: string) =>
+      ipcRenderer.invoke('git:amendCommit', projectPath, message),
+    resetToCommit: (projectPath: string, commitHash: string, mode?: 'soft' | 'mixed' | 'hard') =>
+      ipcRenderer.invoke('git:resetToCommit', projectPath, commitHash, mode),
+    revertCommit: (projectPath: string, commitHash: string) =>
+      ipcRenderer.invoke('git:revertCommit', projectPath, commitHash),
+    getAuthors: (projectPath: string) => ipcRenderer.invoke('git:getAuthors', projectPath),
+    getLastCommitInfo: (projectPath: string) =>
+      ipcRenderer.invoke('git:getLastCommitInfo', projectPath),
+
+    // Conflict resolution
+    getConflictVersions: (projectPath: string, filePath: string) =>
+      ipcRenderer.invoke('git:getConflictVersions', projectPath, filePath),
+    resolveConflict: (projectPath: string, filePath: string, resolvedContent: string) =>
+      ipcRenderer.invoke('git:resolveConflict', projectPath, filePath, resolvedContent),
+    abortMerge: (projectPath: string) => ipcRenderer.invoke('git:abortMerge', projectPath),
+    acceptAllOurs: (projectPath: string, conflictedFiles: string[]) =>
+      ipcRenderer.invoke('git:acceptAllOurs', projectPath, conflictedFiles),
+    acceptAllTheirs: (projectPath: string, conflictedFiles: string[]) =>
+      ipcRenderer.invoke('git:acceptAllTheirs', projectPath, conflictedFiles),
+
+    // Tag operations
+    listTags: (projectPath: string) => ipcRenderer.invoke('git:listTags', projectPath),
+    createTag: (
+      projectPath: string,
+      tagName: string,
+      options?: { message?: string; commitHash?: string }
+    ) => ipcRenderer.invoke('git:createTag', projectPath, tagName, options),
+    deleteTag: (projectPath: string, tagName: string) =>
+      ipcRenderer.invoke('git:deleteTag', projectPath, tagName),
+    pushTag: (projectPath: string, tagName: string, remote?: string) =>
+      ipcRenderer.invoke('git:pushTag', projectPath, tagName, remote),
+    deleteRemoteTag: (projectPath: string, tagName: string, remote?: string) =>
+      ipcRenderer.invoke('git:deleteRemoteTag', projectPath, tagName, remote),
+
+    // Rebase
+    rebase: (projectPath: string, onto: string) =>
+      ipcRenderer.invoke('git:rebase', projectPath, onto),
+
+    // Squash
+    squashCommits: (projectPath: string, count: number, message: string) =>
+      ipcRenderer.invoke('git:squashCommits', projectPath, count, message)
   },
 
   // Avatar APIs
@@ -298,6 +550,100 @@ const api = {
       const listener = (_: any, command: string) => callback(command)
       ipcRenderer.on('terminal:run-command', listener)
       return () => ipcRenderer.removeListener('terminal:run-command', listener)
+    },
+
+    // Tool 相关事件：审批请求（工具内部发起）
+    onApprovalRequired: (
+      callback: (event: { toolCallId: string; command: string; is_background: boolean }) => void
+    ) => {
+      console.log('[Preload] 🎧 Registering onApprovalRequired listener')
+      const listener = (
+        _: any,
+        event: { toolCallId: string; command: string; is_background: boolean }
+      ) => {
+        console.log('[Preload] 📥 Received tool:approval-required:', event)
+        callback(event)
+      }
+      ipcRenderer.on('tool:approval-required', listener)
+      return () => {
+        console.log('[Preload] 🔇 Unregistering onApprovalRequired listener')
+        ipcRenderer.removeListener('tool:approval-required', listener)
+      }
+    },
+
+    // Tool 相关事件：terminal 创建（后台任务）
+    onTerminalCreated: (
+      callback: (event: { toolCallId: string; terminalId: string; command: string }) => void
+    ) => {
+      const listener = (
+        _: any,
+        event: { toolCallId: string; terminalId: string; command: string }
+      ) => callback(event)
+      ipcRenderer.on('tool:terminal-created', listener)
+      return () => ipcRenderer.removeListener('tool:terminal-created', listener)
+    },
+
+    // Tool 相关事件：流式输出开始（同步任务，不创建 terminal tab）
+    onStreamingStarted: (callback: (event: { toolCallId: string; command: string }) => void) => {
+      const listener = (_: any, event: { toolCallId: string; command: string }) => callback(event)
+      ipcRenderer.on('tool:streaming-started', listener)
+      return () => ipcRenderer.removeListener('tool:streaming-started', listener)
+    },
+
+    // Tool 相关事件：输出流
+    onOutputStream: (
+      callback: (event: {
+        toolCallId: string
+        terminalId: string
+        output: string
+        isError: boolean
+      }) => void
+    ) => {
+      const listener = (
+        _: any,
+        event: { toolCallId: string; terminalId: string; output: string; isError: boolean }
+      ) => callback(event)
+      ipcRenderer.on('tool:output-stream', listener)
+      return () => ipcRenderer.removeListener('tool:output-stream', listener)
+    },
+
+    // Tool 相关事件：输出完成
+    onOutputComplete: (
+      callback: (event: {
+        toolCallId: string
+        terminalId: string
+        exitCode: number
+        signal?: number
+      }) => void
+    ) => {
+      const listener = (
+        _: any,
+        event: { toolCallId: string; terminalId: string; exitCode: number; signal?: number }
+      ) => callback(event)
+      ipcRenderer.on('tool:output-complete', listener)
+      return () => ipcRenderer.removeListener('tool:output-complete', listener)
+    }
+  },
+
+  // Todo APIs
+  todo: {
+    get: (sessionId: string) => ipcRenderer.invoke('todo:get', sessionId),
+    onUpdate: (
+      callback: (event: {
+        sessionId: string
+        todos: Array<{
+          id: string
+          content: string
+          status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
+          createdAt: number
+          updatedAt: number
+        }>
+        action: 'created' | 'updated'
+      }) => void
+    ) => {
+      const listener = (_: any, event: any) => callback(event)
+      ipcRenderer.on('todo:update', listener)
+      return () => ipcRenderer.removeListener('todo:update', listener)
     }
   },
 
@@ -355,19 +701,155 @@ const api = {
 
   // App APIs
   app: {
-    platform: process.platform as 'darwin' | 'win32' | 'linux',
     onOpenUrl: (callback: (url: string) => void) => {
       const listener = (_: any, url: string) => callback(url)
       ipcRenderer.on('app:open-url', listener)
       return () => ipcRenderer.removeListener('app:open-url', listener)
-    },
-    onMenuAction: (callback: (payload: { action: string; path?: string }) => void) => {
-      const listener = (_: any, payload: { action: string; path?: string }) => callback(payload)
-      ipcRenderer.on('app:menu-action', listener)
-      return () => ipcRenderer.removeListener('app:menu-action', listener)
-    },
-    setRecentProjects: (recent: { path: string; name: string }[]) =>
-      ipcRenderer.invoke('app:setRecentProjects', recent)
+    }
+  },
+
+  // Workflow APIs
+  workflow: {
+    resume: (params: { sessionId: string; approved: boolean; modifiedData?: any }) =>
+      ipcRenderer.invoke('workflow:resume', params),
+    cancel: (params: { sessionId: string }) => ipcRenderer.invoke('workflow:cancel', params)
+  },
+
+  // Pending Edits APIs - 前后端同步
+  pendingEdits: {
+    clear: (sessionId: string, absolutePath: string) =>
+      ipcRenderer.invoke('pendingEdits:clear', sessionId, absolutePath),
+    clearSession: (sessionId: string) => ipcRenderer.invoke('pendingEdits:clearSession', sessionId)
+  },
+
+  // Search APIs
+  search: {
+    find: (
+      projectPath: string,
+      query: string,
+      options?: {
+        caseSensitive?: boolean
+        wholeWord?: boolean
+        useRegex?: boolean
+        includePattern?: string
+        excludePattern?: string
+      }
+    ) => ipcRenderer.invoke('search:find', projectPath, query, options),
+    replaceInFile: (
+      filePath: string,
+      searchText: string,
+      replaceText: string,
+      options?: {
+        caseSensitive?: boolean
+        wholeWord?: boolean
+        useRegex?: boolean
+      }
+    ) => ipcRenderer.invoke('search:replaceInFile', filePath, searchText, replaceText, options),
+    replaceAll: (
+      projectPath: string,
+      searchText: string,
+      replaceText: string,
+      options?: {
+        caseSensitive?: boolean
+        wholeWord?: boolean
+        useRegex?: boolean
+        includePattern?: string
+        excludePattern?: string
+      }
+    ) => ipcRenderer.invoke('search:replaceAll', projectPath, searchText, replaceText, options)
+  },
+
+  // Recent Files APIs
+  recentFiles: {
+    add: (projectPath: string, filePath: string) =>
+      ipcRenderer.invoke('recentFiles:add', projectPath, filePath),
+    get: (projectPath: string, limit?: number) =>
+      ipcRenderer.invoke('recentFiles:get', projectPath, limit) as Promise<string[]>,
+    remove: (projectPath: string, filePath: string) =>
+      ipcRenderer.invoke('recentFiles:remove', projectPath, filePath),
+    clear: (projectPath: string) => ipcRenderer.invoke('recentFiles:clear', projectPath)
+  },
+
+  // Notifications APIs - 通知中心
+  notifications: {
+    getAll: () =>
+      ipcRenderer.invoke('notifications:getAll') as Promise<
+        Array<{
+          id: string
+          type: 'success' | 'error' | 'warning' | 'info'
+          title: string
+          description: string | null
+          timestamp: Date
+          read: boolean
+        }>
+      >,
+    add: (notification: {
+      id: string
+      type: 'success' | 'error' | 'warning' | 'info'
+      title: string
+      description?: string
+      timestamp: Date
+    }) => ipcRenderer.invoke('notifications:add', notification),
+    markAsRead: (id: string) => ipcRenderer.invoke('notifications:markAsRead', id),
+    markAllAsRead: () => ipcRenderer.invoke('notifications:markAllAsRead'),
+    remove: (id: string) => ipcRenderer.invoke('notifications:remove', id),
+    clearAll: () => ipcRenderer.invoke('notifications:clearAll')
+  },
+
+  // Recent Branches APIs - Git 最近分支
+  recentBranches: {
+    get: (projectPath: string, limit?: number) =>
+      ipcRenderer.invoke('recentBranches:get', projectPath, limit) as Promise<string[]>,
+    add: (projectPath: string, branchName: string) =>
+      ipcRenderer.invoke('recentBranches:add', projectPath, branchName)
+  },
+
+  // Bug Report APIs
+  bugReport: {
+    submit: (title: string, description: string) =>
+      ipcRenderer.invoke('bugReport:submit', title, description)
+  },
+
+  // Completion APIs
+  completion: {
+    generate: (request: {
+      filePath: string
+      fileContent: string
+      language: string
+      cursorPosition: { line: number; column: number }
+      lintErrors: Array<{
+        line: number
+        column: number
+        message: string
+        severity: 'error' | 'warning' | 'info'
+        source?: string
+        code?: string
+      }>
+      projectName?: string
+      workspaceRoot?: string
+    }) => ipcRenderer.invoke('completion:generate', request)
+  },
+
+  // Skills APIs
+  skills: {
+    scan: (projectPath?: string) => ipcRenderer.invoke('skills:scan', projectPath),
+    toggle: (skillPath: string, enabled: boolean) =>
+      ipcRenderer.invoke('skills:toggle', skillPath, enabled),
+    delete: (skillPath: string) => ipcRenderer.invoke('skills:delete', skillPath),
+    installFromGit: (
+      repoUrl: string,
+      skillName: string,
+      scope?: 'user' | 'project',
+      projectPath?: string
+    ) => ipcRenderer.invoke('skills:installFromGit', repoUrl, skillName, scope, projectPath),
+    search: (params: { q: string; page?: number; limit?: number }) =>
+      ipcRenderer.invoke('skills:search', params),
+    fetchContent: (githubUrl: string) => ipcRenderer.invoke('skills:fetchContent', githubUrl)
+  },
+
+  // Shell APIs
+  shell: {
+    openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url)
   }
 }
 

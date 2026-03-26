@@ -28,7 +28,7 @@ function SidebarProvider({
 
 function Sidebar({
   className,
-  collapsible: _collapsible,
+  collapsible,
   ...props
 }: React.ComponentProps<'div'> & {
   collapsible?: 'offcanvas' | 'icon' | 'none'

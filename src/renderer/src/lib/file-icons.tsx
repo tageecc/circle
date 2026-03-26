@@ -1,3 +1,5 @@
+import { getFileExtension } from '../utils/file-helpers'
+
 import {
   FileText,
   FileJson,
@@ -116,16 +118,13 @@ const fileIconMap: Record<string, FileIconConfig> = {
 }
 
 export function getFileIcon(filename: string): FileIconConfig {
-  // 先检查完整文件名（处理特殊文件如 package.json）
   const fullNameMatch = fileIconMap[filename.toLowerCase()]
   if (fullNameMatch) return fullNameMatch
 
-  // 再检查扩展名
-  const ext = filename.split('.').pop()?.toLowerCase()
+  const ext = getFileExtension(filename)
   if (ext && fileIconMap[ext]) {
     return fileIconMap[ext]
   }
 
-  // 默认图标
   return { icon: FileType, color: 'text-muted-foreground' }
 }

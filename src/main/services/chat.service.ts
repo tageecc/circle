@@ -1,397 +1,656 @@
-import { Agent } from '@mastra/core/agent'
-import { AgentService } from './agent.service'
+/**
+ * Chat Service - 完全使用 AI SDK 标准格式
+ * 简洁、无冗余、最佳实践
+ */
+
+import { streamText, stepCountIs } from 'ai'
+import type { TextPart, ToolCallPart, ToolResultPart } from 'ai'
+import type { ReasoningPart } from '@ai-sdk/provider-utils'
+import type { StreamChunk } from '../types/stream'
+import type { MessageMetadata } from '../types/message'
+
 import { ContextEnrichmentService } from './context-enrichment.service'
-import { getMastra, getSharedMemory } from '../mastra.config'
-import type { Agent as DBAgent } from '../database/schema.sqlite'
-import type { ConfigService } from './config.service'
-import type { CoreMessage } from 'ai'
-import { t } from '../utils/i18n'
-
-export interface ChatMessage {
-  role: 'user' | 'assistant' | 'system'
-  content: string
-  toolCalls?: any[]
-}
-
-export interface ChatOptions {
-  agentId: string
-  threadId?: string
-  resourceId?: string
-  message: string
-  workspaceRoot?: string | null
-  configService?: ConfigService
-}
-
-function parseAgentTools(tools: DBAgent['tools']): string[] {
-  if (tools == null) return []
-  if (Array.isArray(tools)) return tools
-  if (typeof tools === 'string') {
-    try {
-      const parsed = JSON.parse(tools) as unknown
-      return Array.isArray(parsed) ? (parsed as string[]) : []
-    } catch {
-      return []
-    }
-  }
-  return []
-}
+import { ConfigService } from './config.service'
+import { SessionService } from './session.service'
+import { debugLogger } from './debug-logger.service'
+import type { ToolContext } from './tool-context'
+import { assistantConfig, getAssistantTools } from '../agents/assistant'
+import { createLanguageModel } from '../utils/model-factory'
+import { MessageSnapshotService, type FileSnapshot } from './message-snapshot.service'
 
 export class ChatService {
-  private agentService = new AgentService()
-  private get memory() {
-    return getSharedMemory()
-  }
-  private contextService = ContextEnrichmentService.getInstance()
+  private contextEnrichmentService = ContextEnrichmentService.getInstance()
+  private configService: ConfigService
+  private sessionService: SessionService
+  private snapshotService = MessageSnapshotService.getInstance()
 
-  // 确保有 threadId，没有则创建
-  private async ensureThread(
-    threadId: string | undefined,
-    resourceId: string,
+  constructor(configService: ConfigService) {
+    this.configService = configService
+    this.sessionService = new SessionService()
+  }
+
+  async *streamChat(options: {
+    sessionId: string
     message: string
-  ): Promise<string> {
-    if (threadId) return threadId
+    workspaceRoot?: string | null
+    onStream?: (chunk: StreamChunk) => void
+    abortSignal?: AbortSignal
+    images?: Array<{ id: string; dataUrl: string; name: string; size: number }>
+  }): AsyncGenerator<StreamChunk> {
+    const { sessionId, message, workspaceRoot, onStream, abortSignal, images } = options
 
-    const newThread = await this.memory.createThread({
-      resourceId,
-      title: message.slice(0, 50)
-    })
-    return newThread.id
-  }
+    let textContent = ''
+    let reasoningContent = ''
+    const contentParts: Array<TextPart | ReasoningPart | ToolCallPart> = []
+    const metadata: MessageMetadata = {
+      streamingStates: {}
+      // ✅ 移除toolStates：状态直接从tool-result消息推导
+    }
 
-  async chat(options: ChatOptions): Promise<{
-    threadId: string
-    response: string
-    toolCalls?: any[]
-  }> {
-    const { agentId, threadId, resourceId, message } = options
+    let userMessageId: number = 0
+    let assistantMessageId: number = 0
 
-    const agent = await this.agentService.getAgentById(agentId)
-    if (!agent) {
-      throw new Error('Agent not found')
+    // 收集当前消息的文件变更（用于快照）
+    const messageFileChanges: Record<string, FileSnapshot> = {}
+
+    // 辅助函数：发送 chunk
+    const emitChunk = (chunk: StreamChunk) => {
+      onStream?.(chunk)
+      return chunk
+    }
+
+    // 辅助函数：保存消息
+    const saveMessage = async () => {
+      const content: Array<TextPart | ReasoningPart | ToolCallPart> = [...contentParts]
+      if (textContent) {
+        content.push({ type: 'text', text: textContent })
+      }
+      await this.sessionService
+        .updateMessage(assistantMessageId, { content, metadata })
+        .catch((err) => console.error('[ChatService] Save failed:', err))
+    }
+
+    // 辅助函数：关闭流状态
+    const closeStreaming = () => {
+      Object.values(metadata.streamingStates || {}).forEach((state) => {
+        if (state) state.isStreaming = false
+      })
     }
 
     try {
-      const mastraAgent = await this.createMastraAgentFromDB(agent)
-      const actualResourceId = resourceId || agentId
-      const actualThreadId = await this.ensureThread(threadId, actualResourceId, message)
+      if (!workspaceRoot) {
+        throw new Error('workspaceRoot is required')
+      }
 
-      const response = await mastraAgent.generate(message, {
-        threadId: actualThreadId,
-        resourceId: actualResourceId
+      const modelId = this.configService.getDefaultModel()
+      console.log(`[ChatService] Using model: ${modelId}`)
+
+      const session = await this.sessionService.getSession(sessionId)
+      const totalUsage = (session?.metadata?.totalUsage as any) || {
+        inputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0
+      }
+
+      // 1. 先保存消息获取真实 ID
+      userMessageId = await this.sessionService.saveMessage(sessionId, {
+        role: 'user',
+        content: message
       })
 
-      const responseText = response.text || ''
-      const toolCalls = response.toolCalls || []
+      assistantMessageId = await this.sessionService.saveMessage(sessionId, {
+        role: 'assistant',
+        content: []
+      })
 
-      return {
-        threadId: actualThreadId,
-        response: responseText,
-        toolCalls: toolCalls.length > 0 ? toolCalls : undefined
-      }
-    } catch (error) {
-      console.error('Chat error:', error)
-      throw new Error(
-        `Failed to generate response: ${error instanceof Error ? error.message : 'Unknown error'}`
-      )
-    }
-  }
+      // 2. 加载历史消息（排除刚保存的消息）
+      const historyMessages = await this.sessionService.getMessages(sessionId)
 
-  async streamChat(
-    options: ChatOptions & {
-      abortSignal?: AbortSignal
-      onStream?: (chunk: {
-        type: 'text' | 'reasoning' | 'tool-call' | 'tool-result'
-        content?: string
-        toolCall?: { id: string; name: string; args: any }
-        toolResult?: {
-          id: string
-          result: any
-          isError?: boolean
-          isPending?: boolean
-          pendingAction?: any
-        }
-      }) => void
-      onError?: (error: Error) => void
-    }
-  ): Promise<{
-    threadId: string
-  }> {
-    const {
-      agentId,
-      threadId,
-      resourceId,
-      message,
-      workspaceRoot,
-      configService,
-      abortSignal,
-      onStream,
-      onError
-    } = options
+      // ✅ 检查并清理pending approval的tool-calls
+      // 当用户发送新消息时，自动为所有pending的tool添加"cancelled"的tool-result
+      await this.cleanupPendingToolCalls(sessionId, historyMessages)
 
-    const agent = await this.agentService.getAgentById(agentId)
-    if (!agent) {
-      throw new Error('Agent not found')
-    }
+      // 3. 重新加载消息（包含添加的tool-result）
+      const updatedHistoryMessages = await this.sessionService.getMessages(sessionId)
 
-    try {
-      const mastraAgent = await this.createMastraAgentFromDB(agent)
-      const actualResourceId = resourceId || agentId
-      const actualThreadId = await this.ensureThread(threadId, actualResourceId, message)
+      // 4. 构造 AI 上下文（排除刚保存的消息）
+      const messages = updatedHistoryMessages
+        .filter((msg) => msg.role !== 'system')
+        .filter((msg) => msg.id !== userMessageId && msg.id !== assistantMessageId)
+        .map((msg) => ({
+          role: msg.role as 'user' | 'assistant' | 'tool',
+          content: msg.content
+        }))
 
-      // 检查是否为首次对话：查询 thread 是否存在历史消息
-      const threadHistory = threadId ? await this.memory.getThreadById({ threadId }) : null
-      const isFirstMessage = !threadHistory
+      // 4. 添加当前用户消息
+      messages.push({
+        role: 'user',
+        content: message
+      })
 
-      // 构建消息（完全像 Cursor 和 Mastra 示例）
-      let messagesToSend: CoreMessage[] | string
-
-      if (isFirstMessage) {
-        // 首次对话：发送系统上下文消息 + 用户消息
-        const contextInfo = await this.contextService.getContextInfo({
-          workspaceRoot,
-          configService,
-          includeProjectLayout: true,
-          includeOpenFiles: true,
-          maxProjectDepth: 2
-        })
-
-        messagesToSend = []
-
-        // 作为 user 消息发送上下文（像 Cursor）
-        if (contextInfo) {
-          messagesToSend.push({
+      // 5. 立即返回创建的消息
+      yield emitChunk({
+        type: 'message-start',
+        messages: [
+          {
+            id: userMessageId,
             role: 'user',
-            content: contextInfo
-          })
-        }
+            content: [{ type: 'text', text: message }],
+            timestamp: Date.now(),
+            images: images || undefined
+          },
+          {
+            id: assistantMessageId,
+            role: 'assistant',
+            content: [],
+            timestamp: Date.now()
+          }
+        ]
+      })
 
-        // 用户问题
-        messagesToSend.push({
-          role: 'user',
-          content: `<user_query>\n${message}\n</user_query>`
-        })
-      } else {
-        // 后续对话：只发送用户消息字符串
-        // Mastra 会自动从 threadId 加载历史消息（包括第一次的上下文）
-        messagesToSend = `<user_query>\n${message}\n</user_query>`
+      debugLogger.logChatRequest(sessionId, messages, { workspaceRoot })
+
+      const toolContext: ToolContext = {
+        sessionId,
+        workspaceRoot,
+        assistantMessageId,
+        abortSignal
       }
 
-      const stream = await mastraAgent.stream(messagesToSend, {
-        threadId: actualThreadId,
-        resourceId: actualResourceId,
+      const systemPrompt = await this.contextEnrichmentService.buildSystemPrompt({
+        modelId,
+        assistantInstructions: assistantConfig.instructions,
+        workspaceRoot,
+        configService: this.configService
+      })
+
+      const tools = getAssistantTools()
+      const result = streamText({
+        model: createLanguageModel(modelId, this.configService),
+        system: systemPrompt,
+        messages,
+        tools,
+        stopWhen: stepCountIs(100),
+        experimental_context: toolContext,
+        abortSignal,
         providerOptions: {
-          'alibaba-cn': {
-            enable_thinking: agent.enableReasoning === 1,
-            ...(agent.thinkingBudget && { thinking_budget: agent.thinkingBudget })
+          qwen: {
+            enable_thinking: true,
+            stream_options: {
+              include_usage: true
+            }
+          }
+        },
+        // 在每一步之前过滤 reasoning parts
+        prepareStep: ({ messages: stepMessages }) => ({
+          messages: stepMessages.map((msg) =>
+            msg.role === 'assistant' && Array.isArray(msg.content)
+              ? { ...msg, content: msg.content.filter((part) => part.type !== 'reasoning') }
+              : msg
+          )
+        })
+      })
+
+      for await (const part of result.fullStream) {
+        switch (part.type) {
+          case 'reasoning-start': {
+            reasoningContent = ''
+            metadata.streamingStates!.reasoning = { isStreaming: true, type: 'reasoning' }
+            break
+          }
+
+          case 'reasoning-delta': {
+            reasoningContent += part.text
+            yield emitChunk({ type: 'reasoning', content: part.text })
+            break
+          }
+
+          case 'reasoning-end': {
+            if (metadata.streamingStates?.reasoning) {
+              metadata.streamingStates.reasoning.isStreaming = false
+            }
+            if (reasoningContent) {
+              contentParts.push({
+                type: 'reasoning',
+                text: reasoningContent
+              } as ReasoningPart)
+            }
+            reasoningContent = ''
+            await saveMessage() // ✅ 恢复保存：防止用户停止时丢失思考内容
+            break
+          }
+
+          case 'text-delta': {
+            textContent += part.text
+            yield emitChunk({ type: 'text', content: part.text })
+            break
+          }
+
+          case 'tool-call': {
+            // 固化之前的 text 内容（如果有）
+            if (textContent) {
+              contentParts.push({ type: 'text', text: textContent })
+              textContent = ''
+            }
+
+            const toolCallPart: ToolCallPart = {
+              type: 'tool-call',
+              toolCallId: part.toolCallId,
+              toolName: part.toolName,
+              input: part.input
+            }
+            contentParts.push(toolCallPart)
+
+            // ✅ 移除toolStates初始化：不再需要
+
+            yield emitChunk({
+              type: 'tool-call',
+              toolCall: {
+                id: part.toolCallId,
+                name: part.toolName,
+                args: part.input as Record<string, unknown>
+              }
+            })
+
+            await saveMessage() // ✅ 恢复保存：工具调用是关键状态点
+            break
+          }
+
+          case 'tool-result': {
+            // ✅ AI SDK 类型定义：tool-result 事件包含 input 和 output 字段
+            // 参考：node_modules/ai/dist/index.d.ts:503-529
+            // type DynamicToolResult = {
+            //   type: 'tool-result'
+            //   toolCallId: string
+            //   toolName: string
+            //   input: unknown
+            //   output: unknown  // ← 工具执行结果在这里！
+            // }
+            const partWithOutput = part as {
+              toolCallId: string
+              toolName: string
+              output: unknown
+            }
+            
+            const toolResultPart: ToolResultPart = {
+              type: 'tool-result',
+              toolCallId: part.toolCallId,
+              toolName: part.toolName,
+              output: {
+                type: typeof partWithOutput.output === 'string' ? 'text' : 'json',
+                value: (partWithOutput.output !== undefined ? partWithOutput.output : null) as any
+              }
+            }
+
+            // ✅ 保存tool-result消息（AI SDK标准）
+            const toolMessageId = await this.sessionService.saveMessage(sessionId, {
+              role: 'tool',
+              content: [toolResultPart]
+            })
+
+            // ✅ 发送tool消息到前端（关键：让前端能找到tool-result）
+            yield emitChunk({
+              type: 'message-start',
+              messages: [
+                {
+                  id: toolMessageId,
+                  role: 'tool',
+                  content: [toolResultPart],
+                  timestamp: Date.now()
+                }
+              ]
+            })
+
+            // ✅ 移除toolStates更新：状态从tool-result消息推导
+
+            await saveMessage() // ✅ 持久化assistant消息
+
+            const toolCallPart = contentParts.find(
+              (p): p is ToolCallPart => p.type === 'tool-call' && p.toolCallId === part.toolCallId
+            )
+            debugLogger.logToolCall(
+              sessionId,
+              part.toolName,
+              part.toolCallId,
+              toolCallPart?.input,
+              partWithOutput.output
+            )
+
+            // ✅ 处理工具结果（存储快照等）但不发送chunk到前端
+            // 前端已经从message-start中的tool消息提取所有信息
+            for await (const _chunk of this.processToolResult(
+              part.toolCallId,
+              part.toolName,
+              partWithOutput.output,
+              metadata,
+              messageFileChanges
+            )) {
+              // 不再发送chunk到前端（优化性能，减少网络传输）
+            }
+
+            break
+          }
+
+          case 'tool-error': {
+            console.error('[ChatService] Tool error:', {
+              toolCallId: part.toolCallId,
+              toolName: part.toolName,
+              error: part.error
+            })
+
+            const errorMessage =
+              part.error instanceof Error ? part.error.message : String(part.error)
+
+            // 保存为 tool-result 格式（AI SDK 兼容）
+            const toolResultPart: ToolResultPart = {
+              type: 'tool-result',
+              toolCallId: part.toolCallId,
+              toolName: part.toolName,
+              output: {
+                type: 'text',
+                value: JSON.stringify({
+                  success: false,
+                  error: errorMessage,
+                  isError: true
+                })
+              }
+            }
+
+            const toolErrorMessageId = await this.sessionService.saveMessage(sessionId, {
+              role: 'tool',
+              content: [toolResultPart]
+            })
+
+            // 发送消息到前端
+            yield emitChunk({
+              type: 'message-start',
+              messages: [
+                {
+                  id: toolErrorMessageId,
+                  role: 'tool',
+                  content: [toolResultPart],
+                  timestamp: Date.now()
+                }
+              ]
+            })
+
+            await saveMessage()
+
+            yield emitChunk({
+              type: 'tool-result',
+              toolResult: {
+                tool_call_id: part.toolCallId,
+                content: errorMessage,
+                isError: true
+              }
+            })
+
+            break
+          }
+
+          case 'finish': {
+            closeStreaming()
+            await saveMessage()
+
+            if (part.totalUsage) {
+              totalUsage.inputTokens = (totalUsage.inputTokens || 0) + (part.totalUsage.inputTokens || 0)
+              totalUsage.outputTokens = (totalUsage.outputTokens || 0) + (part.totalUsage.outputTokens || 0)
+              totalUsage.totalTokens = (totalUsage.totalTokens || 0) + (part.totalUsage.totalTokens || 0)
+              if (part.totalUsage.reasoningTokens) {
+                totalUsage.reasoningTokens = (totalUsage.reasoningTokens || 0) + part.totalUsage.reasoningTokens
+              }
+              
+              await this.sessionService.updateSessionMetadata(sessionId, {
+                lastUsage: part.totalUsage,
+                totalUsage
+              })
+
+              yield emitChunk({
+                type: 'usage',
+                usage: part.totalUsage
+              })
+            }
+
+            // 如果有文件变更，创建快照
+            if (Object.keys(messageFileChanges).length > 0) {
+              console.log(
+                `[ChatService] Creating snapshot for message ${assistantMessageId}, files: ${Object.keys(messageFileChanges).length}`
+              )
+              await this.snapshotService.createSnapshot({
+                messageId: assistantMessageId,
+                sessionId,
+                timestamp: Date.now(),
+                files: messageFileChanges
+              })
+            }
+
+            yield emitChunk({ type: 'text', content: '' })
+            break
+          }
+
+          case 'error': {
+            const errorMsg =
+              part.error instanceof Error
+                ? part.error.message
+                : String(part.error || 'Unknown error')
+            console.error('[ChatService] Stream error:', errorMsg)
+            closeStreaming()
+            await saveMessage()
+
+            yield emitChunk({ type: 'error', error: errorMsg })
+            break
           }
         }
-      })
-
-      for await (const chunk of stream.fullStream) {
-        // 检查是否被中止
-        if (abortSignal?.aborted) {
-          const abortError = new Error(t('error.chat.streamAbortedByUser'))
-          abortError.name = 'AbortError'
-          throw abortError
-        }
-
-        if (chunk.type === 'text-delta') {
-          onStream?.({ type: 'text', content: chunk.payload.text })
-        } else if (chunk.type === 'reasoning-delta') {
-          onStream?.({ type: 'reasoning', content: chunk.payload.text })
-        } else if (chunk.type === 'tool-call') {
-          // 立即发送 tool-call（流式体验）
-          onStream?.({
-            type: 'tool-call',
-            toolCall: {
-              id: chunk.payload.toolCallId,
-              name: chunk.payload.toolName,
-              args: chunk.payload.args
-            }
-          })
-        } else if (chunk.type === 'tool-result') {
-          // Tool 调用结果（完全按照 Mastra 的定义）
-          const result = chunk.payload.result as any
-          const toolCallId = chunk.payload.toolCallId
-
-          onStream?.({
-            type: 'tool-result',
-            toolResult: {
-              id: toolCallId,
-              result: chunk.payload.result,
-              isError: chunk.payload.isError || false,
-              isPending: result?.isPending,
-              pendingAction: result?.pendingAction
-            }
-          })
-        }
       }
 
-      return {
-        threadId: actualThreadId
-      }
-    } catch (error) {
-      console.error('Stream chat error:', error)
-      onError?.(error instanceof Error ? error : new Error('Unknown error'))
-      throw new Error(
-        `Failed to stream response: ${error instanceof Error ? error.message : 'Unknown error'}`
-      )
-    }
-  }
-
-  private async createMastraAgentFromDB(agent: DBAgent): Promise<Agent> {
-    if (agent.id.startsWith('system-')) {
-      const { ToolService } = await import('./tool.service')
-      const { createSystemMastraAgent } = await import('../agents')
-
-      const selectedToolNames = parseAgentTools(agent.tools)
-      let toolsMap = {}
-
-      if (selectedToolNames.length > 0) {
-        toolsMap = await ToolService.getToolsForAgent(selectedToolNames)
-      }
-
-      return await createSystemMastraAgent(agent.id, toolsMap, this.memory)
-    }
-
-    let selectedToolNames: string[] = parseAgentTools(agent.tools)
-    if (selectedToolNames.length === 0) {
-      const { ToolService } = await import('./tool.service')
-      selectedToolNames = await ToolService.getEnabledToolNames()
-    }
-
-    const modelConfig = this.buildModelConfig(agent)
-
-    // 关联到 Mastra 实例以启用 AI Tracing
-    const agentConfig: any = {
-      name: agent.name.replace(/\s+/g, '_').toLowerCase(),
-      instructions: agent.instructions || 'You are a helpful AI assistant.',
-      model: modelConfig,
-      memory: this.memory,
-      mastra: getMastra() // 关联 Mastra 实例以启用 observability
-    }
-
-    if (agent.enableReasoning === 1) {
-      agentConfig.experimental_reasoning = true
-    }
-
-    if (selectedToolNames.length === 0) {
-      return new Agent(agentConfig)
-    }
-
-    let selectedTools = {}
-    try {
-      const { ToolService } = await import('./tool.service')
-      selectedTools = await ToolService.getToolsForAgent(selectedToolNames)
-
-      const wrappedTools: Record<string, any> = {}
-      for (const [toolName, tool] of Object.entries(selectedTools)) {
-        wrappedTools[toolName] = this.wrapToolWithStats(tool as any, toolName, agent.id)
-      }
-
-      return new Agent({
-        ...agentConfig,
-        tools: wrappedTools
+      // 异步生成标题（不阻塞流完成）
+      this.sessionService.maybeGenerateTitle(sessionId).catch((error) => {
+        console.error('[ChatService] Failed to generate title:', error)
       })
     } catch (error) {
-      console.error('[ChatService] Failed to load tools:', error)
-      return new Agent(agentConfig)
+      console.error('[ChatService] Stream error:', error)
+      closeStreaming()
+      await saveMessage()
+
+      yield emitChunk({
+        type: 'error',
+        error: error instanceof Error ? error.message : String(error)
+      })
     }
   }
 
-  private buildModelConfig(agent: DBAgent): any {
-    if (!agent.model || !agent.provider) {
-      throw new Error(`[Agent:${agent.name}] - Missing model or provider configuration`)
+  /**
+   * 处理工具结果（applied-file-edit 等）
+   */
+  private async *processToolResult(
+    toolCallId: string,
+    toolName: string,
+    result: unknown,
+    _metadata: MessageMetadata,
+    messageFileChanges: Record<string, FileSnapshot>
+  ): AsyncGenerator<StreamChunk> {
+    const resultStr = typeof result === 'string' ? result : JSON.stringify(result)
+
+    let parsedContent = resultStr
+    let isApplied = false
+    let appliedAction: any
+
+    try {
+      const parsed = JSON.parse(resultStr)
+
+      // Applied file edit (Cursor 风格：已直接写入磁盘)
+      if (parsed.type === 'applied-file-edit') {
+        isApplied = true
+        appliedAction = {
+          type: 'file-edit',
+          data: {
+            toolName: parsed.toolName || toolName,
+            filePath: parsed.filePath,
+            absolutePath: parsed.absolutePath,
+            oldContent: parsed.oldContent,
+            newContent: parsed.newContent,
+            fileExists: parsed.fileExists,
+            stats: parsed.stats
+          }
+        }
+
+        // 收集文件变更到快照（用于消息级别的 undo）
+        // 对于删除操作，存储原文件内容（oldContent）以便回退时恢复
+        // 对于创建/编辑操作，存储新文件内容（newContent）
+        const snapshotContent =
+          parsed.toolName === 'delete_file' ? parsed.oldContent : parsed.newContent
+        messageFileChanges[parsed.absolutePath] = {
+          content: snapshotContent,
+          contentHash: this.snapshotService.hashContent(snapshotContent),
+          action:
+            parsed.toolName === 'delete_file' ? 'delete' : parsed.fileExists ? 'edit' : 'create',
+          size: snapshotContent.length
+        }
+
+        // 根据 toolName 显示不同的消息
+        if (parsed.toolName === 'delete_file') {
+          parsedContent = `File deleted: ${parsed.filePath}`
+        } else {
+          parsedContent = parsed.fileExists
+            ? `File edited: ${parsed.filePath}`
+            : `File created: ${parsed.filePath}`
+        }
+
+        if (parsed.stats?.linesAdded || parsed.stats?.linesRemoved) {
+          parsedContent += ` (+${parsed.stats.linesAdded || 0}/-${parsed.stats.linesRemoved || 0} lines)`
+        }
+      }
+    } catch {
+      // 不是 JSON，保持原样
     }
 
-    const provider = agent.provider
-    const modelId = agent.model.includes('/') ? agent.model : `${provider}/${agent.model}`
-
-    let config: any = modelId
-
-    if (agent.apiKey) {
-      config = { model: modelId, apiKey: agent.apiKey }
+    // 返回 tool-result
+    yield {
+      type: 'tool-result',
+      toolResult: {
+        tool_call_id: toolCallId,
+        content: parsedContent,
+        isError: false,
+        isApplied,
+        appliedAction
+      }
     }
-
-    return config
   }
 
-  private wrapToolWithStats(tool: any, toolName: string, agentId: string): any {
-    const originalExecute = tool.execute || tool
+  /**
+   * 处理工具审批
+   */
+  async approveToolCall(
+    _sessionId: string,
+    messageId: number,
+    toolCallId: string,
+    approved: boolean
+  ): Promise<void> {
+    await this.sessionService.updateToolApprovalStatus(messageId, toolCallId, {
+      needsApproval: true,
+      approvalStatus: approved ? 'approved' : 'rejected',
+      state: approved ? 'running' : 'error'
+    })
+  }
 
-    return {
-      ...tool,
-      execute: async (params: any) => {
-        const startTime = Date.now()
-        let success = false
+  getSessionService(): SessionService {
+    return this.sessionService
+  }
 
-        try {
-          const result = await (typeof originalExecute === 'function'
-            ? originalExecute(params)
-            : originalExecute.execute(params))
+  cleanup(): void {
+    // 清理逻辑已移到工具内部
+  }
 
-          success = true
-          return result
-        } catch (error) {
-          success = false
-          throw error
-        } finally {
-          const executionTime = Date.now() - startTime
+  onSessionDeleted(_sessionId: string): void {
+    // Pending edits 现在由前端 Zustand Store 管理
+  }
 
-          import('./tool.service').then(({ ToolService }) => {
-            ToolService.recordToolUsage(toolName, agentId, success, executionTime).catch((err) =>
-              console.error('Failed to record tool usage:', err)
-            )
+  /**
+   * 公开方法：清理指定会话的 pending tool-calls
+   * 用于用户停止流式响应时立即清理
+   */
+  async cleanupPendingTools(sessionId: string): Promise<void> {
+    const historyMessages = await this.sessionService.getMessages(sessionId)
+    await this.cleanupPendingToolCalls(sessionId, historyMessages)
+  }
+
+  /**
+   * 清理所有未完成的 tool-calls
+   * 当用户发送新消息时，自动为所有没有 result 的 tool-call 添加 cancelled 的 tool-result
+   */
+  private async cleanupPendingToolCalls(
+    sessionId: string,
+    historyMessages: Array<{
+      id: number
+      role: string
+      content: any
+      metadata?: MessageMetadata
+    }>
+  ): Promise<void> {
+    const pendingToolCalls: Array<{ messageId: number; toolCallId: string; toolName: string }> =
+      []
+
+    // 查找所有没有 result 的 tool-calls
+    for (const msg of historyMessages) {
+      if (msg.role !== 'assistant') continue
+
+      const content = Array.isArray(msg.content) ? msg.content : []
+
+      for (const part of content) {
+        if (part.type === 'tool-call') {
+          const toolCallId = part.toolCallId
+
+          // 检查是否已有 tool-result
+          const hasResult = historyMessages.some(
+            (m) =>
+              m.role === 'tool' &&
+              Array.isArray(m.content) &&
+              m.content.some((p: any) => p.type === 'tool-result' && p.toolCallId === toolCallId)
+          )
+
+          if (!hasResult) {
+            pendingToolCalls.push({
+              messageId: msg.id,
+              toolCallId,
+              toolName: part.toolName
+            })
+          }
+        }
+      }
+    }
+
+    // 为所有 pending 的 tool-calls 添加 cancelled 的 tool-result
+    for (const { messageId, toolCallId, toolName } of pendingToolCalls) {
+      console.log(`[ChatService] Cancelling pending tool: ${toolName} (${toolCallId})`)
+
+      // 使用标准的 tool-result 格式（AI SDK 兼容）
+      const toolResultPart: ToolResultPart = {
+        type: 'tool-result',
+        toolCallId,
+        toolName,
+        output: {
+          type: 'text',
+          value: JSON.stringify({
+            success: false,
+            stderr: 'Tool execution cancelled by user',
+            exitCode: 130
           })
         }
       }
-    }
-  }
 
-  async getThreadHistory(threadId: string): Promise<{
-    thread: any
-    messages: any[]
-  } | null> {
-    try {
-      const thread = await this.memory.getThreadById({ threadId })
-      if (!thread) {
-        return null
+      await this.sessionService.saveMessage(sessionId, {
+        role: 'tool',
+        content: [toolResultPart]
+      })
+
+      // 更新 approval 状态（如果有）
+      const metadata = historyMessages.find((m) => m.id === messageId)?.metadata
+      if (metadata?.toolStates?.[toolCallId]?.needsApproval) {
+        await this.sessionService.updateToolApprovalStatus(messageId, toolCallId, {
+          needsApproval: false,
+          approvalStatus: 'skipped'
+        })
       }
-
-      const { messages } = await this.memory.query({ threadId })
-
-      return {
-        thread,
-        messages
-      }
-    } catch (error) {
-      console.error('Failed to get thread history:', error)
-      throw error
-    }
-  }
-
-  async getAgentThreads(agentId: string): Promise<any[]> {
-    try {
-      const threads = await this.memory.getThreadsByResourceId({ resourceId: agentId })
-      return threads
-    } catch (error) {
-      console.error('Failed to get agent threads:', error)
-      throw error
-    }
-  }
-
-  async deleteThread(threadId: string): Promise<void> {
-    try {
-      const { messages } = await this.memory.query({ threadId })
-      if (messages && messages.length > 0) {
-        const messageIds = messages.map((msg: any) => msg.id).filter(Boolean)
-        if (messageIds.length > 0) {
-          await this.memory.deleteMessages(messageIds)
-        }
-      }
-    } catch (error) {
-      console.error('Failed to delete thread:', error)
-      throw error
     }
   }
 }

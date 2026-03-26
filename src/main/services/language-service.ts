@@ -56,6 +56,15 @@ export interface SignatureHelpItem {
   documentation: Array<{ text: string; kind: string }>
 }
 
+export interface Diagnostic {
+  line: number
+  column: number
+  length: number
+  message: string
+  category: 'error' | 'warning' | 'suggestion'
+  code: number
+}
+
 export class LanguageService {
   private static instances: Map<string, LanguageService> = new Map()
   private service: ts.LanguageService
@@ -81,7 +90,7 @@ export class LanguageService {
           if (content) {
             return ts.ScriptSnapshot.fromString(content)
           }
-        } catch {
+        } catch (e) {
           return undefined
         }
         return undefined
@@ -142,12 +151,23 @@ export class LanguageService {
       try {
         const configPath = path.join(projectRoot, configFile)
         const configContent = await fs.readFile(configPath, 'utf-8')
-        const parseResult = ts.parseConfigFileTextToJson(configPath, configContent)
 
-        if (parseResult.config && parseResult.config.compilerOptions) {
-          return { ...defaultOptions, ...parseResult.config.compilerOptions }
+        // 使用 parseJsonConfigFileContent 正确解析配置，将字符串值转换为枚举值
+        const parseResult = ts.parseConfigFileTextToJson(configPath, configContent)
+        if (parseResult.error || !parseResult.config) continue
+
+        const parsedConfig = ts.parseJsonConfigFileContent(
+          parseResult.config,
+          ts.sys,
+          projectRoot,
+          undefined,
+          configPath
+        )
+
+        if (parsedConfig.options) {
+          return { ...defaultOptions, ...parsedConfig.options }
         }
-      } catch {
+      } catch (error) {
         continue
       }
     }
@@ -261,5 +281,53 @@ export class LanguageService {
       insertSpaceAfterKeywordsInControlFlowStatements: true,
       insertSpaceAfterOpeningAndBeforeClosingNonemptyBraces: true
     })
+  }
+
+  /**
+   * 获取文件的诊断错误
+   * 🔥 用于 Shadow Workspace 验证
+   */
+  getDiagnostics(fileName: string): Diagnostic[] {
+    const syntacticDiagnostics = this.service.getSyntacticDiagnostics(fileName)
+    const semanticDiagnostics = this.service.getSemanticDiagnostics(fileName)
+
+    const allDiagnostics = [...syntacticDiagnostics, ...semanticDiagnostics]
+
+    return allDiagnostics.map((diag) => {
+      const file = diag.file
+      const start = diag.start || 0
+      const position = file?.getLineAndCharacterOfPosition(start) || { line: 0, character: 0 }
+
+      return {
+        line: position.line + 1,
+        column: position.character + 1,
+        length: diag.length || 0,
+        message: ts.flattenDiagnosticMessageText(diag.messageText, '\n'),
+        category:
+          diag.category === ts.DiagnosticCategory.Error
+            ? 'error'
+            : diag.category === ts.DiagnosticCategory.Warning
+              ? 'warning'
+              : 'suggestion',
+        code: diag.code
+      }
+    })
+  }
+
+  /**
+   * 获取文件内容（用于 Shadow Workspace 快照）
+   */
+  getFileContent(fileName: string): string | null {
+    const file = this.files.get(fileName)
+    if (file) {
+      return file.content
+    }
+
+    try {
+      const content = ts.sys.readFile(fileName)
+      return content || null
+    } catch {
+      return null
+    }
   }
 }

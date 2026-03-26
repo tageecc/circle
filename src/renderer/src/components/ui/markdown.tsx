@@ -4,10 +4,10 @@ import { memo } from 'react'
 import ReactMarkdown, { Components } from 'react-markdown'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
-import { CodeDisplay } from './code-display'
+import { MemoizedCodeBlock } from './code-block'
 
 export type MarkdownProps = {
-  children: string
+  children: string | string[]
   className?: string
   components?: Partial<Components>
 }
@@ -174,21 +174,50 @@ const DEFAULT_COMPONENTS: Partial<Components> = {
 
     const language = extractLanguage(className)
 
-    return <CodeDisplay code={children as string} language={language} />
+    // 去除代码末尾的换行符（Markdown 解析器会自动添加）
+    const code = String(children).replace(/\n$/, '')
+
+    return <MemoizedCodeBlock code={code} language={language} showCopy={true} />
   },
   pre: function PreComponent({ children }) {
     return <>{children}</>
   }
 }
 
+// 导出样式配置供其他组件使用（如 Streamdown）
+export { DEFAULT_COMPONENTS as MARKDOWN_COMPONENTS }
+
+// 聊天消息专用配置：只覆盖列表样式（去掉左边距）
+export const CHAT_MARKDOWN_COMPONENTS = {
+  ...DEFAULT_COMPONENTS,
+  ul: ({ children, ...props }) => (
+    <ul className="my-4 list-disc space-y-2 ml-0 pl-5" {...props}>
+      {children}
+    </ul>
+  ),
+  ol: ({ children, ...props }) => (
+    <ol className="my-4 list-decimal space-y-2 ml-0 pl-5" {...props}>
+      {children}
+    </ol>
+  )
+}
+
 function MarkdownComponent({ children, className, components }: MarkdownProps) {
+  // 规范化 children：处理字符串、空数组、undefined 等情况
+  const content = Array.isArray(children) ? children.join('') : children
+
+  // 防御性检查：必须是非空字符串
+  if (!content || typeof content !== 'string' || content.trim() === '') {
+    return null
+  }
+
   return (
     <div className={cn('text-foreground', className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkBreaks]}
         components={{ ...DEFAULT_COMPONENTS, ...components }}
       >
-        {children}
+        {content}
       </ReactMarkdown>
     </div>
   )

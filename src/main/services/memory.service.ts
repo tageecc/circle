@@ -1,156 +1,91 @@
-import { getDatabase } from '../database/client'
-import { agentMemories, type AgentMemory } from '../database/schema.sqlite'
-import { eq } from 'drizzle-orm'
+/**
+ * Memory Service
+ * 管理 AI 的持久化记忆
+ */
 
-function getDb() {
-  return getDatabase()
+import { getDb } from '../database/db'
+import * as schema from '../database/schema'
+import { eq, desc } from 'drizzle-orm'
+
+export interface Memory {
+  id: string
+  content: string
+  createdAt: Date
+  updatedAt: Date
 }
 
-/**
- * 记忆管理服务
- * 负责管理 Agent 的长期记忆
- */
 export class MemoryService {
-  private static instance: MemoryService
-
-  private constructor() {}
-
-  static getInstance(): MemoryService {
-    if (!MemoryService.instance) {
-      MemoryService.instance = new MemoryService()
-    }
-    return MemoryService.instance
-  }
+  private db = getDb().getDb()
 
   /**
-   * 创建新记忆
+   * 创建新记忆（自动生成 ID）
    */
-  async createMemory(data: {
-    title: string
-    content: string
-    projectId?: string | null
-    agentId?: string | null
-    scope?: string
-    importance?: number
-  }): Promise<AgentMemory> {
-    const [created] = await getDb()
-      .insert(agentMemories)
-      .values({
-        title: data.title,
-        content: data.content,
-        projectId: data.projectId ?? null,
-        agentId: data.agentId ?? null,
-        scope: data.scope ?? 'global',
-        importance: data.importance ?? 5,
-        accessCount: 0,
-        metadata: null
-      })
-      .returning()
+  async createMemory(content: string): Promise<string> {
+    const now = new Date()
+    const id = `mem_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
-    console.log('[MemoryService] Memory created:', created.id)
-    return created
+    this.db
+      .insert(schema.memories)
+      .values({
+        id,
+        content,
+        createdAt: now,
+        updatedAt: now
+      })
+      .run()
+
+    console.log(`[MemoryService] Created memory: ${id}`)
+    return id
   }
 
   /**
    * 更新记忆
    */
-  async updateMemory(
-    memoryId: string,
-    data: {
-      title?: string
-      content?: string
-      importance?: number
-    }
-  ): Promise<AgentMemory> {
-    const [updated] = await getDb()
-      .update(agentMemories)
+  async updateMemory(id: string, content: string): Promise<void> {
+    const result = this.db
+      .update(schema.memories)
       .set({
-        ...data,
-        updatedAt: new Date().toISOString()
+        content,
+        updatedAt: new Date()
       })
-      .where(eq(agentMemories.id, memoryId))
-      .returning()
+      .where(eq(schema.memories.id, id))
+      .run()
 
-    if (!updated) {
-      throw new Error(`Memory not found: ${memoryId}`)
+    if (result.changes === 0) {
+      throw new Error(`Memory with ID "${id}" not found`)
     }
 
-    console.log('[MemoryService] Memory updated:', memoryId)
-    return updated
+    console.log(`[MemoryService] Updated memory: ${id}`)
   }
 
   /**
    * 删除记忆
    */
-  async deleteMemory(memoryId: string): Promise<void> {
-    const result = await getDb()
-      .delete(agentMemories)
-      .where(eq(agentMemories.id, memoryId))
-      .returning()
+  async deleteMemory(id: string): Promise<void> {
+    const result = this.db.delete(schema.memories).where(eq(schema.memories.id, id)).run()
 
-    if (result.length === 0) {
-      throw new Error(`Memory not found: ${memoryId}`)
+    if (result.changes === 0) {
+      throw new Error(`Memory with ID "${id}" not found`)
     }
 
-    console.log('[MemoryService] Memory deleted:', memoryId)
-  }
-
-  /**
-   * 获取记忆
-   */
-  async getMemory(memoryId: string): Promise<AgentMemory | null> {
-    const [memory] = await getDb()
-      .select()
-      .from(agentMemories)
-      .where(eq(agentMemories.id, memoryId))
-      .limit(1)
-
-    if (memory) {
-      // 更新访问计数
-      await getDb()
-        .update(agentMemories)
-        .set({
-          accessCount: (memory.accessCount || 0) + 1,
-          lastAccessedAt: new Date().toISOString()
-        })
-        .where(eq(agentMemories.id, memoryId))
-    }
-
-    return memory || null
+    console.log(`[MemoryService] Deleted memory: ${id}`)
   }
 
   /**
    * 获取所有记忆
    */
-  async getAllMemories(filters?: {
-    agentId?: string
-    projectId?: string
-    minImportance?: number
-  }): Promise<AgentMemory[]> {
-    // 构建查询条件
-    const conditions: any[] = []
+  async getAllMemories(): Promise<Memory[]> {
+    const memories = this.db
+      .select()
+      .from(schema.memories)
+      .orderBy(desc(schema.memories.updatedAt))
+      .all()
 
-    if (filters?.agentId) {
-      conditions.push(eq(agentMemories.agentId, filters.agentId))
-    }
-    if (filters?.projectId) {
-      conditions.push(eq(agentMemories.projectId, filters.projectId))
-    }
-
-    let query = getDb().select().from(agentMemories)
-
-    if (conditions.length > 0) {
-      const { and } = await import('drizzle-orm')
-      query = query.where(and(...conditions)) as any
-    }
-
-    const memories = await query
-
-    // 前端过滤最小重要性（数据库索引无需优化）
-    if (filters?.minImportance) {
-      return memories.filter((m) => (m.importance || 0) >= filters.minImportance!)
-    }
-
-    return memories
+    return memories.map((m) => ({
+      id: m.id,
+      content: m.content,
+      createdAt: new Date(m.createdAt),
+      updatedAt: new Date(m.updatedAt)
+    }))
   }
 }

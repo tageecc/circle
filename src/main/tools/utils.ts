@@ -3,7 +3,6 @@
  */
 
 import * as path from 'path'
-import { ProjectService } from '../services/project.service'
 import { getConfigService } from '../index'
 
 /**
@@ -12,7 +11,7 @@ import { getConfigService } from '../index'
  */
 export function getCurrentProjectDir(): string {
   const configService = getConfigService()
-  const projectPath = ProjectService.getCurrentProject(configService)
+  const projectPath = configService.getCurrentProject()
 
   if (!projectPath) {
     throw new Error('No project is currently open. Please open a project first.')

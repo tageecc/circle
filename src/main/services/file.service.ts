@@ -1,5 +1,8 @@
 import * as fs from 'fs/promises'
 import * as path from 'path'
+import { shell } from 'electron'
+import { minimatch } from 'minimatch'
+import { FilesExclude } from './config.service'
 
 interface FileNode {
   name: string
@@ -54,28 +57,38 @@ export class FileService {
 
   /**
    * 列出目录内容
+   * @param dirPath 目录路径
+   * @param filesExclude 可选的文件排除规则（VSCode 风格的 glob 模式）
    */
-  static async listDirectory(dirPath: string): Promise<FileNode[]> {
+  static async listDirectory(dirPath: string, filesExclude?: FilesExclude): Promise<FileNode[]> {
     try {
       const entries = await fs.readdir(dirPath, { withFileTypes: true })
+      const excludeRules = filesExclude || {}
 
       const nodes: FileNode[] = []
 
       for (const entry of entries) {
-        if (this.shouldIgnore(entry.name)) {
+        if (this.shouldIgnore(entry.name, excludeRules)) {
           continue
         }
 
         const fullPath = path.join(dirPath, entry.name)
-        const stats = await fs.stat(fullPath)
-        const node: FileNode = {
-          name: entry.name,
-          path: fullPath,
-          type: entry.isDirectory() ? 'directory' : 'file',
-          size: stats.size
-        }
 
-        nodes.push(node)
+        // 跳过无法访问的文件
+        // pnpm 的符号链接可能指向不存在的目标，导致 stat 失败
+        try {
+          const stats = await fs.stat(fullPath)
+          const node: FileNode = {
+            name: entry.name,
+            path: fullPath,
+            type: entry.isDirectory() ? 'directory' : 'file',
+            size: stats.size
+          }
+          nodes.push(node)
+        } catch (statError) {
+          // 静默跳过损坏的符号链接，避免控制台刷屏
+          continue
+        }
       }
 
       // 排序：目录在前，文件在后
@@ -102,8 +115,8 @@ export class FileService {
       try {
         await fs.access(filePath)
         throw new Error('File already exists')
-      } catch (error: any) {
-        if (error.code !== 'ENOENT') {
+      } catch (error: unknown) {
+        if (error instanceof Error && 'code' in error && error.code !== 'ENOENT') {
           throw error
         }
       }
@@ -157,35 +170,29 @@ export class FileService {
   }
 
   /**
-   * 判断是否应该忽略文件/目录
+   * 判断是否应该忽略文件/目录（VSCode 风格）
+   *
+   * @param name 文件或目录名称
+   * @param excludeRules VSCode 风格的排除规则（glob 模式 -> 是否启用）
+   * @returns 是否应该忽略
    */
-  private static shouldIgnore(name: string): boolean {
-    const ignorePatterns = [
-      // 隐藏文件
-      /^\./,
-      // Node.js
-      /^node_modules$/,
-      // Build outputs
-      /^dist$/,
-      /^build$/,
-      /^out$/,
-      /^\.next$/,
-      // Dependencies
-      /^\.pnpm$/,
-      /^pnpm-lock\.yaml$/,
-      /^package-lock\.json$/,
-      /^yarn\.lock$/,
-      // Git
-      /^\.git$/,
-      // IDE
-      /^\.vscode$/,
-      /^\.idea$/,
-      // OS
-      /^\.DS_Store$/,
-      /^Thumbs\.db$/
-    ]
+  private static shouldIgnore(name: string, excludeRules: FilesExclude): boolean {
+    // 遍历所有排除规则
+    for (const [pattern, enabled] of Object.entries(excludeRules)) {
+      // 只处理启用的规则
+      if (!enabled) continue
 
-    return ignorePatterns.some((pattern) => pattern.test(name))
+      // 将 glob 模式转换为匹配文件名
+      // 例如：**/.git -> .git, **/node_modules -> node_modules
+      const simplifiedPattern = pattern.replace(/^\*\*\//, '')
+
+      // 使用 minimatch 进行 glob 匹配
+      if (minimatch(name, simplifiedPattern, { dot: true })) {
+        return true
+      }
+    }
+
+    return false
   }
 
   /**
@@ -224,7 +231,6 @@ export class FileService {
    */
   static async revealInFinder(filePath: string): Promise<void> {
     try {
-      const { shell } = require('electron')
       shell.showItemInFolder(filePath)
     } catch (error) {
       console.error(`Failed to reveal in finder ${filePath}:`, error)

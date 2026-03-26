@@ -1,39 +1,32 @@
+import 'dotenv/config'
+
 import { app, shell, BrowserWindow, nativeTheme, ipcMain } from 'electron'
-import { setupNativeMenu } from './menu'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { initDatabase, closeDatabase } from './database/client'
+import { getDb } from './database/db'
 import { registerIpcHandlers } from './ipc/handlers'
-import { AgentService } from './services/agent.service'
-import { ToolService } from './services/tool.service'
-import { MCPService } from './services/mcp.service'
+import { registerCompletionHandlers } from './ipc/completion.handlers'
+import { registerMCPHandlers } from './ipc/mcp.handlers'
+import { registerSkillsHandlers } from './ipc/skills.handlers'
 import { FileWatcherService } from './services/file-watcher.service'
+import { GitWatcherService } from './services/git-watcher.service'
 import { ConfigService } from './services/config.service'
 import { WindowStateManager } from './services/window-state.service'
 import { AvatarService } from './services/avatar.service'
-import { createMCPClientManager, type MCPClientManager } from './services/mcp-client.service'
-import { initMainI18n, setLanguage } from './utils/i18n'
+import { MenuService } from './services/menu.service'
 
 // 全局配置服务实例（在应用启动时初始化）
 let configService: ConfigService
-let mcpClientManager: MCPClientManager
 let mainWindow: BrowserWindow | null = null
+let menuService: MenuService | null = null
+let isQuitting = false // 标志：是否正在退出应用（用于区分关闭窗口和退出应用）
 
-// 导出 configService 的 getter，供其他模块使用
 export function getConfigService(): ConfigService {
   if (!configService) {
     throw new Error('ConfigService has not been initialized yet')
   }
   return configService
-}
-
-// 导出 mcpClientManager 的 getter
-export function getMCPClientManager(): MCPClientManager {
-  if (!mcpClientManager) {
-    throw new Error('MCPClientManager has not been initialized yet')
-  }
-  return mcpClientManager
 }
 
 // 根据主题获取窗口背景色
@@ -48,12 +41,6 @@ function updateWindowTheme(isDark: boolean): void {
 
   const backgroundColor = getWindowBackgroundColor(isDark)
   mainWindow.setBackgroundColor(backgroundColor)
-
-  // macOS 特殊处理：设置窗口外观
-  if (process.platform === 'darwin') {
-    // 不使用 vibrancy，直接使用纯色背景
-    // 这样标题栏会跟随 nativeTheme 的设置
-  }
 }
 
 function createWindow(): void {
@@ -72,17 +59,27 @@ function createWindow(): void {
     x: windowState.x,
     y: windowState.y,
     show: false,
-    autoHideMenuBar: true,
+    autoHideMenuBar: false, // 显示原生菜单
     minWidth: 800,
     minHeight: 600,
     backgroundColor: getWindowBackgroundColor(isDark),
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    // macOS: 隐藏标题栏，使用 inset 模式红绿灯
+    ...(process.platform === 'darwin'
+      ? {
+          titleBarStyle: 'hidden' as const,
+          trafficLightPosition: { x: 12, y: 10 }
+        }
+      : {}),
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
     }
   })
+
+  // 初始化原生菜单
+  menuService = new MenuService(configService)
+  menuService.createMenu()
 
   // 初始化窗口状态管理器
   const windowStateManager = new WindowStateManager(mainWindow, configService)
@@ -91,12 +88,24 @@ function createWindow(): void {
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
 
-    // 检查是否有当前打开的项目，如果有则启动 FileWatcher
+    // 检查是否有当前打开的项目，如果有则启动 FileWatcher 和 GitWatcher
     const currentProject = configService.getCurrentProject()
     if (currentProject && mainWindow) {
       console.log(`🎯 Auto-starting FileWatcher for current project: ${currentProject}`)
       FileWatcherService.startWatching(currentProject, mainWindow)
+
+      // ⭐ 启动Git监听器（监听.git目录的关键文件）
+      GitWatcherService.startWatching(currentProject)
     }
+  })
+
+  // ⭐ 监听全屏状态变化（macOS 优化：全屏时移除红绿灯预留空间）
+  mainWindow.on('enter-full-screen', () => {
+    mainWindow?.webContents.send('window:fullscreen-change', true)
+  })
+
+  mainWindow.on('leave-full-screen', () => {
+    mainWindow?.webContents.send('window:fullscreen-change', false)
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -112,13 +121,43 @@ function createWindow(): void {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 
-  // macOS：使用原生菜单栏，不重复展示窗口内菜单
-  setupNativeMenu()
+  // 拦截窗口关闭事件
+  mainWindow.on('close', (event) => {
+    // 如果正在退出应用（Cmd+Q 或菜单退出），允许关闭
+    if (isQuitting) {
+      return
+    }
+
+    const currentProject = configService.getCurrentProject()
+
+    // 如果有打开的项目，阻止窗口关闭，改为关闭项目
+    if (currentProject && mainWindow) {
+      event.preventDefault()
+      console.log('🔄 Intercepting window close, closing project instead...')
+      mainWindow.webContents.send('menu:close-workspace', {})
+    } else {
+      // 如果没有项目（在欢迎页），退出应用
+      console.log('🔄 No project open, quitting application...')
+      app.quit()
+    }
+  })
 
   // 窗口关闭时清理
   mainWindow.on('closed', () => {
     windowStateManager.destroy()
     mainWindow = null
+  })
+
+  // ⭐ 窗口失焦时暂停所有监听（节省资源）
+  mainWindow.on('blur', () => {
+    GitWatcherService.pause()
+    FileWatcherService.pause()
+  })
+
+  // ⭐ 窗口获得焦点时恢复所有监听并立即同步
+  mainWindow.on('focus', () => {
+    GitWatcherService.resume()
+    FileWatcherService.resume()
   })
 
   // 监听系统主题变化
@@ -136,64 +175,91 @@ function createWindow(): void {
     }
     updateWindowTheme(nativeTheme.shouldUseDarkColors)
   })
+}
 
-  // 监听语言切换请求
-  ipcMain.on('language:changed', (_event, language: string) => {
-    setLanguage(language)
-    setupNativeMenu() // 重新构建菜单以使用新语言
-  })
+// Initialize first launch data
+function initializeFirstLaunch(): void {
+  const db = getDb()
+  const isFirstLaunch = !db.getConfig('app_initialized', false)
+  
+  if (isFirstLaunch) {
+    console.log('🎉 First launch detected, initializing default data...')
+    
+    db.addUserRule('rule_default_zh', 'Always respond in 中文')
+    
+    // 初始化默认的 files.exclude 规则
+    const defaultFilesExclude = {
+      '**/.git': true,
+      '**/.svn': true,
+      '**/.hg': true,
+      '**/CVS': true,
+      '**/.DS_Store': true,
+      '**/Thumbs.db': true
+    }
+    for (const [pattern, enabled] of Object.entries(defaultFilesExclude)) {
+      db.setFilesExclude(pattern, enabled)
+    }
+    
+    db.setConfig('app_initialized', true)
+    
+    console.log('✅ First launch initialization completed')
+  }
 }
 
 // Initialize backend services
-async function initializeBackend() {
+async function initializeBackend(): Promise<boolean> {
   console.log('🚀 Initializing Circle backend...')
 
   try {
+    getDb()
+    console.log('✅ Database initialized')
+
+    // Initialize first launch data
+    initializeFirstLaunch()
+
+    // Initialize config service (uses SQLite)
     configService = new ConfigService()
-    const userDataPath = app.getPath('userData')
-
-    // Initialize main process i18n
-    const config = configService.getConfig()
-    initMainI18n(config.language)
-    console.log(`🌐 Main process i18n initialized with language: ${config.language}`)
-
-    const { initMastraMemory, initMastraTraces } = await import('./mastra.config')
-    initMastraMemory(userDataPath)
-    initMastraTraces(userDataPath)
-
-    const dbConnected = await initDatabase(userDataPath as string)
-    if (!dbConnected) {
-      console.error('❌ Failed to connect to database')
-      return false
-    }
 
     // Initialize avatar service
     await AvatarService.initialize()
 
-    // Initialize default data
-    const agentService = new AgentService()
-    await agentService.initializeDefaultAgents()
-    await ToolService.initializeDefaultTools()
-    await MCPService.initializeDefaultServers()
-
-    // Initialize MCP Client Manager
-    mcpClientManager = createMCPClientManager()
-    console.log('🔌 MCP Client Manager created')
-
-    // Initialize global MCP client in background (non-blocking)
-    mcpClientManager
-      .initializeGlobalClient()
-      .then(() => {
-        console.log('✅ MCP Client Manager initialized in background')
-      })
-      .catch((error) => {
-        console.error('❌ Failed to initialize MCP Client Manager:', error)
-      })
+    // Initialize user system
+    console.log('🔄 Initializing user system...')
+    try {
+      const { UserService } = await import('./services/user.service')
+      const userService = UserService.getInstance()
+      await userService.initialize()
+      console.log('✅ User system initialized')
+    } catch (userError) {
+      console.error('❌ User system initialization failed:', userError)
+      // 继续执行，不阻止应用启动
+    }
 
     // Register IPC handlers (must be after configService is initialized)
     console.log('🔄 Registering IPC handlers...')
     registerIpcHandlers()
     console.log('✅ Main IPC handlers registered')
+
+    // Register completion handlers
+    console.log('🔄 Registering completion handlers...')
+    registerCompletionHandlers(configService)
+    console.log('✅ Completion handlers registered')
+
+    // Register MCP handlers
+    console.log('🔄 Registering MCP handlers...')
+    registerMCPHandlers()
+    console.log('✅ MCP handlers registered')
+
+    // Register Skills handlers
+    console.log('🔄 Registering Skills handlers...')
+    registerSkillsHandlers()
+    console.log('✅ Skills handlers registered')
+
+    // Register auth handlers
+    console.log('🔄 Registering auth handlers...')
+    const { registerAuthHandlers } = await import('./ipc/auth.handlers')
+    registerAuthHandlers()
+    console.log('✅ Auth handlers registered')
 
     console.log('✅ Backend initialized successfully')
     return true
@@ -219,13 +285,30 @@ if (!gotTheLock) {
     })
 
     // Initialize backend
-    await initializeBackend()
+    const backendInitialized = await initializeBackend()
+
+    if (!backendInitialized) {
+      console.error('❌ Backend initialization failed, application cannot start')
+      app.quit()
+      return
+    }
 
     // Register Protocol Handlers
     const { registerProtocolHandlers } = await import('./ipc/protocol.handlers')
     registerProtocolHandlers()
 
     createWindow()
+
+    // Auto-connect MCP servers (延迟 500ms，避免启动时资源竞争)
+    setTimeout(async () => {
+      try {
+        const { MCPService } = await import('./services/mcp.service')
+        const mcpService = MCPService.getInstance()
+        await mcpService.autoConnectServers()
+      } catch (error) {
+        console.error('[MCP] Auto-connect failed:', error)
+      }
+    }, 500)
 
     app.on('activate', function () {
       // On macOS it's common to re-create a window in the app when the
@@ -235,23 +318,141 @@ if (!gotTheLock) {
   })
 }
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
-app.on('window-all-closed', async () => {
-  // Stop all file watchers
-  await FileWatcherService.stopAllWatching()
+// 添加详细日志追踪退出流程（带绝对时间戳）
+let quitStartTime = 0
 
-  // Disconnect MCP clients
-  if (mcpClientManager) {
-    console.log('🔌 Disconnecting MCP clients...')
-    await mcpClientManager.disconnect()
+function logWithTime(msg: string): void {
+  const now = new Date()
+  const timestamp = now.toISOString().split('T')[1].slice(0, -1) // HH:MM:SS.mmm
+  const relative = quitStartTime ? `+${Date.now() - quitStartTime}ms` : ''
+  console.log(`[${timestamp}] ${msg} ${relative}`)
+}
+
+app.on('before-quit', () => {
+  isQuitting = true // 标记正在退出应用
+  if (quitStartTime === 0) {
+    quitStartTime = Date.now()
+    logWithTime('📍 [Quit] before-quit triggered')
+  }
+})
+
+app.on('will-quit', async (event) => {
+  logWithTime('📍 [Quit] will-quit triggered')
+
+  event.preventDefault()
+
+  // ✅ 记录所有活跃的句柄
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  logWithTime(
+    `🔍 [Quit] Active handles: ${(process as any)._getActiveHandles?.().length || 'unknown'}`
+  )
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  logWithTime(
+    `🔍 [Quit] Active requests: ${(process as any)._getActiveRequests?.().length || 'unknown'}`
+  )
+
+  const { BrowserWindow } = await import('electron')
+  const allWindows = BrowserWindow.getAllWindows()
+
+  // ⭐ 1. 保存所有 dirty 文件（在销毁窗口之前）
+  logWithTime('🔄 [Quit] Saving all dirty files...')
+  if (allWindows.length > 0) {
+    try {
+      // ✅ 修复：正确的超时实现
+      // 发送保存请求到 renderer 进程，最多等待 500ms
+      allWindows[0].webContents.send('app:save-all-before-quit')
+      await new Promise<void>((resolve) => setTimeout(resolve, 500))
+      logWithTime('✅ [Quit] Dirty files saved (waited 500ms)')
+    } catch {
+      logWithTime('⚠️ [Quit] Failed to save dirty files, continuing...')
+    }
+  } else {
+    logWithTime('⚠️ [Quit] No windows available to save files')
   }
 
-  // Close database connection
-  await closeDatabase()
+  // ✅ 2. 强制关闭所有窗口（包括 DevTools）
+  logWithTime('🔄 [Quit] Destroying all windows...')
+  logWithTime(`🔍 [Quit] Found ${allWindows.length} window(s)`)
+  allWindows.forEach((win, index) => {
+    logWithTime(`🔄 [Quit] Destroying window ${index + 1}...`)
+    try {
+      win.destroy()
+    } catch {
+      logWithTime(`❌ [Quit] Failed to destroy window ${index + 1}`)
+    }
+  })
+  logWithTime('✅ [Quit] All windows destroyed')
 
+  // ✅ 3. 关闭数据库
+  logWithTime('🔄 [Quit] Closing database...')
+  getDb().close()
+  logWithTime('✅ [Quit] Database closed')
+
+  // ✅ 4. 移除所有 IPC 监听器
+  logWithTime('🔄 [Quit] Removing all IPC handlers...')
+  const { ipcMain } = await import('electron')
+  ipcMain.removeAllListeners()
+  logWithTime('✅ [Quit] IPC handlers removed')
+
+  // ✅ 5. 停止所有文件监听器（关键！）
+  logWithTime('🔄 [Quit] Stopping file watchers...')
+  try {
+    const { FileWatcherService } = await import('./services/file-watcher.service')
+    await FileWatcherService.stopAllWatching()
+    logWithTime('✅ [Quit] File watchers stopped')
+  } catch {
+    logWithTime('❌ [Quit] Failed to stop file watchers')
+  }
+
+  // ✅ 6. 停止Git监听器
+  logWithTime('🔄 [Quit] Stopping Git watchers...')
+  try {
+    GitWatcherService.stopAllWatching()
+    logWithTime('✅ [Quit] Git watchers stopped')
+  } catch {
+    logWithTime('❌ [Quit] Failed to stop Git watchers')
+  }
+
+  // ✅ 7. 最终检查并打印句柄类型
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handles = (process as any)._getActiveHandles?.() || []
+  logWithTime(`🔍 [Quit] Final check - Active handles: ${handles.length}`)
+
+  // 统计句柄类型
+  const handleTypes = new Map<string, number>()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  handles.forEach((handle: any) => {
+    const type = handle?.constructor?.name || 'Unknown'
+    handleTypes.set(type, (handleTypes.get(type) || 0) + 1)
+  })
+
+  logWithTime('🔍 [Quit] Handle types:')
+  handleTypes.forEach((count, type) => {
+    logWithTime(`  - ${type}: ${count}`)
+  })
+
+  // ✅ 8. 优雅退出
+  logWithTime('🔄 [Quit] Exiting gracefully...')
+  app.exit(0)
+})
+
+app.on('quit', () => {
+  logWithTime('📍 [Quit] quit event')
+})
+
+app.on('window-all-closed', () => {
+  logWithTime('📍 [Quit] window-all-closed triggered')
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+// 监听进程退出
+process.on('exit', (code) => {
+  logWithTime(`📍 [Quit] Process EXIT with code ${code}`)
+})
+
+// 添加更多进程事件监听
+process.on('beforeExit', (code) => {
+  logWithTime(`📍 [Quit] Process BEFORE-EXIT with code ${code}`)
 })

@@ -2,8 +2,8 @@ import { spawn } from 'child_process'
 import * as path from 'path'
 import * as fs from 'fs/promises'
 import * as ts from 'typescript'
-import { YAMLDiagnosticsService } from './yaml-diagnostics.service'
-import { MarkdownDiagnosticsService } from './markdown-diagnostics.service'
+import { YAMLDiagnosticsService } from './diagnostics-yaml.service'
+import { MarkdownDiagnosticsService } from './diagnostics-markdown.service'
 
 export interface Diagnostic {
   filePath: string
@@ -125,11 +125,22 @@ export class DiagnosticsService {
           const configPath = path.join(projectRoot, configFile)
           const configContent = await fs.readFile(configPath, 'utf-8')
           const parseResult = ts.parseConfigFileTextToJson(configPath, configContent)
-          if (parseResult.config && parseResult.config.compilerOptions) {
-            Object.assign(compilerOptions, parseResult.config.compilerOptions)
+          if (parseResult.error || !parseResult.config) continue
+
+          // 使用 parseJsonConfigFileContent 正确解析配置，将字符串值转换为枚举值
+          const parsedConfig = ts.parseJsonConfigFileContent(
+            parseResult.config,
+            ts.sys,
+            projectRoot,
+            undefined,
+            configPath
+          )
+
+          if (parsedConfig.options) {
+            Object.assign(compilerOptions, parsedConfig.options)
             break
           }
-        } catch {
+        } catch (error) {
           continue
         }
       }

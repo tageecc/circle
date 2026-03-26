@@ -2,150 +2,122 @@ import type { editor } from 'monaco-editor'
 import * as monaco from 'monaco-editor'
 
 /**
- * Monaco 编辑器配置选项
- * 统一管理 CodeEditor 和 DiffEditor 的配置，确保一致的编辑体验
+ * 默认的 Monaco 编辑器配置
+ * 可以被外部 options 覆盖
+ *
+ * ⭐ Web Worker 优化：
+ * Monaco Editor 已配置使用 Web Workers 处理：
+ * - 语法高亮和语法分析
+ * - TypeScript/JavaScript 类型检查
+ * - JSON/CSS/HTML 验证
+ * - 代码提示和自动完成
+ *
+ * 这些密集型任务在 Worker 线程中运行，不会阻塞主线程
  */
-
-export interface EditorSettings {
-  fontSize: number
-  fontFamily: string
-  lineHeight: number
-  tabSize: number
-  wordWrap: boolean
-  lineNumbers: boolean
-  minimap: boolean
-  gitBlame: boolean
-}
-
-/**
- * 生成基础编辑器配置选项
- * 适用于普通编辑器（CodeEditor）
- */
-export function createEditorOptions(
-  editorSettings: EditorSettings,
-  readOnly: boolean = false
-): editor.IStandaloneEditorConstructionOptions {
-  return {
-    fontSize: editorSettings.fontSize,
-    fontFamily: editorSettings.fontFamily,
-    fontLigatures: true,
-    fontWeight: '450',
-    lineHeight: editorSettings.lineHeight * editorSettings.fontSize,
-    letterSpacing: 0.3,
-    scrollBeyondLastLine: false,
-    automaticLayout: true,
-    tabSize: editorSettings.tabSize,
-    insertSpaces: true,
-    detectIndentation: true,
-    trimAutoWhitespace: true,
-    wordWrap: editorSettings.wordWrap ? 'on' : 'off',
-    wordWrapColumn: 120,
-    wrappingIndent: 'indent',
-    smoothScrolling: true,
-    cursorSmoothCaretAnimation: 'on',
-    lineNumbers: editorSettings.lineNumbers ? 'on' : 'off',
-    glyphMargin: false,
-    folding: true,
-    lineDecorationsWidth: 8,
-    lineNumbersMinChars: 3,
-    renderLineHighlight: 'all',
-    renderWhitespace: 'boundary',
-    renderControlCharacters: false,
-    minimap: { enabled: editorSettings.minimap },
-    scrollbar: {
-      useShadows: false,
-      verticalHasArrows: false,
-      horizontalHasArrows: false,
-      verticalScrollbarSize: 4,
-      horizontalScrollbarSize: 4,
-      alwaysConsumeMouseWheel: false
-    },
-    overviewRulerLanes: 0,
-    hideCursorInOverviewRuler: true,
-    overviewRulerBorder: false,
-    cursorBlinking: 'smooth',
-    cursorStyle: 'line',
-    cursorWidth: 2,
-    cursorSurroundingLines: 3,
-    cursorSurroundingLinesStyle: 'default',
-    selectionHighlight: true,
-    occurrencesHighlight: 'singleFile',
-    bracketPairColorization: { enabled: true },
-    matchBrackets: 'always',
-    autoClosingBrackets: 'languageDefined',
-    autoClosingQuotes: 'languageDefined',
-    autoSurround: 'languageDefined',
-    /** AI 行内补全与 LSP 列表补全分层：输入时不自动弹出单词/LSP，避免与幽灵文本抢交互 */
-    quickSuggestions: false,
-    suggestOnTriggerCharacters: true,
-    acceptSuggestionOnCommitCharacter: true,
-    acceptSuggestionOnEnter: 'on',
-    snippetSuggestions: 'top',
-    tabCompletion: 'off',
-    wordBasedSuggestions: 'off',
-    suggest: {
-      showStatusBar: false,
-      preview: false,
-      showWords: false,
-      showSnippets: false
-    },
-    inlineSuggest: {
-      enabled: true,
-      mode: 'prefix',
-      showToolbar: 'never',
-      suppressSuggestions: true
-    },
-    formatOnPaste: true,
-    formatOnType: true,
-    hover: { enabled: true, delay: 300, sticky: true },
-    lightbulb: { enabled: monaco.editor.ShowLightbulbIconMode.Off },
-    padding: { top: 20, bottom: 20 },
-    guides: { indentation: true, bracketPairs: true, highlightActiveBracketPair: true },
-    stickyScroll: { enabled: true },
-    unicodeHighlight: { ambiguousCharacters: true, invisibleCharacters: true },
-    accessibilitySupport: 'off',
-    readOnly
-  }
-}
-
-/**
- * 生成 Diff 编辑器配置选项
- * 基于基础配置，添加 Diff 编辑器特有的配置
- */
-export function createDiffEditorOptions(
-  editorSettings: EditorSettings,
-  readOnly: boolean = false,
-  renderSideBySide: boolean = false
-): editor.IStandaloneDiffEditorConstructionOptions {
-  const baseOptions = createEditorOptions(editorSettings, readOnly)
-
-  return {
-    ...baseOptions,
-    readOnly,
-    renderSideBySide,
-    renderIndicators: false,
-    renderGutterMenu: false,
-    renderOverviewRuler: false,
-    // Diff 编辑器特有配置
-    enableSplitViewResizing: true,
-    ignoreTrimWhitespace: false,
-    renderMarginRevertIcon: true,
-    diffCodeLens: false,
-    diffWordWrap: 'off'
-  }
-}
-
-/**
- * 默认编辑器设置
- * 用于在没有用户设置时提供默认值
- */
-export const defaultEditorSettings: EditorSettings = {
+export const defaultEditorOptions: editor.IStandaloneEditorConstructionOptions = {
   fontSize: 14,
   fontFamily: "'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', 'Monaco', monospace",
-  lineHeight: 1.6,
+  fontLigatures: true,
+  fontWeight: '450',
+  lineHeight: 1.6 * 14,
+  letterSpacing: 0.3,
+  scrollBeyondLastLine: false,
+  automaticLayout: true,
   tabSize: 2,
-  wordWrap: false,
-  lineNumbers: true,
-  minimap: false,
-  gitBlame: false
+  insertSpaces: true,
+  detectIndentation: true,
+  trimAutoWhitespace: true,
+  wordWrap: 'off',
+  wordWrapColumn: 120,
+  wrappingIndent: 'indent',
+  smoothScrolling: true,
+  cursorSmoothCaretAnimation: 'on',
+  lineNumbers: 'on',
+  glyphMargin: false,
+  folding: true,
+  lineDecorationsWidth: 8,
+  lineNumbersMinChars: 3,
+  renderLineHighlight: 'all',
+  renderWhitespace: 'boundary',
+  renderControlCharacters: false,
+  minimap: { enabled: false },
+  scrollbar: {
+    useShadows: false,
+    verticalHasArrows: false,
+    horizontalHasArrows: false,
+    verticalScrollbarSize: 10,
+    horizontalScrollbarSize: 10,
+    alwaysConsumeMouseWheel: false
+  },
+  overviewRulerLanes: 3,
+  hideCursorInOverviewRuler: false,
+  overviewRulerBorder: false,
+  cursorBlinking: 'smooth',
+  cursorStyle: 'line',
+  cursorWidth: 2,
+  cursorSurroundingLines: 3,
+  cursorSurroundingLinesStyle: 'default',
+  selectionHighlight: true,
+  occurrencesHighlight: 'singleFile',
+  bracketPairColorization: { enabled: false },
+  matchBrackets: 'always',
+  autoClosingBrackets: 'languageDefined',
+  autoClosingQuotes: 'languageDefined',
+  autoSurround: 'languageDefined',
+  // 🔥 双层补全策略（Cursor 完整方案）
+  // 第1层：LSP 补全（Ctrl+Space 手动触发）- 快速、精准、本地
+  // 第2层：AI 补全（自动触发）- 智能、生成、云端
+
+  // LSP Suggest Widget 配置
+  quickSuggestions: false, // ❌ 禁用自动弹出（避免干扰 AI）
+  suggestOnTriggerCharacters: true, // ✅ 允许触发字符（如 .）触发补全
+  acceptSuggestionOnCommitCharacter: false, // ❌ 输入字符不自动接受
+  acceptSuggestionOnEnter: 'on', // ✅ Enter 接受 suggest 项
+  snippetSuggestions: 'inline',
+  tabCompletion: 'off', // ✅ Tab 留给 AI inline 补全
+  wordBasedSuggestions: 'off',
+  suggest: {
+    showWords: false,
+    showSnippets: false
+  },
+  // 🔥 启用 Inline Completions (灰色预览补全)
+  inlineSuggest: {
+    enabled: true,
+    mode: 'prefix' as any,
+    showToolbar: 'onHover' as any
+  },
+  formatOnPaste: true,
+  formatOnType: true,
+  hover: { enabled: true, delay: 300, sticky: true },
+  lightbulb: { enabled: monaco.editor.ShowLightbulbIconMode.Off },
+  padding: { top: 20, bottom: 20 },
+  stickyScroll: { enabled: true },
+  unicodeHighlight: { ambiguousCharacters: true, invisibleCharacters: true },
+  accessibilitySupport: 'off',
+  readOnly: false
+
+  // ⭐ 性能优化说明：
+  // Monaco Editor 已通过 vite-plugin-monaco-editor-esm 配置 Web Workers
+  // 以下任务自动在 Worker 线程中运行，无需额外配置：
+  // - 语法高亮和语法分析
+  // - TypeScript/JavaScript 类型检查
+  // - JSON/CSS/HTML 验证
+  // - 代码提示和自动完成
+  // 这些密集型任务不会阻塞主线程，编辑器响应更快
+}
+
+/**
+ * 默认的 Diff 编辑器配置
+ */
+export const defaultDiffEditorOptions: editor.IStandaloneDiffEditorConstructionOptions = {
+  ...defaultEditorOptions,
+  renderSideBySide: false,
+  renderIndicators: false,
+  renderGutterMenu: false,
+  renderOverviewRuler: false,
+  enableSplitViewResizing: false,
+  ignoreTrimWhitespace: false,
+  renderMarginRevertIcon: false,
+  diffCodeLens: false,
+  diffWordWrap: 'off'
 }

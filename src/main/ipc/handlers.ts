@@ -1,142 +1,93 @@
-import { ipcMain, BrowserWindow, dialog } from 'electron'
-import { AgentService } from '../services/agent.service'
+import { ipcMain, BrowserWindow, dialog, shell } from 'electron'
 import { ChatService } from '../services/chat.service'
-import { ToolService } from '../services/tool.service'
-import { MCPService } from '../services/mcp.service'
 import { FileService } from '../services/file.service'
-import { ProjectService } from '../services/project.service'
 import { FileWatcherService } from '../services/file-watcher.service'
+import { GitWatcherService } from '../services/git-watcher.service'
 import { AvatarService } from '../services/avatar.service'
 import { GitService } from '../services/git.service'
+import { GitUtils } from '../services/git.utils'
 import { TerminalService } from '../services/terminal.service'
-import { getConfigService, getMCPClientManager } from '../index'
-import { CompletionService } from '../services/completion.service'
-import { updateRecentProjectsMenu } from '../menu'
-import { t } from '../utils/i18n'
+import { WindowService } from '../services/window.service'
+import { handleApprovalDecision } from '../tools/run-terminal-cmd.tool'
+import { RecentFilesService } from '../services/recent-files.service'
+import { BugReportService } from '../services/bug-report.service'
+import { MessageSnapshotService } from '../services/message-snapshot.service'
+import { MemoryService } from '../services/memory.service'
+import { getConfigService } from '../index'
+import { getDb } from '../database/db'
+import { sendToRenderer } from '../utils/ipc'
 import * as fontList from 'font-list'
+import * as fs from 'fs/promises'
+import * as nodePath from 'path'
+import * as iconv from 'iconv-lite'
+import * as jschardet from 'jschardet'
 
-const agentService = new AgentService()
-const chatService = new ChatService()
-
-// 存储活动的流式响应 AbortControllers
-const activeStreams = new Map<string, AbortController>()
-
-let completionServiceSingleton: CompletionService | null = null
+// 存储活动的流式响应
+const activeStreams = new Map<string, { abortController: AbortController; sessionId: string }>()
 
 export function registerIpcHandlers() {
   // 获取全局配置服务实例
   const configService = getConfigService()
 
-  // macOS 原生菜单：更新「打开最近」列表
-  ipcMain.handle('app:setRecentProjects', (_, recent: { path: string; name: string }[]) => {
-    updateRecentProjectsMenu(recent)
-  })
+  // 创建 ChatService 实例(统一管理聊天和 Agent)
+  const chatService = new ChatService(configService)
 
-  // Agent handlers
-  ipcMain.handle('agents:getAll', async () => {
-    try {
-      return await agentService.getAllAgents()
-    } catch (error) {
-      console.error('Failed to get agents:', error)
-      throw error
-    }
-  })
+  // 创建 BugReportService 实例
+  const bugReportService = new BugReportService()
 
-  ipcMain.handle('agents:getDefault', async () => {
-    try {
-      return await agentService.getDefaultAgent()
-    } catch (error) {
-      console.error('Failed to get default agent:', error)
-      throw error
-    }
-  })
-
-  ipcMain.handle('agents:getById', async (_, id: string) => {
-    try {
-      return await agentService.getAgentById(id)
-    } catch (error) {
-      console.error('Failed to get agent:', error)
-      throw error
-    }
-  })
-
-  ipcMain.handle('agents:create', async (_, data) => {
-    try {
-      return await agentService.createAgent(data)
-    } catch (error) {
-      console.error('Failed to create agent:', error)
-      throw error
-    }
-  })
-
-  ipcMain.handle('agents:update', async (_, id: string, data) => {
-    try {
-      return await agentService.updateAgent(id, data)
-    } catch (error) {
-      console.error('Failed to update agent:', error)
-      throw error
-    }
-  })
-
-  ipcMain.handle('agents:delete', async (_, id: string) => {
-    try {
-      await agentService.deleteAgent(id)
-    } catch (error) {
-      console.error('Failed to delete agent:', error)
-      throw error
-    }
-  })
-
-  // Chat handlers
-  ipcMain.handle('chat:send', async (_, options) => {
-    try {
-      return await chatService.chat(options)
-    } catch (error) {
-      console.error('Chat error:', error)
-      throw error
-    }
-  })
+  // 创建 MemoryService 实例
+  const memoryService = new MemoryService()
 
   ipcMain.on('chat:stream', async (event, options) => {
     const streamId = options.streamId
     const abortController = new AbortController()
 
     if (streamId) {
-      activeStreams.set(streamId, abortController)
+      activeStreams.set(streamId, { abortController, sessionId: options.sessionId })
     }
 
     try {
-      const result = await chatService.streamChat({
-        ...options,
+      const stream = chatService.streamChat({
+        sessionId: options.sessionId,
+        message: options.message,
         workspaceRoot: options.workspaceRoot,
-        configService,
         abortSignal: abortController.signal,
-        onStream: (chunk: {
-          type: 'text' | 'reasoning' | 'tool-call' | 'tool-result'
-          content?: string
-          toolCall?: { id: string; name: string; args: any }
-          toolResult?: {
-            id: string
-            result: any
-            isError?: boolean
-            isPending?: boolean
-            pendingAction?: any
-          }
-        }) => {
-          event.reply('chat:stream:chunk', chunk)
-        },
-        onError: (error: Error) => {
-          event.reply('chat:stream:error', error.message)
-        }
+        images: options.images
       })
-      event.reply('chat:stream:end', result.threadId)
+
+      let finalSessionId = options.sessionId
+
+      for await (const chunk of stream) {
+        // 发送 chunk 到前端
+        event.reply('chat:stream:chunk', chunk)
+
+        // 如果是 session-id chunk，保存 sessionId
+        if (chunk.type === 'session-id' && chunk.sessionId) {
+          finalSessionId = chunk.sessionId
+        }
+
+        // 如果是 interrupt，Agent 会等待用户决策
+        // 流式响应会自动暂停，等待 resumeInterrupt 调用
+        if (chunk.type === 'interrupt') {
+          console.log('[IPC] ⏸️  Agent interrupted, waiting for user decision')
+          // 继续发送 chunk 到前端，但不结束流
+        }
+      }
+
+      // 流完成，返回实际的 sessionId
+      event.reply('chat:stream:end', finalSessionId)
     } catch (error) {
       console.error('Stream chat error:', error)
-      if (error instanceof Error && error.name === 'AbortError') {
-        event.reply('chat:stream:error', t('notification.streamStopped'))
-      } else {
-        event.reply('chat:stream:error', error instanceof Error ? error.message : 'Unknown error')
+      
+      // 特殊错误消息处理
+      let errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      if (error instanceof Error && error.message.includes('tool_call_id')) {
+        errorMessage = '对话状态异常，建议创建新会话继续'
+      } else if (error instanceof Error && error.name === 'AbortError') {
+        errorMessage = '对话已停止'
       }
+      
+      event.reply('chat:stream:error', errorMessage)
     } finally {
       if (streamId) {
         activeStreams.delete(streamId)
@@ -145,39 +96,119 @@ export function registerIpcHandlers() {
   })
 
   // 停止流式响应
-  ipcMain.on('chat:stream:stop', (_, streamId: string) => {
-    const abortController = activeStreams.get(streamId)
-    if (abortController) {
-      abortController.abort()
-      activeStreams.delete(streamId)
+  ipcMain.on('chat:stream:stop', async (_, streamId: string) => {
+    const streamData = activeStreams.get(streamId)
+    if (streamData) {
+      console.log(`[IPC] ⏹️  Stopping stream: ${streamId}`)
+      streamData.abortController.abort()
+      
+      // 立即清理数据库中的 pending tool-calls
+      await chatService.cleanupPendingTools(streamData.sessionId)
     }
   })
 
-  // Thread handlers (替代原 Conversation handlers)
-  ipcMain.handle('threads:getByAgent', async (_, agentId: string) => {
+  // HITL: Resume interrupt
+  ipcMain.handle(
+    'chat:resume-interrupt',
+    async (
+      _,
+      params: {
+        sessionId: string
+        toolCallId: string
+        decision: string
+      }
+    ) => {
+      try {
+        handleApprovalDecision(params.toolCallId, params.decision as any)
+        return { success: true }
+      } catch (error) {
+        console.error('[IPC] Failed to resume interrupt:', error)
+        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+      }
+    }
+  )
+
+  // Session handlers (使用 SessionService)
+  const sessionService = chatService.getSessionService()
+
+  ipcMain.handle('sessions:create', async (_, modelId: string, projectPath: string) => {
     try {
-      return await chatService.getAgentThreads(agentId)
+      return await sessionService.createSession(modelId, projectPath)
     } catch (error) {
-      console.error('Failed to get threads:', error)
+      console.error('Failed to create session:', error)
       throw error
     }
   })
 
-  ipcMain.handle('threads:getWithMessages', async (_, threadId: string) => {
+  ipcMain.handle('sessions:getByProject', async (_, projectPath: string) => {
     try {
-      return await chatService.getThreadHistory(threadId)
+      return await sessionService.getProjectSessions(projectPath)
     } catch (error) {
-      console.error('Failed to get thread:', error)
+      console.error('Failed to get sessions:', error)
       throw error
     }
   })
 
-  ipcMain.handle('threads:delete', async (_, threadId: string) => {
+  ipcMain.handle('sessions:getWithMessages', async (_, sessionId: string) => {
     try {
-      await chatService.deleteThread(threadId)
+      return await sessionService.getSessionHistory(sessionId)
     } catch (error) {
-      console.error('Failed to delete thread:', error)
+      console.error('Failed to get session:', error)
       throw error
+    }
+  })
+
+  ipcMain.handle('sessions:delete', async (_, sessionId: string) => {
+    try {
+      // 清理该会话的 pending edits
+      chatService.onSessionDeleted(sessionId)
+      await sessionService.deleteSession(sessionId)
+    } catch (error) {
+      console.error('Failed to delete session:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle(
+    'sessions:deleteMessagesAfter',
+    async (_, sessionId: string, messageId: number) => {
+      try {
+        const deletedCount = await sessionService.deleteMessagesAfter(sessionId, messageId)
+        return { success: true, deletedCount }
+      } catch (error) {
+        console.error('Failed to delete messages after:', error)
+        throw error
+      }
+    }
+  )
+
+  ipcMain.handle('sessions:update', async (_, sessionId: string, updates: { title?: string }) => {
+    try {
+      await sessionService.updateSession(sessionId, updates)
+    } catch (error) {
+      console.error('Failed to update session:', error)
+      throw error
+    }
+  })
+
+
+  // Todo handlers
+  ipcMain.handle('todo:get', async (_, sessionId: string) => {
+    try {
+      const session = await sessionService.getSession(sessionId)
+      if (!session) {
+        return []
+      }
+      return (session.metadata?.todos || []) as Array<{
+        id: string
+        content: string
+        status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
+        createdAt: number
+        updatedAt: number
+      }>
+    } catch (error) {
+      console.error('[TodoGet] Error:', error)
+      return []
     }
   })
 
@@ -236,6 +267,74 @@ export function registerIpcHandlers() {
     }
   })
 
+  // API Keys handlers
+  ipcMain.handle('config:getApiKeys', async () => {
+    try {
+      return configService.getApiKeys()
+    } catch (error) {
+      console.error('Failed to get API keys:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('config:getApiKey', async (_, provider: string) => {
+    try {
+      return configService.getApiKey(provider)
+    } catch (error) {
+      console.error('Failed to get API key:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('config:setApiKey', async (_, provider: string, apiKey: string) => {
+    try {
+      configService.setApiKey(provider, apiKey)
+      return { success: true }
+    } catch (error) {
+      console.error('Failed to set API key:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('config:deleteApiKey', async (_, provider: string) => {
+    try {
+      configService.deleteApiKey(provider)
+      return { success: true }
+    } catch (error) {
+      console.error('Failed to delete API key:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('config:setApiKeys', async (_, apiKeys: Record<string, string>) => {
+    try {
+      configService.setApiKeys(apiKeys)
+      return { success: true }
+    } catch (error) {
+      console.error('Failed to set API keys:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('config:getDefaultModel', async () => {
+    try {
+      return configService.getDefaultModel()
+    } catch (error) {
+      console.error('Failed to get default model:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('config:setDefaultModel', async (_, modelId: string) => {
+    try {
+      configService.setDefaultModel(modelId)
+      return { success: true }
+    } catch (error) {
+      console.error('Failed to set default model:', error)
+      throw error
+    }
+  })
+
   // UI State handlers
   ipcMain.handle('config:getUIState', async () => {
     try {
@@ -264,131 +363,111 @@ export function registerIpcHandlers() {
     }
   })
 
-  // Tool handlers (支持 MCP/Custom)
-  ipcMain.handle('tools:getAll', async (_, agentId?: string) => {
+  // Memory handlers
+  ipcMain.handle('memory:getAll', async () => {
     try {
-      return await ToolService.getAllTools(agentId)
+      return await memoryService.getAllMemories()
     } catch (error) {
-      console.error('Failed to get tools:', error)
+      console.error('[MemoryGetAll] Error:', error)
       throw error
     }
   })
 
-  ipcMain.handle('tools:getTop', async (_, limit: number = 10, agentId?: string) => {
+  ipcMain.handle('memory:create', async (_, content: string) => {
     try {
-      return await ToolService.getTopTools(limit, agentId)
+      const id = await memoryService.createMemory(content)
+      return { success: true, id }
     } catch (error) {
-      console.error('Failed to get top tools:', error)
+      console.error('[MemoryCreate] Error:', error)
       throw error
     }
   })
 
-  ipcMain.handle('tools:getStatsByServer', async (_, agentId?: string) => {
+  ipcMain.handle('memory:update', async (_, id: string, content: string) => {
     try {
-      return await ToolService.getToolStatsByServer(agentId)
-    } catch (error) {
-      console.error('Failed to get tool stats by server:', error)
-      throw error
-    }
-  })
-
-  ipcMain.handle('tools:importFromMCP', async (_, serverId: string) => {
-    try {
-      const count = await ToolService.importMCPTools(serverId)
-      return { success: true, count }
-    } catch (error) {
-      console.error('Failed to import MCP tools:', error)
-      throw error
-    }
-  })
-
-  ipcMain.handle('tools:syncMCPServer', async (_, serverId: string) => {
-    try {
-      await ToolService.syncMCPServerTools(serverId)
+      await memoryService.updateMemory(id, content)
       return { success: true }
     } catch (error) {
-      console.error('Failed to sync MCP server tools:', error)
+      console.error('[MemoryUpdate] Error:', error)
       throw error
     }
   })
 
-  ipcMain.handle('tools:createCustom', async (_, data) => {
+  ipcMain.handle('memory:delete', async (_, id: string) => {
     try {
-      return await ToolService.createCustomTool(data)
+      await memoryService.deleteMemory(id)
+      return { success: true }
     } catch (error) {
-      console.error('Failed to create custom tool:', error)
+      console.error('[MemoryDelete] Error:', error)
       throw error
     }
   })
 
-  ipcMain.handle('tools:update', async (_, id: string, data) => {
+  // User Rule handlers
+  ipcMain.handle('userRule:getAll', async () => {
     try {
-      return await ToolService.updateTool(id, data)
+      const db = getDb()
+      return db.getUserRules().map((r) => ({
+        id: r.id,
+        content: r.content,
+        createdAt: r.createdAt.getTime(),
+        updatedAt: r.updatedAt.getTime()
+      }))
     } catch (error) {
-      console.error('Failed to update tool:', error)
+      console.error('[UserRuleGetAll] Error:', error)
       throw error
     }
   })
 
-  ipcMain.handle('tools:delete', async (_, id: string) => {
+  ipcMain.handle('userRule:create', async (_, content: string) => {
     try {
-      await ToolService.deleteTool(id)
+      const db = getDb()
+      const id = `rule_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      db.addUserRule(id, content)
+      return { success: true, id }
     } catch (error) {
-      console.error('Failed to delete tool:', error)
+      console.error('[UserRuleCreate] Error:', error)
       throw error
     }
   })
 
-  // MCP Server handlers
-  ipcMain.handle('mcp:getAll', async () => {
+  ipcMain.handle('userRule:update', async (_, id: string, content: string) => {
     try {
-      return await MCPService.getAllServers()
+      const db = getDb()
+      db.addUserRule(id, content)
+      return { success: true }
     } catch (error) {
-      console.error('Failed to get MCP servers:', error)
+      console.error('[UserRuleUpdate] Error:', error)
       throw error
     }
   })
 
-  ipcMain.handle('mcp:create', async (_, data) => {
+  ipcMain.handle('userRule:delete', async (_, id: string) => {
     try {
-      const newServer = await MCPService.createServer(data)
-
-      // 重新初始化 MCP Client 以包含新服务器
-      const mcpClientManager = getMCPClientManager()
-      await mcpClientManager.reinitialize()
-
-      return newServer
+      const db = getDb()
+      db.removeUserRule(id)
+      return { success: true }
     } catch (error) {
-      console.error('Failed to create MCP server:', error)
+      console.error('[UserRuleDelete] Error:', error)
       throw error
     }
   })
 
-  ipcMain.handle('mcp:update', async (_, id: string, data) => {
+  // Layout State handlers
+  ipcMain.handle('config:getLayoutState', async () => {
     try {
-      const updatedServer = await MCPService.updateServer(id, data)
-
-      // 重新初始化 MCP Client 以反映更新
-      const mcpClientManager = getMCPClientManager()
-      await mcpClientManager.reinitialize()
-
-      return updatedServer
+      return configService.getLayoutState()
     } catch (error) {
-      console.error('Failed to update MCP server:', error)
+      console.error('Failed to get layout state:', error)
       throw error
     }
   })
 
-  ipcMain.handle('mcp:delete', async (_, id: string) => {
+  ipcMain.handle('config:setLayoutState', async (_, layout) => {
     try {
-      // 从数据库删除
-      await MCPService.deleteServer(id)
-
-      // 重新初始化 MCP Client 以移除该服务器
-      const mcpClientManager = getMCPClientManager()
-      await mcpClientManager.reinitialize()
+      configService.setLayoutState(layout)
     } catch (error) {
-      console.error('Failed to delete MCP server:', error)
+      console.error('Failed to set layout state:', error)
       throw error
     }
   })
@@ -400,6 +479,58 @@ export function registerIpcHandlers() {
     } catch (error) {
       console.error('Failed to read file:', error)
       throw error
+    }
+  })
+
+  ipcMain.handle('files:readWithEncoding', async (_, filePath: string, encoding: string) => {
+    try {
+      const buffer = await fs.readFile(filePath)
+      return iconv.decode(buffer, encoding)
+    } catch (error) {
+      console.error('Failed to read file with encoding:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('files:detectEncoding', async (_, filePath: string) => {
+    try {
+      const buffer = await fs.readFile(filePath)
+
+      // 1. BOM 检测（最高优先级）
+      if (buffer.length >= 3 && buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf) {
+        return 'UTF-8 with BOM'
+      }
+      if (buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xfe) {
+        return 'UTF-16 LE'
+      }
+      if (buffer.length >= 2 && buffer[0] === 0xfe && buffer[1] === 0xff) {
+        return 'UTF-16 BE'
+      }
+
+      // 2. jschardet 检测（需置信度 > 0.7）
+      const detected = jschardet.detect(buffer)
+
+      if (detected && detected.encoding && detected.confidence > 0.7) {
+        // 映射常见编码（jschardet 返回的名称 → iconv-lite 支持的名称）
+        const encodingMap: Record<string, string> = {
+          'UTF-8': 'UTF-8',
+          GB2312: 'GB2312',
+          GBK: 'GBK',
+          Big5: 'Big5',
+          'ISO-8859-1': 'ISO-8859-1',
+          'windows-1252': 'windows-1252',
+          Shift_JIS: 'Shift_JIS',
+          'EUC-JP': 'EUC-JP',
+          'EUC-KR': 'EUC-KR'
+        }
+        return encodingMap[detected.encoding] || 'UTF-8'
+      }
+
+      // 3. 默认 UTF-8（置信度低或未检测到）
+      return 'UTF-8'
+    } catch (error) {
+      console.error('Failed to detect encoding:', error)
+      return 'UTF-8'
     }
   })
 
@@ -423,9 +554,24 @@ export function registerIpcHandlers() {
     }
   })
 
+  ipcMain.handle(
+    'files:writeWithEncoding',
+    async (_, filePath: string, content: string, encoding: string) => {
+      try {
+        const buffer = iconv.encode(content, encoding)
+        await fs.writeFile(filePath, buffer)
+      } catch (error) {
+        console.error('Failed to write file with encoding:', error)
+        throw error
+      }
+    }
+  )
+
   ipcMain.handle('files:listDirectory', async (_, dirPath: string) => {
     try {
-      return await FileService.listDirectory(dirPath)
+      // 获取用户配置的文件排除规则（VSCode 风格）
+      const filesExclude = configService.getFilesExclude()
+      return await FileService.listDirectory(dirPath, filesExclude)
     } catch (error) {
       console.error('Failed to list directory:', error)
       throw error
@@ -496,16 +642,34 @@ export function registerIpcHandlers() {
   })
 
   // Project handlers
-  ipcMain.handle('project:openDialog', async () => {
+  ipcMain.handle('project:openDialog', async (event) => {
     try {
-      const projectPath = await ProjectService.openProjectDialog()
+      const { dialog } = await import('electron')
+      const result = await dialog.showOpenDialog({
+        properties: ['openDirectory'],
+        title: '选择项目文件夹',
+        buttonLabel: '选择项目'
+      })
+
+      const projectPath = result.canceled ? null : result.filePaths[0]
       if (projectPath) {
-        await ProjectService.addRecentProject(projectPath, configService)
+        const recentProjects = configService.getRecentProjects()
+        const filtered = recentProjects.filter((p) => p.path !== projectPath)
+        const projectName = nodePath.basename(projectPath)
+        filtered.unshift({
+          path: projectPath,
+          name: projectName,
+          lastOpened: Date.now().toString()
+        })
+        const limited = filtered.slice(0, 10)
+        configService.setConfig({ recentProjects: limited })
 
         // 开始监听文件变化
-        const window = BrowserWindow.getFocusedWindow()
+        const window = BrowserWindow.fromWebContents(event.sender)
         if (window) {
           FileWatcherService.startWatching(projectPath, window)
+          // ⭐ 同时启动Git监听器
+          GitWatcherService.startWatching(projectPath)
         }
       }
       return projectPath
@@ -517,7 +681,7 @@ export function registerIpcHandlers() {
 
   ipcMain.handle('project:getRecent', async () => {
     try {
-      return ProjectService.getRecentProjects(configService)
+      return configService.getRecentProjects()
     } catch (error) {
       console.error('Failed to get recent projects:', error)
       throw error
@@ -526,30 +690,42 @@ export function registerIpcHandlers() {
 
   ipcMain.handle('project:getCurrent', async () => {
     try {
-      return ProjectService.getCurrentProject(configService)
+      return configService.getCurrentProject()
     } catch (error) {
       console.error('Failed to get current project:', error)
       throw error
     }
   })
 
-  ipcMain.handle('project:setCurrent', async (_, projectPath: string | null) => {
+  ipcMain.handle('project:setCurrent', async (event, projectPath: string | null) => {
     try {
-      const window = BrowserWindow.getFocusedWindow()
+      const window = BrowserWindow.fromWebContents(event.sender)
 
       // 停止之前的监听
-      const currentProject = ProjectService.getCurrentProject(configService)
+      const currentProject = configService.getCurrentProject()
       if (currentProject) {
         await FileWatcherService.stopWatching(currentProject)
+        GitWatcherService.stopWatching(currentProject) // ⭐ 同时停止Git监听器
       }
 
       // 设置新项目
-      ProjectService.setCurrentProject(projectPath, configService)
+      configService.setCurrentProject(projectPath)
 
       // 如果有新项目，开始监听并添加到最近项目
       if (projectPath && window) {
-        await ProjectService.addRecentProject(projectPath, configService)
+        const recentProjects = configService.getRecentProjects()
+        const filtered = recentProjects.filter((p) => p.path !== projectPath)
+        const projectName = nodePath.basename(projectPath)
+        filtered.unshift({
+          path: projectPath,
+          name: projectName,
+          lastOpened: Date.now().toString()
+        })
+        const limited = filtered.slice(0, 10)
+        configService.setConfig({ recentProjects: limited })
         FileWatcherService.startWatching(projectPath, window)
+        // ⭐ 同时启动Git监听器
+        GitWatcherService.startWatching(projectPath)
       }
     } catch (error) {
       console.error('Failed to set current project:', error)
@@ -559,14 +735,39 @@ export function registerIpcHandlers() {
 
   ipcMain.handle('project:close', async () => {
     try {
-      const currentProject = ProjectService.getCurrentProject(configService)
+      const currentProject = configService.getCurrentProject()
       if (currentProject) {
         await FileWatcherService.stopWatching(currentProject)
+        GitWatcherService.stopWatching(currentProject) // ⭐ 同时停止Git监听器
       }
-      ProjectService.setCurrentProject(null, configService)
+      configService.setCurrentProject(null)
     } catch (error) {
       console.error('Failed to close project:', error)
       throw error
+    }
+  })
+
+  // 在新窗口打开项目
+  ipcMain.handle('project:openInNewWindow', async (_event, projectPath: string) => {
+    try {
+      console.log('🪟 Opening project in new window:', projectPath)
+
+      // 创建新窗口并传递项目路径
+      const newWindow = WindowService.createWindow(projectPath, configService)
+
+      // 等待窗口加载完成后设置项目
+      newWindow.webContents.once('did-finish-load', async () => {
+        // 通过 IPC 告诉新窗口要打开的项目
+        newWindow.webContents.send('window:open-project', { projectPath })
+      })
+
+      return { success: true }
+    } catch (error) {
+      console.error('Failed to open project in new window:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '未知错误'
+      }
     }
   })
 
@@ -574,7 +775,7 @@ export function registerIpcHandlers() {
 
   ipcMain.handle('git:extractRepoName', async (_, url: string) => {
     try {
-      return GitService.extractRepoName(url)
+      return GitUtils.extractRepoName(url)
     } catch (error) {
       console.error('Failed to extract repo name:', error)
       throw error
@@ -583,26 +784,37 @@ export function registerIpcHandlers() {
 
   ipcMain.handle('git:selectTargetDirectory', async () => {
     try {
-      return await GitService.selectTargetDirectory()
+      return await GitUtils.selectTargetDirectory()
     } catch (error) {
       console.error('Failed to select target directory:', error)
       throw error
     }
   })
 
-  ipcMain.handle('git:cloneRepository', async (_, repoUrl: string, targetPath: string) => {
+  ipcMain.handle('git:cloneRepository', async (event, repoUrl: string, targetPath: string) => {
     try {
-      const window = BrowserWindow.getFocusedWindow()
+      const window = BrowserWindow.fromWebContents(event.sender)
 
       const clonedPath = await GitService.cloneRepository(repoUrl, targetPath, (message) => {
-        window?.webContents.send('git:cloneProgress', message)
+        sendToRenderer('git:cloneProgress', { message })
       })
 
       // 克隆成功后，设置为当前项目
       if (window) {
-        await ProjectService.addRecentProject(clonedPath, configService)
-        ProjectService.setCurrentProject(clonedPath, configService)
+        const recentProjects = configService.getRecentProjects()
+        const filtered = recentProjects.filter((p) => p.path !== clonedPath)
+        const projectName = require('path').basename(clonedPath)
+        filtered.unshift({
+          path: clonedPath,
+          name: projectName,
+          lastOpened: Date.now().toString()
+        })
+        const limited = filtered.slice(0, 10)
+        configService.setConfig({ recentProjects: limited })
+        configService.setCurrentProject(clonedPath)
         FileWatcherService.startWatching(clonedPath, window)
+        // ⭐ 同时启动Git监听器
+        GitWatcherService.startWatching(clonedPath)
       }
 
       return clonedPath
@@ -612,17 +824,28 @@ export function registerIpcHandlers() {
     }
   })
 
-  ipcMain.handle('git:createNewProject', async (_, parentPath: string, projectName: string) => {
+  ipcMain.handle('git:createNewProject', async (event, parentPath: string, projectName: string) => {
     try {
-      const window = BrowserWindow.getFocusedWindow()
+      const window = BrowserWindow.fromWebContents(event.sender)
 
-      const projectPath = await GitService.createNewProject(parentPath, projectName)
+      const projectPath = await GitUtils.createNewProject(parentPath, projectName)
 
       // 创建成功后，设置为当前项目
       if (window) {
-        await ProjectService.addRecentProject(projectPath, configService)
-        ProjectService.setCurrentProject(projectPath, configService)
+        const recentProjects = configService.getRecentProjects()
+        const filtered = recentProjects.filter((p) => p.path !== projectPath)
+        const projectName = nodePath.basename(projectPath)
+        filtered.unshift({
+          path: projectPath,
+          name: projectName,
+          lastOpened: Date.now().toString()
+        })
+        const limited = filtered.slice(0, 10)
+        configService.setConfig({ recentProjects: limited })
+        configService.setCurrentProject(projectPath)
         FileWatcherService.startWatching(projectPath, window)
+        // ⭐ 同时启动Git监听器
+        GitWatcherService.startWatching(projectPath)
       }
 
       return projectPath
@@ -638,6 +861,15 @@ export function registerIpcHandlers() {
     } catch (error) {
       console.error('Failed to check if repository:', error)
       return false
+    }
+  })
+
+  ipcMain.handle('git:initRepository', async (_, projectPath: string) => {
+    try {
+      await GitService.initRepository(projectPath)
+    } catch (error) {
+      console.error('Failed to initialize repository:', error)
+      throw error
     }
   })
 
@@ -670,15 +902,19 @@ export function registerIpcHandlers() {
 
   ipcMain.handle(
     'git:createBranch',
-    async (_, projectPath: string, branchName: string, checkout: boolean) => {
+    async (_, projectPath: string, branchName: string, checkout: boolean, startPoint?: string) => {
       try {
-        await GitService.createBranch(projectPath, branchName, checkout)
+        await GitService.createBranch(projectPath, branchName, checkout, startPoint)
       } catch (error) {
         console.error('Failed to create branch:', error)
         throw error
       }
     }
   )
+
+  ipcMain.handle('git:getBranchCommit', async (_, projectPath: string, branchName: string) => {
+    return await GitService.getBranchCommit(projectPath, branchName)
+  })
 
   ipcMain.handle(
     'git:deleteBranch',
@@ -687,6 +923,81 @@ export function registerIpcHandlers() {
         await GitService.deleteBranch(projectPath, branchName, force)
       } catch (error) {
         console.error('Failed to delete branch:', error)
+        throw error
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'git:deleteRemoteBranch',
+    async (_, projectPath: string, remoteName: string, branchName: string) => {
+      try {
+        await GitService.deleteRemoteBranch(projectPath, remoteName, branchName)
+      } catch (error) {
+        console.error('Failed to delete remote branch:', error)
+        throw error
+      }
+    }
+  )
+
+  ipcMain.handle('git:getTrackingBranch', async (_, projectPath: string, branchName: string) => {
+    try {
+      return await GitService.getTrackingBranch(projectPath, branchName)
+    } catch (error) {
+      console.error('Failed to get tracking branch:', error)
+      return null
+    }
+  })
+
+  ipcMain.handle('git:unsetUpstream', async (_, projectPath: string, branchName: string) => {
+    try {
+      await GitService.unsetUpstream(projectPath, branchName)
+    } catch (error) {
+      console.error('Failed to unset upstream:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle(
+    'git:renameBranch',
+    async (_, projectPath: string, oldName: string, newName: string) => {
+      try {
+        await GitService.renameBranch(projectPath, oldName, newName)
+      } catch (error) {
+        console.error('Failed to rename branch:', error)
+        throw error
+      }
+    }
+  )
+
+  ipcMain.handle('git:mergeBranch', async (_, projectPath: string, branchName: string) => {
+    try {
+      return await GitService.mergeBranch(projectPath, branchName)
+    } catch (error) {
+      console.error('Failed to merge branch:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle(
+    'git:compareBranches',
+    async (_, projectPath: string, baseBranch: string, compareBranch: string) => {
+      try {
+        return await GitService.compareBranches(projectPath, baseBranch, compareBranch)
+      } catch (error) {
+        console.error('Failed to compare branches:', error)
+        throw error
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'git:getBranchFileDiff',
+    async (_, projectPath: string, baseBranch: string, compareBranch: string, filePath: string) => {
+      try {
+        return await GitService.getBranchFileDiff(projectPath, baseBranch, compareBranch, filePath)
+      } catch (error) {
+        console.error('Failed to get branch file diff:', error)
         throw error
       }
     }
@@ -749,9 +1060,21 @@ export function registerIpcHandlers() {
     }
   )
 
+  ipcMain.handle(
+    'git:pushToRef',
+    async (_, projectPath: string, remote: string, refspec: string, setUpstream?: boolean) => {
+      try {
+        await GitService.pushToRef(projectPath, remote, refspec, setUpstream)
+      } catch (error) {
+        console.error('Failed to push to ref:', error)
+        throw error
+      }
+    }
+  )
+
   ipcMain.handle('git:pull', async (_, projectPath: string, remote: string, branch?: string) => {
     try {
-      await GitService.pull(projectPath, remote, branch)
+      return await GitService.pull(projectPath, remote, branch)
     } catch (error) {
       console.error('Failed to pull:', error)
       throw error
@@ -767,11 +1090,11 @@ export function registerIpcHandlers() {
     }
   })
 
-  ipcMain.handle('git:revertFile', async (_, projectPath: string, filePath: string) => {
+  ipcMain.handle('git:discardFileChanges', async (_, projectPath: string, filePath: string) => {
     try {
-      await GitService.revertFile(projectPath, filePath)
+      await GitService.discardFileChanges(projectPath, filePath)
     } catch (error) {
-      console.error('Failed to revert file:', error)
+      console.error('Failed to discard file changes:', error)
       throw error
     }
   })
@@ -818,6 +1141,15 @@ export function registerIpcHandlers() {
     }
   })
 
+  ipcMain.handle('git:getFileFromHead', async (_, projectPath: string, filePath: string) => {
+    try {
+      return await GitService.getFileFromHead(projectPath, filePath)
+    } catch (error) {
+      console.error('Failed to get file from HEAD:', error)
+      throw error
+    }
+  })
+
   ipcMain.handle('git:getRemotes', async (_, projectPath: string) => {
     try {
       return await GitService.getRemotes(projectPath)
@@ -826,6 +1158,294 @@ export function registerIpcHandlers() {
       throw error
     }
   })
+
+  ipcMain.handle('git:addRemote', async (_, projectPath: string, name: string, url: string) => {
+    try {
+      await GitService.addRemote(projectPath, name, url)
+    } catch (error) {
+      console.error('Failed to add remote:', error)
+      throw error
+    }
+  })
+
+  // Git Stash handlers
+  ipcMain.handle(
+    'git:stash',
+    async (_, projectPath: string, message?: string, includeUntracked?: boolean) => {
+      try {
+        await GitService.stash(projectPath, message, includeUntracked)
+      } catch (error) {
+        console.error('Failed to stash:', error)
+        throw error
+      }
+    }
+  )
+
+  ipcMain.handle('git:stashList', async (_, projectPath: string) => {
+    try {
+      return await GitService.stashList(projectPath)
+    } catch (error) {
+      console.error('Failed to list stashes:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('git:stashApply', async (_, projectPath: string, index: number) => {
+    try {
+      await GitService.stashApply(projectPath, index)
+    } catch (error) {
+      console.error('Failed to apply stash:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('git:stashPop', async (_, projectPath: string, index: number) => {
+    try {
+      await GitService.stashPop(projectPath, index)
+    } catch (error) {
+      console.error('Failed to pop stash:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('git:stashDrop', async (_, projectPath: string, index: number) => {
+    try {
+      await GitService.stashDrop(projectPath, index)
+    } catch (error) {
+      console.error('Failed to drop stash:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('git:stashClear', async (_, projectPath: string) => {
+    try {
+      await GitService.stashClear(projectPath)
+    } catch (error) {
+      console.error('Failed to clear stashes:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('git:stashShowFiles', async (_, projectPath: string, index: number) => {
+    try {
+      return await GitService.stashShowFiles(projectPath, index)
+    } catch (error) {
+      console.error('Failed to show stash files:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('git:stashShowDiff', async (_, projectPath: string, index: number) => {
+    try {
+      return await GitService.stashShowDiff(projectPath, index)
+    } catch (error) {
+      console.error('Failed to show stash diff:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle(
+    'git:stashGetFileContent',
+    async (_, projectPath: string, index: number, filePath: string) => {
+      try {
+        return await GitService.stashGetFileContent(projectPath, index, filePath)
+      } catch (error) {
+        console.error('Failed to get stash file content:', error)
+        throw error
+      }
+    }
+  )
+
+  // Git History handlers
+  ipcMain.handle(
+    'git:getCommitHistory',
+    async (
+      _,
+      projectPath: string,
+      options?: {
+        limit?: number
+        skip?: number
+        branch?: string
+        author?: string
+        search?: string
+      }
+    ) => {
+      try {
+        return await GitService.getCommitHistory(projectPath, options)
+      } catch (error) {
+        console.error('Failed to get commit history:', error)
+        throw error
+      }
+    }
+  )
+
+  ipcMain.handle('git:getCommitDetail', async (_, projectPath: string, commitHash: string) => {
+    try {
+      return await GitService.getCommitDetail(projectPath, commitHash)
+    } catch (error) {
+      console.error('Failed to get commit detail:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle(
+    'git:getCommitFileDiff',
+    async (_, projectPath: string, commitHash: string, filePath: string) => {
+      try {
+        return await GitService.getCommitFileDiff(projectPath, commitHash, filePath)
+      } catch (error) {
+        console.error('Failed to get commit file diff:', error)
+        throw error
+      }
+    }
+  )
+
+  ipcMain.handle('git:amendCommit', async (_, projectPath: string, message?: string) => {
+    try {
+      await GitService.amendCommit(projectPath, message)
+    } catch (error) {
+      console.error('Failed to amend commit:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle(
+    'git:resetToCommit',
+    async (_, projectPath: string, commitHash: string, mode?: 'soft' | 'mixed' | 'hard') => {
+      try {
+        await GitService.resetToCommit(projectPath, commitHash, mode)
+      } catch (error) {
+        console.error('Failed to reset to commit:', error)
+        throw error
+      }
+    }
+  )
+
+  ipcMain.handle('git:revertCommit', async (_, projectPath: string, commitHash: string) => {
+    try {
+      await GitService.revertCommit(projectPath, commitHash)
+    } catch (error) {
+      console.error('Failed to revert commit:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('git:getAuthors', async (_, projectPath: string) => {
+    try {
+      return await GitService.getAuthors(projectPath)
+    } catch (error) {
+      console.error('Failed to get authors:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('git:getLastCommitInfo', async (_, projectPath: string) => {
+    try {
+      return await GitService.getLastCommitInfo(projectPath)
+    } catch (error) {
+      console.error('Failed to get last commit info:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('git:getConflictVersions', async (_, projectPath: string, filePath: string) => {
+    try {
+      return await GitService.getConflictVersions(projectPath, filePath)
+    } catch (error) {
+      console.error('Failed to get conflict versions:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle(
+    'git:resolveConflict',
+    async (_, projectPath: string, filePath: string, resolvedContent: string) => {
+      try {
+        await GitService.resolveConflict(projectPath, filePath, resolvedContent)
+      } catch (error) {
+        console.error('Failed to resolve conflict:', error)
+        throw error
+      }
+    }
+  )
+
+  ipcMain.handle('git:abortMerge', async (_, projectPath: string) => {
+    try {
+      await GitService.abortMerge(projectPath)
+    } catch (error) {
+      console.error('Failed to abort merge:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('git:acceptAllOurs', async (_, projectPath: string, conflictedFiles: string[]) => {
+    try {
+      await GitService.acceptAllOurs(projectPath, conflictedFiles)
+    } catch (error) {
+      console.error('Failed to accept all ours:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle(
+    'git:acceptAllTheirs',
+    async (_, projectPath: string, conflictedFiles: string[]) => {
+      try {
+        await GitService.acceptAllTheirs(projectPath, conflictedFiles)
+      } catch (error) {
+        console.error('Failed to accept all theirs:', error)
+        throw error
+      }
+    }
+  )
+
+  // Tag handlers
+  ipcMain.handle('git:listTags', async (_, projectPath: string) => {
+    return GitService.listTags(projectPath)
+  })
+
+  ipcMain.handle(
+    'git:createTag',
+    async (
+      _,
+      projectPath: string,
+      tagName: string,
+      options?: { message?: string; commitHash?: string }
+    ) => {
+      await GitService.createTag(projectPath, tagName, options)
+    }
+  )
+
+  ipcMain.handle('git:deleteTag', async (_, projectPath: string, tagName: string) => {
+    await GitService.deleteTag(projectPath, tagName)
+  })
+
+  ipcMain.handle(
+    'git:pushTag',
+    async (_, projectPath: string, tagName: string, remote?: string) => {
+      await GitService.pushTag(projectPath, tagName, remote)
+    }
+  )
+
+  ipcMain.handle(
+    'git:deleteRemoteTag',
+    async (_, projectPath: string, tagName: string, remote?: string) => {
+      await GitService.deleteRemoteTag(projectPath, tagName, remote)
+    }
+  )
+
+  // Rebase handler
+  ipcMain.handle('git:rebase', async (_, projectPath: string, onto: string) => {
+    return GitService.rebase(projectPath, onto)
+  })
+
+  // Squash handler
+  ipcMain.handle(
+    'git:squashCommits',
+    async (_, projectPath: string, count: number, message: string) => {
+      await GitService.squashCommits(projectPath, count, message)
+    }
+  )
 
   // Avatar handlers
   ipcMain.handle('avatar:select', async () => {
@@ -886,13 +1506,13 @@ export function registerIpcHandlers() {
   ipcMain.handle('config:debug', async () => {
     try {
       const config = configService.getConfig()
-      const configPath = configService.getConfigPath()
+      const dbPath = configService.getDatabasePath()
       console.log('🔍 Debug Config Info:')
-      console.log('   Path:', configPath)
+      console.log('   Database:', dbPath)
       console.log('   Current Project:', config.currentProject)
       console.log('   Recent Projects:', config.recentProjects)
       return {
-        path: configPath,
+        path: dbPath,
         config
       }
     } catch (error) {
@@ -902,16 +1522,16 @@ export function registerIpcHandlers() {
   })
 
   // Coding Agent handlers - AI 项目创建
-  ipcMain.handle('coding-agent:selectProjectFolder', async () => {
+  ipcMain.handle('coding-agent:selectProjectFolder', async (event) => {
     try {
-      const window = BrowserWindow.getFocusedWindow()
+      const window = BrowserWindow.fromWebContents(event.sender)
       if (!window) throw new Error('No active window')
 
       const result = await dialog.showOpenDialog(window, {
-        title: t('dialog.selectProjectFolderTitle'),
-        message: t('dialog.selectProjectFolderMessage'),
+        title: '选择项目文件夹',
+        message: '请选择一个文件夹来创建您的项目',
         properties: ['openDirectory', 'createDirectory'],
-        buttonLabel: t('dialog.selectProjectFolderButton')
+        buttonLabel: '选择此文件夹'
       })
 
       if (result.canceled || result.filePaths.length === 0) {
@@ -927,37 +1547,49 @@ export function registerIpcHandlers() {
 
   ipcMain.handle(
     'coding-agent:createProject',
-    async (_, userPrompt: string, projectPath: string) => {
+    async (event, userPrompt: string, projectPath: string) => {
       try {
-        const window = BrowserWindow.getFocusedWindow()
+        const window = BrowserWindow.fromWebContents(event.sender)
+
+        // 创建新的 session，使用默认模型
+        const defaultModelId = 'Alibaba (China)/qwen-plus'
+        const sessionId = await sessionService.createSession(defaultModelId, projectPath)
 
         // 使用系统 Coding Agent
-        const result = await chatService.streamChat({
-          agentId: 'system-coding-agent',
+        const stream = chatService.streamChat({
+          sessionId,
           message: userPrompt,
-          workspaceRoot: projectPath,
-          configService,
-          onStream: (chunk) => {
-            if (chunk.type === 'text') {
-              window?.webContents.send('coding-agent:stream:chunk', chunk.content)
-            }
-          },
-          onError: (error) => {
-            console.error('Coding agent stream error:', error)
-          }
+          workspaceRoot: projectPath
         })
 
+        for await (const chunk of stream) {
+          if (chunk.type === 'text') {
+            sendToRenderer('coding-agent:stream:chunk', { content: chunk.content })
+          }
+        }
+
         // 项目创建完成后的处理
-        await ProjectService.addRecentProject(projectPath, configService)
-        ProjectService.setCurrentProject(projectPath, configService)
+        const recentProjects = configService.getRecentProjects()
+        const filtered = recentProjects.filter((p) => p.path !== projectPath)
+        const projectName = nodePath.basename(projectPath)
+        filtered.unshift({
+          path: projectPath,
+          name: projectName,
+          lastOpened: Date.now().toString()
+        })
+        const limited = filtered.slice(0, 10)
+        configService.setConfig({ recentProjects: limited })
+        configService.setCurrentProject(projectPath)
 
         if (window) {
           FileWatcherService.startWatching(projectPath, window)
+          // ⭐ 同时启动Git监听器
+          GitWatcherService.startWatching(projectPath)
         }
 
         return {
           success: true,
-          threadId: result.threadId,
+          sessionId,
           projectPath
         }
       } catch (error) {
@@ -970,10 +1602,7 @@ export function registerIpcHandlers() {
   // Terminal handlers
   ipcMain.handle('terminal:create', async (_, cwd: string) => {
     try {
-      const window = BrowserWindow.getFocusedWindow()
-      if (!window) throw new Error('No active window')
-
-      const terminalId = TerminalService.createTerminal(cwd, window)
+      const terminalId = TerminalService.createTerminal(cwd)
       return terminalId
     } catch (error) {
       console.error('Failed to create terminal:', error)
@@ -1046,15 +1675,16 @@ export function registerIpcHandlers() {
   })
 
   // Codebase Index handlers
-  ipcMain.handle('codebase:index', async (_, projectPath: string) => {
+  ipcMain.handle('codebase:index', async (event, projectPath: string) => {
     try {
       const { CodebaseIndexService } = await import('../services/codebase-index.service')
       const indexService = CodebaseIndexService.getInstance()
-      const window = BrowserWindow.getFocusedWindow()
+
+      const window = BrowserWindow.fromWebContents(event.sender)
       if (!window) throw new Error('No active window')
 
       const index = await indexService.indexProject(projectPath, (progress, total, message) => {
-        window.webContents.send('codebase:index:progress', {
+        sendToRenderer('codebase:index:progress', {
           current: progress,
           total,
           file: message,
@@ -1068,6 +1698,7 @@ export function registerIpcHandlers() {
         totalChunks: index.totalChunks,
         totalSize: index.totalSize,
         indexedAt: index.indexedAt,
+        // 增量统计信息
         newFiles: index.newFiles,
         modifiedFiles: index.modifiedFiles,
         deletedFiles: index.deletedFiles,
@@ -1085,7 +1716,8 @@ export function registerIpcHandlers() {
       try {
         const { CodebaseIndexService } = await import('../services/codebase-index.service')
         const indexService = CodebaseIndexService.getInstance()
-        const results = await indexService.searchCodebase(projectPath, query, options)
+
+        const results = await indexService.search(projectPath, query, options)
         return results
       } catch (error) {
         console.error('Failed to search codebase:', error)
@@ -1098,7 +1730,9 @@ export function registerIpcHandlers() {
     try {
       const { CodebaseIndexService } = await import('../services/codebase-index.service')
       const indexService = CodebaseIndexService.getInstance()
+
       const index = await indexService.getProjectIndex(projectPath)
+
       if (!index) {
         return null
       }
@@ -1120,7 +1754,8 @@ export function registerIpcHandlers() {
     try {
       const { CodebaseIndexService } = await import('../services/codebase-index.service')
       const indexService = CodebaseIndexService.getInstance()
-      await indexService.deleteIndex(projectPath)
+
+      await indexService.deleteProject(projectPath)
       return { success: true }
     } catch (error) {
       console.error('Failed to delete index:', error)
@@ -1265,14 +1900,380 @@ export function registerIpcHandlers() {
     }
   )
 
-  ipcMain.handle('completion:generate', async (_, request) => {
-    try {
-      completionServiceSingleton ??= new CompletionService(configService)
-      return await completionServiceSingleton.generateCompletion(request)
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error)
-      return { type: 'error', error: msg }
+  // Search handlers - 纯 Node.js 实现，零外部依赖
+  const IGNORE_DIRS = new Set([
+    'node_modules',
+    '.git',
+    'dist',
+    '.next',
+    'build',
+    'coverage',
+    '.cache'
+  ])
+  const IGNORE_EXTS = new Set([
+    '.lock',
+    '.png',
+    '.jpg',
+    '.jpeg',
+    '.gif',
+    '.ico',
+    '.woff',
+    '.woff2',
+    '.ttf',
+    '.eot'
+  ])
+
+  async function* walkFiles(dir: string): AsyncGenerator<string> {
+    const entries = await fs.readdir(dir, { withFileTypes: true })
+    for (const entry of entries) {
+      if (entry.name.startsWith('.') && entry.name !== '.') continue
+      const fullPath = nodePath.join(dir, entry.name)
+      if (entry.isDirectory()) {
+        if (!IGNORE_DIRS.has(entry.name)) yield* walkFiles(fullPath)
+      } else if (entry.isFile()) {
+        if (!IGNORE_EXTS.has(nodePath.extname(entry.name).toLowerCase())) yield fullPath
+      }
     }
+  }
+
+  // 简单的 glob 匹配（支持 *.ext 和 **/path 模式）
+  const matchesGlob = (relativePath: string, pattern: string): boolean => {
+    const p = pattern.trim()
+    if (!p) return true
+    if (p.startsWith('*.')) {
+      // *.ts → 以 .ts 结尾
+      return relativePath.endsWith(p.slice(1))
+    }
+    if (p.includes('**')) {
+      // src/** → 路径包含 src/
+      const prefix = p.replace('**', '').replace(/\/$/, '')
+      return relativePath.includes(prefix)
+    }
+    // 普通匹配
+    return relativePath.includes(p)
+  }
+
+  ipcMain.handle('search:find', async (_, projectPath: string, query: string, options?: any) => {
+    if (!query?.trim()) return []
+
+    const { caseSensitive, wholeWord, useRegex, includePattern, excludePattern } = options || {}
+
+    // 解析 include/exclude 模式
+    const includes =
+      includePattern
+        ?.split(',')
+        .map((p: string) => p.trim())
+        .filter(Boolean) || []
+    const excludes =
+      excludePattern
+        ?.split(',')
+        .map((p: string) => p.trim())
+        .filter(Boolean) || []
+
+    // 构建正则
+    let pattern = useRegex ? query : query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    if (wholeWord) pattern = `\\b${pattern}\\b`
+    const regex = new RegExp(pattern, caseSensitive ? 'g' : 'gi')
+
+    const results: any[] = []
+
+    try {
+      for await (const filePath of walkFiles(projectPath)) {
+        const relativePath = nodePath.relative(projectPath, filePath)
+
+        // 应用 include/exclude 过滤
+        if (includes.length > 0 && !includes.some((p) => matchesGlob(relativePath, p))) continue
+        if (excludes.some((p) => matchesGlob(relativePath, p))) continue
+
+        try {
+          const content = await fs.readFile(filePath, 'utf-8')
+          const lines = content.split('\n')
+          const matches: any[] = []
+
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i]
+            let match
+            regex.lastIndex = 0
+            while ((match = regex.exec(line)) !== null) {
+              matches.push({
+                line: i + 1,
+                column: match.index + 1,
+                length: match[0].length,
+                lineContent: line,
+                matchText: match[0]
+              })
+            }
+          }
+
+          if (matches.length > 0) {
+            results.push({ filePath, relativePath, matches })
+          }
+        } catch {
+          // 忽略无法读取的文件
+        }
+      }
+    } catch (error) {
+      console.error('Search failed:', error)
+    }
+
+    return results
+  })
+
+  // 内部替换函数
+  const doReplaceInFile = async (
+    filePath: string,
+    searchText: string,
+    replaceText: string,
+    options?: any
+  ) => {
+    const content = await fs.readFile(filePath, 'utf-8')
+    const { caseSensitive, wholeWord, useRegex } = options || {}
+
+    let pattern = useRegex ? searchText : searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    if (wholeWord) pattern = `\\b${pattern}\\b`
+
+    const regex = new RegExp(pattern, caseSensitive ? 'g' : 'gi')
+    const matches = content.match(regex)
+    const replacements = matches?.length || 0
+
+    if (replacements > 0) {
+      await fs.writeFile(filePath, content.replace(regex, replaceText), 'utf-8')
+    }
+    return { filePath, replacements }
+  }
+
+  ipcMain.handle(
+    'search:replaceInFile',
+    async (_, filePath: string, searchText: string, replaceText: string, options?: any) => {
+      return doReplaceInFile(filePath, searchText, replaceText, options)
+    }
+  )
+
+  ipcMain.handle(
+    'search:replaceAll',
+    async (_, projectPath: string, searchText: string, replaceText: string, options?: any) => {
+      if (!searchText?.trim()) return []
+
+      const { caseSensitive, wholeWord, useRegex } = options || {}
+      const results: any[] = []
+
+      // 构建正则
+      let pattern = useRegex ? searchText : searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      if (wholeWord) pattern = `\\b${pattern}\\b`
+      const regex = new RegExp(pattern, caseSensitive ? 'g' : 'gi')
+
+      try {
+        for await (const filePath of walkFiles(projectPath)) {
+          try {
+            const content = await fs.readFile(filePath, 'utf-8')
+            if (regex.test(content)) {
+              regex.lastIndex = 0
+              const result = await doReplaceInFile(filePath, searchText, replaceText, options)
+              if (result.replacements > 0) results.push(result)
+            }
+          } catch {
+            // 忽略无法读取的文件
+          }
+        }
+      } catch (error) {
+        console.error('Replace all failed:', error)
+      }
+
+      return results
+    }
+  )
+
+  // Quick Open - 文件名搜索（模糊匹配）
+  ipcMain.handle(
+    'files:quickOpen',
+    async (_, projectPath: string, query: string, limit: number = 50) => {
+      if (!query?.trim() || !projectPath) return []
+
+      const searchQuery = query.toLowerCase()
+      const results: Array<{
+        name: string
+        path: string
+        relativePath: string
+      }> = []
+
+      try {
+        for await (const filePath of walkFiles(projectPath)) {
+          const relativePath = nodePath.relative(projectPath, filePath)
+          const fileName = nodePath.basename(filePath).toLowerCase()
+
+          // 模糊匹配：文件名包含查询字符串，或路径包含查询字符串
+          if (fileName.includes(searchQuery) || relativePath.toLowerCase().includes(searchQuery)) {
+            results.push({
+              name: nodePath.basename(filePath),
+              path: filePath,
+              relativePath
+            })
+
+            // 限制返回数量
+            if (results.length >= limit) break
+          }
+        }
+
+        // 按匹配度排序：完全匹配 > 开头匹配 > 包含匹配
+        results.sort((a, b) => {
+          const aName = a.name.toLowerCase()
+          const bName = b.name.toLowerCase()
+
+          // 完全匹配优先
+          if (aName === searchQuery && bName !== searchQuery) return -1
+          if (bName === searchQuery && aName !== searchQuery) return 1
+
+          // 开头匹配次之
+          const aStartsWith = aName.startsWith(searchQuery)
+          const bStartsWith = bName.startsWith(searchQuery)
+          if (aStartsWith && !bStartsWith) return -1
+          if (bStartsWith && !aStartsWith) return 1
+
+          // 文件名长度短的优先
+          if (a.name.length !== b.name.length) {
+            return a.name.length - b.name.length
+          }
+
+          // 路径深度浅的优先
+          const aDepth = a.relativePath.split('/').length
+          const bDepth = b.relativePath.split('/').length
+          if (aDepth !== bDepth) return aDepth - bDepth
+
+          // 字母顺序
+          return a.name.localeCompare(b.name)
+        })
+
+        return results
+      } catch (error) {
+        console.error('Quick open search failed:', error)
+        return []
+      }
+    }
+  )
+
+  // Recent Files - 最近文件历史
+  const recentFilesService = RecentFilesService.getInstance()
+
+  ipcMain.handle('recentFiles:add', async (_, projectPath: string, filePath: string) => {
+    recentFilesService.addRecentFile(projectPath, filePath)
+    return { success: true }
+  })
+
+  ipcMain.handle('recentFiles:get', async (_, projectPath: string, limit?: number) => {
+    return recentFilesService.getRecentFiles(projectPath, limit)
+  })
+
+  ipcMain.handle('recentFiles:remove', async (_, projectPath: string, filePath: string) => {
+    recentFilesService.removeRecentFile(projectPath, filePath)
+    return { success: true }
+  })
+
+  ipcMain.handle('recentFiles:clear', async (_, projectPath: string) => {
+    recentFilesService.clearRecentFiles(projectPath)
+    return { success: true }
+  })
+
+  // ==================== 通知相关 Handlers ====================
+  const db = getDb()
+
+  ipcMain.handle('notifications:getAll', async () => {
+    return db.getNotifications()
+  })
+
+  ipcMain.handle(
+    'notifications:add',
+    async (
+      _,
+      notification: {
+        id: string
+        type: 'success' | 'error' | 'warning' | 'info'
+        title: string
+        description?: string
+        timestamp: Date
+      }
+    ) => {
+      db.addNotification({
+        ...notification,
+        description: notification.description ?? null
+      })
+      return { success: true }
+    }
+  )
+
+  ipcMain.handle('notifications:markAsRead', async (_, id: string) => {
+    db.markNotificationAsRead(id)
+    return { success: true }
+  })
+
+  ipcMain.handle('notifications:markAllAsRead', async () => {
+    db.markAllNotificationsAsRead()
+    return { success: true }
+  })
+
+  ipcMain.handle('notifications:remove', async (_, id: string) => {
+    db.removeNotification(id)
+    return { success: true }
+  })
+
+  ipcMain.handle('notifications:clearAll', async () => {
+    db.clearAllNotifications()
+    return { success: true }
+  })
+
+  // ==================== Git 最近分支相关 Handlers ====================
+  ipcMain.handle('recentBranches:get', async (_, projectPath: string, limit?: number) => {
+    return db.getRecentBranches(projectPath, limit)
+  })
+
+  ipcMain.handle('recentBranches:add', async (_, projectPath: string, branchName: string) => {
+    db.addRecentBranch(projectPath, branchName)
+    return { success: true }
+  })
+
+  // ==================== Bug Report 相关 Handlers ====================
+  ipcMain.handle('bugReport:submit', async (_, title: string, description: string) => {
+    try {
+      const report = await bugReportService.submitReport(title, description)
+      return { success: true, report }
+    } catch (error: any) {
+      console.error('[IPC] Failed to submit bug report:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  // ==================== Message Snapshot 相关 Handlers ====================
+  const snapshotService = MessageSnapshotService.getInstance()
+
+  // 获取受影响的文件列表
+  ipcMain.handle('message:getAffectedFiles', async (_, messageId: number) => {
+    try {
+      return await snapshotService.getAffectedFiles(messageId)
+    } catch (error) {
+      console.error('Failed to get affected files:', error)
+      return []
+    }
+  })
+
+  // 恢复文件（Revert 功能）
+  ipcMain.handle('message:revertFiles', async (_, messageId: number) => {
+    try {
+      const result = await snapshotService.restoreFiles(messageId)
+      return result
+    } catch (error) {
+      console.error('Failed to revert files:', error)
+      throw error
+    }
+  })
+
+  // Files: 打开路径（在文件管理器中打开）
+  ipcMain.handle('files:openPath', async (_, path: string) => {
+    const { shell } = await import('electron')
+    return await shell.openPath(path)
+  })
+
+  // Shell: 在默认浏览器中打开外部链接
+  ipcMain.handle('shell:openExternal', async (_, url: string) => {
+    return await shell.openExternal(url)
   })
 
   console.log('✅ IPC handlers registered')

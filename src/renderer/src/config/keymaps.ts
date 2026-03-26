@@ -4,82 +4,73 @@ export interface KeyBinding {
   when?: string
 }
 
-export type KeymapCategoryId = 'file' | 'editor' | 'navigate' | 'view' | 'debug'
-
-export interface KeymapCommandDef {
-  id: string
-  category: KeymapCategoryId
-}
-
-/** settings 命名空间下的 i18n 路径：`keymap.commands.<id>`（id 中的 `.` 对应嵌套） */
-export function keymapCommandLabelKey(commandId: string): string {
-  return `keymap.commands.${commandId}`
-}
-
-/** settings 命名空间下的 i18n 路径：`keymap.categories.<categoryId>` */
-export function keymapCategoryLabelKey(categoryId: KeymapCategoryId): string {
-  return `keymap.categories.${categoryId}`
-}
-
-/** settings 命名空间下的 i18n 路径：`keymap.presets.<presetId>` */
-export function keymapPresetLabelKey(presetId: string): string {
-  return `keymap.presets.${presetId}`
-}
-
 export interface KeymapProfile {
+  name: string
   bindings: Record<string, string>
 }
 
-export const COMMANDS: KeymapCommandDef[] = [
-  { id: 'file.save', category: 'file' },
-  { id: 'file.saveAll', category: 'file' },
-  { id: 'file.new', category: 'file' },
-  { id: 'file.open', category: 'file' },
-  { id: 'file.close', category: 'file' },
+export const COMMANDS = [
+  // 应用操作
+  { id: 'app.settings', label: '打开设置', category: '应用' },
+  { id: 'app.quit', label: '退出应用', category: '应用' },
 
-  { id: 'editor.undo', category: 'editor' },
-  { id: 'editor.redo', category: 'editor' },
-  { id: 'editor.cut', category: 'editor' },
-  { id: 'editor.copy', category: 'editor' },
-  { id: 'editor.paste', category: 'editor' },
-  { id: 'editor.find', category: 'editor' },
-  { id: 'editor.replace', category: 'editor' },
-  { id: 'editor.findInFiles', category: 'editor' },
-  { id: 'editor.toggleLineComment', category: 'editor' },
-  { id: 'editor.toggleBlockComment', category: 'editor' },
-  { id: 'editor.duplicateLine', category: 'editor' },
-  { id: 'editor.moveLineUp', category: 'editor' },
-  { id: 'editor.moveLineDown', category: 'editor' },
-  { id: 'editor.deleteLine', category: 'editor' },
-  { id: 'editor.formatDocument', category: 'editor' },
+  // 文件操作
+  { id: 'file.save', label: '保存', category: '文件' },
+  { id: 'file.saveAll', label: '全部保存', category: '文件' },
+  { id: 'file.new', label: '新建文件', category: '文件' },
+  { id: 'file.open', label: '打开文件', category: '文件' },
+  { id: 'file.close', label: '关闭文件', category: '文件' },
 
-  { id: 'navigate.back', category: 'navigate' },
-  { id: 'navigate.forward', category: 'navigate' },
-  { id: 'navigate.goToLine', category: 'navigate' },
-  { id: 'navigate.goToDefinition', category: 'navigate' },
-  { id: 'navigate.goToImplementation', category: 'navigate' },
-  { id: 'navigate.findUsages', category: 'navigate' },
-  { id: 'navigate.searchEverything', category: 'navigate' },
-  { id: 'navigate.quickOpen', category: 'navigate' },
+  // 编辑操作
+  { id: 'editor.undo', label: '撤销', category: '编辑' },
+  { id: 'editor.redo', label: '重做', category: '编辑' },
+  { id: 'editor.cut', label: '剪切', category: '编辑' },
+  { id: 'editor.copy', label: '复制', category: '编辑' },
+  { id: 'editor.paste', label: '粘贴', category: '编辑' },
+  { id: 'editor.find', label: '查找', category: '编辑' },
+  { id: 'editor.replace', label: '替换', category: '编辑' },
+  { id: 'editor.findInFiles', label: '在文件中查找', category: '编辑' },
+  { id: 'editor.toggleLineComment', label: '切换行注释', category: '编辑' },
+  { id: 'editor.toggleBlockComment', label: '切换块注释', category: '编辑' },
+  { id: 'editor.duplicateLine', label: '复制当前行', category: '编辑' },
+  { id: 'editor.moveLineUp', label: '向上移动行', category: '编辑' },
+  { id: 'editor.moveLineDown', label: '向下移动行', category: '编辑' },
+  { id: 'editor.deleteLine', label: '删除行', category: '编辑' },
+  { id: 'editor.formatDocument', label: '格式化文档', category: '编辑' },
 
-  { id: 'view.toggleSidebar', category: 'view' },
-  { id: 'view.toggleTerminal', category: 'view' },
-  { id: 'view.zoomIn', category: 'view' },
-  { id: 'view.zoomOut', category: 'view' },
-  { id: 'view.resetZoom', category: 'view' },
-  { id: 'view.nextTab', category: 'view' },
-  { id: 'view.previousTab', category: 'view' },
+  // 导航
+  { id: 'navigate.back', label: '后退', category: '导航' },
+  { id: 'navigate.forward', label: '前进', category: '导航' },
+  { id: 'navigate.goToLine', label: '跳转到行', category: '导航' },
+  { id: 'navigate.goToDefinition', label: '跳转到定义', category: '导航' },
+  { id: 'navigate.goToImplementation', label: '跳转到实现', category: '导航' },
+  { id: 'navigate.findUsages', label: '查找引用', category: '导航' },
+  { id: 'navigate.searchEverything', label: '随处搜索', category: '导航' },
+  { id: 'navigate.quickOpen', label: '快速打开', category: '导航' },
 
-  { id: 'debug.start', category: 'debug' },
-  { id: 'debug.stop', category: 'debug' },
-  { id: 'debug.stepOver', category: 'debug' },
-  { id: 'debug.stepInto', category: 'debug' },
-  { id: 'debug.toggleBreakpoint', category: 'debug' }
+  // 视图
+  { id: 'view.toggleSidebar', label: '切换侧边栏', category: '视图' },
+  { id: 'view.toggleTerminal', label: '切换终端', category: '视图' },
+  { id: 'view.zoomIn', label: '放大', category: '视图' },
+  { id: 'view.zoomOut', label: '缩小', category: '视图' },
+  { id: 'view.resetZoom', label: '重置缩放', category: '视图' },
+  { id: 'view.nextTab', label: '下一个标签页', category: '视图' },
+  { id: 'view.previousTab', label: '上一个标签页', category: '视图' },
+
+  // 调试
+  { id: 'debug.start', label: '开始调试', category: '调试' },
+  { id: 'debug.stop', label: '停止调试', category: '调试' },
+  { id: 'debug.stepOver', label: '单步跳过', category: '调试' },
+  { id: 'debug.stepInto', label: '单步进入', category: '调试' },
+  { id: 'debug.toggleBreakpoint', label: '切换断点', category: '调试' }
 ]
 
 export const KEYMAP_PRESETS: Record<string, KeymapProfile> = {
   vscode: {
+    name: 'VS Code',
     bindings: {
+      'app.settings': 'Meta+,',
+      'app.quit': 'Meta+Q',
       'file.save': 'Meta+S',
       'file.saveAll': 'Meta+Alt+S',
       'file.new': 'Meta+N',
@@ -110,9 +101,9 @@ export const KEYMAP_PRESETS: Record<string, KeymapProfile> = {
       'navigate.quickOpen': 'Meta+P',
       'view.toggleSidebar': 'Meta+B',
       'view.toggleTerminal': 'Ctrl+`',
-      'view.zoomIn': 'Meta+=',
-      'view.zoomOut': 'Meta+-',
-      'view.resetZoom': 'Meta+0',
+      'view.zoomIn': 'Meta+Alt+=',
+      'view.zoomOut': 'Meta+Alt+-',
+      'view.resetZoom': 'Meta+Alt+0',
       'view.nextTab': 'Meta+Shift+]',
       'view.previousTab': 'Meta+Shift+[',
       'debug.start': 'F5',
@@ -123,7 +114,10 @@ export const KEYMAP_PRESETS: Record<string, KeymapProfile> = {
     }
   },
   eclipse: {
+    name: 'Eclipse (macOS)',
     bindings: {
+      'app.settings': 'Meta+,',
+      'app.quit': 'Meta+Q',
       'file.save': 'Meta+S',
       'file.saveAll': 'Meta+Shift+S',
       'file.new': 'Meta+N',
@@ -154,9 +148,9 @@ export const KEYMAP_PRESETS: Record<string, KeymapProfile> = {
       'navigate.quickOpen': 'Meta+Shift+R',
       'view.toggleSidebar': 'Meta+M', // Maximize active view/editor usually
       'view.toggleTerminal': 'Ctrl+`', // Not standard Eclipse but common modern addition
-      'view.zoomIn': 'Meta+=',
-      'view.zoomOut': 'Meta+-',
-      'view.resetZoom': 'Meta+0',
+      'view.zoomIn': 'Meta+Alt+=',
+      'view.zoomOut': 'Meta+Alt+-',
+      'view.resetZoom': 'Meta+Alt+0',
       'view.nextTab': 'Meta+F6',
       'view.previousTab': 'Meta+Shift+F6',
       'debug.start': 'F11',
@@ -167,7 +161,10 @@ export const KEYMAP_PRESETS: Record<string, KeymapProfile> = {
     }
   },
   intellij: {
+    name: 'IntelliJ IDEA Classic (macOS)',
     bindings: {
+      'app.settings': 'Meta+,',
+      'app.quit': 'Meta+Q',
       'file.save': 'Meta+S',
       'file.saveAll': 'Meta+S', // IDEA saves automatically usually
       'file.new': 'Meta+N',
@@ -198,9 +195,9 @@ export const KEYMAP_PRESETS: Record<string, KeymapProfile> = {
       'navigate.quickOpen': 'Meta+Shift+O', // Open File
       'view.toggleSidebar': 'Meta+1',
       'view.toggleTerminal': 'Alt+F12',
-      'view.zoomIn': 'Meta+=', // Not standard but good default
-      'view.zoomOut': 'Meta+-',
-      'view.resetZoom': 'Meta+0',
+      'view.zoomIn': 'Meta+Alt+=', // Not standard but good default
+      'view.zoomOut': 'Meta+Alt+-',
+      'view.resetZoom': 'Meta+Alt+0',
       'view.nextTab': 'Meta+Shift+]',
       'view.previousTab': 'Meta+Shift+[',
       'debug.start': 'Ctrl+D',

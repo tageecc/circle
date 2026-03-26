@@ -1,7 +1,95 @@
-import { useEffect, useState } from 'react'
-import { Toaster as Sonner } from 'sonner'
+import { useEffect, useState, ReactNode } from 'react'
+import {
+  CircleCheckIcon,
+  InfoIcon,
+  Loader2Icon,
+  OctagonXIcon,
+  TriangleAlertIcon
+} from 'lucide-react'
+import { Toaster as Sonner, toast as sonnerToast, ExternalToast, ToasterProps } from 'sonner'
+import { NotificationType } from '@/contexts/notification-context'
 
-type ToasterProps = React.ComponentProps<typeof Sonner>
+// 全局通知添加函数的引用，由 NotificationProvider 设置
+let globalAddNotification:
+  | ((notification: { type: NotificationType; title: string; description?: string }) => void)
+  | null = null
+
+// 供 NotificationProvider 调用，设置全局通知添加函数
+export function setGlobalNotificationHandler(handler: typeof globalAddNotification) {
+  globalAddNotification = handler
+}
+
+// 包装后的 toast 函数，同时发送到 sonner 和通知历史
+type ToastOptions = ExternalToast & {
+  description?: string
+}
+
+// 提取文本内容（如果是 ReactNode，尝试提取文本；否则返回原始字符串）
+function extractTextContent(message: ReactNode): string {
+  if (typeof message === 'string') return message
+  if (typeof message === 'number') return String(message)
+  // 对于复杂的 ReactNode，返回一个简单描述
+  return '操作完成'
+}
+
+function createWrappedToast() {
+  const wrappedToast = (message: ReactNode, options?: ToastOptions) => {
+    const result = sonnerToast(message, options)
+    // 默认类型的 toast 不保存到通知历史（通常是临时提示）
+    return result
+  }
+
+  wrappedToast.success = (message: ReactNode, options?: ToastOptions) => {
+    const result = sonnerToast.success(message, options)
+    globalAddNotification?.({
+      type: 'success',
+      title: extractTextContent(message),
+      description: options?.description
+    })
+    return result
+  }
+
+  wrappedToast.error = (message: ReactNode, options?: ToastOptions) => {
+    const result = sonnerToast.error(message, options)
+    globalAddNotification?.({
+      type: 'error',
+      title: extractTextContent(message),
+      description: options?.description
+    })
+    return result
+  }
+
+  wrappedToast.warning = (message: ReactNode, options?: ToastOptions) => {
+    const result = sonnerToast.warning(message, options)
+    globalAddNotification?.({
+      type: 'warning',
+      title: extractTextContent(message),
+      description: options?.description
+    })
+    return result
+  }
+
+  wrappedToast.info = (message: ReactNode, options?: ToastOptions) => {
+    const result = sonnerToast.info(message, options)
+    globalAddNotification?.({
+      type: 'info',
+      title: extractTextContent(message),
+      description: options?.description
+    })
+    return result
+  }
+
+  // 透传其他方法
+  wrappedToast.loading = sonnerToast.loading
+  wrappedToast.promise = sonnerToast.promise
+  wrappedToast.custom = sonnerToast.custom
+  wrappedToast.message = sonnerToast.message
+  wrappedToast.dismiss = sonnerToast.dismiss
+
+  return wrappedToast
+}
+
+export const toast = createWrappedToast()
 
 const Toaster = ({ ...props }: ToasterProps) => {
   const [theme, setTheme] = useState<'light' | 'dark'>('dark')
@@ -27,21 +115,24 @@ const Toaster = ({ ...props }: ToasterProps) => {
 
   return (
     <Sonner
-      theme={theme}
+      theme={theme as ToasterProps['theme']}
       className="toaster group"
       position="bottom-right"
-      toastOptions={{
-        classNames: {
-          toast: 'group toast !bg-card !text-foreground !border-border !shadow-lg',
-          description: '!text-muted-foreground',
-          actionButton: '!bg-primary !text-primary-foreground hover:!bg-primary/90',
-          cancelButton: '!bg-secondary !text-secondary-foreground hover:!bg-secondary/80',
-          success: '!bg-card !text-foreground !border-chart-2',
-          error: '!bg-card !text-foreground !border-destructive',
-          warning: '!bg-card !text-foreground !border-chart-3',
-          info: '!bg-card !text-foreground !border-primary'
-        }
+      icons={{
+        success: <CircleCheckIcon className="size-4" />,
+        info: <InfoIcon className="size-4" />,
+        warning: <TriangleAlertIcon className="size-4" />,
+        error: <OctagonXIcon className="size-4" />,
+        loading: <Loader2Icon className="size-4 animate-spin" />
       }}
+      style={
+        {
+          '--normal-bg': 'var(--popover)',
+          '--normal-text': 'var(--popover-foreground)',
+          '--normal-border': 'var(--border)',
+          '--border-radius': 'var(--radius)'
+        } as React.CSSProperties
+      }
       {...props}
     />
   )
