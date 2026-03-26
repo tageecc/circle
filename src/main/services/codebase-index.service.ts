@@ -9,7 +9,7 @@ import { getDb } from '../database/db'
 import * as schema from '../database/schema'
 import * as path from 'path'
 import * as crypto from 'crypto'
-import { eq, like, and, sql, isNotNull, or } from 'drizzle-orm'
+import { eq, like, and, sql, isNotNull } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 
 interface SearchResult {
@@ -131,43 +131,45 @@ export class CodebaseIndexService {
   ): Promise<IndexStats> {
     console.log('[CodebaseIndex] Starting indexing:', projectPath)
 
-    // Check embedding configuration
-    const embeddingConfig = this.embeddingService.getConfig()
-    const isConfigured = this.embeddingService.isConfigured()
-
-    if (!isConfigured) {
-      console.warn('[CodebaseIndex] ⚠️  Embedding API not configured, will index without vectors')
-      console.warn('[CodebaseIndex] Configure API key in Settings → API Keys to enable semantic search')
-    } else {
-      console.log(`[CodebaseIndex] Using embedding: ${embeddingConfig?.model} (${embeddingConfig?.dimensions}d)`)
+    // Check sqlite-vec extension
+    if (!this.db.isVecExtensionLoaded()) {
+      throw new Error('sqlite-vec extension failed to load. Vector search is required.')
     }
+
+    // Check embedding API configuration
+    if (!this.embeddingService.isConfigured()) {
+      throw new Error(
+        'Embedding API not configured. Please configure API key in Settings → API Keys first.'
+      )
+    }
+
+    const embeddingConfig = this.embeddingService.getConfig()!
+    console.log(`[CodebaseIndex] Using embedding: ${embeddingConfig.model} (${embeddingConfig.dimensions}d)`)
 
     const db = this.db.getDb()
 
     // Check for dimension mismatch with existing vectors
-    if (isConfigured && embeddingConfig) {
-      const existingVector = db
-        .select()
-        .from(schema.codebaseVectors)
-        .where(
-          and(
-            eq(schema.codebaseVectors.projectPath, projectPath),
-            isNotNull(schema.codebaseVectors.embedding)
-          )
+    const existingVector = db
+      .select()
+      .from(schema.codebaseVectors)
+      .where(
+        and(
+          eq(schema.codebaseVectors.projectPath, projectPath),
+          isNotNull(schema.codebaseVectors.embedding)
         )
-        .limit(1)
-        .get()
+      )
+      .limit(1)
+      .get()
 
-      if (existingVector?.embedding) {
-        const existingDim = existingVector.embedding.length / 4 // Float32 = 4 bytes per element
-        if (existingDim !== embeddingConfig.dimensions) {
-          console.warn(
-            `[CodebaseIndex] ⚠️  Dimension mismatch: existing=${existingDim}d, current=${embeddingConfig.dimensions}d`
-          )
-          console.warn('[CodebaseIndex] Deleting old index to regenerate with new dimensions...')
-          await this.deleteProject(projectPath)
-          console.log('[CodebaseIndex] ✓ Old index deleted, will create fresh index')
-        }
+    if (existingVector?.embedding) {
+      const existingDim = existingVector.embedding.length / 4
+      if (existingDim !== embeddingConfig.dimensions) {
+        console.warn(
+          `[CodebaseIndex] Dimension mismatch: existing=${existingDim}d, current=${embeddingConfig.dimensions}d`
+        )
+        console.warn('[CodebaseIndex] Deleting old index to regenerate...')
+        await this.deleteProject(projectPath)
+        console.log('[CodebaseIndex] ✓ Old index deleted')
       }
     }
     const existingFiles = await this.loadFileMetadata(projectPath)
@@ -411,26 +413,20 @@ export class CodebaseIndexService {
         const content = await FileService.readFile(filePath)
         const chunks = this.chunkText(content)
 
-        // Generate embeddings for all chunks in batch (if configured)
-        let embeddings: (Float32Array | null)[] = []
-        if (this.embeddingService.isConfigured()) {
-          embeddings = await this.embeddingService.generateEmbeddings(chunks)
-          
-          // Check if any embeddings failed
-          const failedCount = embeddings.filter((e) => e === null).length
-          if (failedCount > 0) {
-            console.warn(
-              `[CodebaseIndex] ${failedCount}/${chunks.length} embeddings failed for ${meta.relativePath}`
-            )
-          }
-        } else {
-          // No embedding configured, fill with nulls
-          embeddings = chunks.map(() => null)
+        // Generate embeddings for all chunks in batch
+        const embeddings = await this.embeddingService.generateEmbeddings(chunks)
+
+        // Check if any embeddings failed
+        const failedCount = embeddings.filter((e) => e === null).length
+        if (failedCount > 0) {
+          throw new Error(
+            `Failed to generate embeddings for ${meta.relativePath}: ${failedCount}/${chunks.length} chunks failed. Check API key and network connection.`
+          )
         }
 
         for (let i = 0; i < chunks.length; i++) {
           const chunkText = chunks[i]
-          const embedding = embeddings[i]
+          const embedding = embeddings[i]!
           const now = new Date()
 
           db.insert(schema.codebaseVectors)
@@ -441,7 +437,7 @@ export class CodebaseIndexService {
               relativePath: meta.relativePath,
               text: chunkText,
               language: meta.language,
-              embedding: embedding ? Buffer.from(embedding.buffer) : null,
+              embedding: Buffer.from(embedding.buffer),
               createdAt: now
             })
             .run()
@@ -656,32 +652,6 @@ export class CodebaseIndexService {
     const db = this.db.getDb()
     const { limit = 15, minScore = 0.5 } = options || {}
 
-    // Check if sqlite-vec extension is loaded
-    if (!this.db.isVecExtensionLoaded()) {
-      console.warn('[CodebaseIndex] sqlite-vec extension not loaded, using text search only')
-      const results = db
-        .select()
-        .from(schema.codebaseVectors)
-        .where(
-          and(
-            eq(schema.codebaseVectors.projectPath, projectPath),
-            or(
-              sql`${schema.codebaseVectors.text} LIKE ${'%' + query + '%'}`,
-              sql`${schema.codebaseVectors.filePath} LIKE ${'%' + query + '%'}`
-            )
-          )
-        )
-        .limit(limit)
-        .all()
-
-      return results.map((row) => ({
-        filePath: row.filePath,
-        relativePath: row.relativePath,
-        text: row.text,
-        score: 0.8,
-        language: row.language
-      }))
-    }
 
     // Generate embedding for query
     const queryEmbedding = await this.embeddingService.generateEmbedding(query)
