@@ -236,6 +236,7 @@ class CircleDatabase {
     this.migrateSessionsAgentIdToModelId()
     this.migrateDropLegacyDeviceUserTable()
     this.migrateAddEmbeddingColumn()
+    this.migrateRemoveIndexNameColumn()
   }
 
   private migrateDropLegacyDeviceUserTable(): void {
@@ -249,6 +250,44 @@ class CircleDatabase {
       console.log('   ⚙️  Adding embedding column to codebase_vectors...')
       this.sqlite.exec('ALTER TABLE codebase_vectors ADD COLUMN embedding BLOB')
       console.log('   ✓ embedding column added')
+    }
+  }
+
+  private migrateRemoveIndexNameColumn(): void {
+    const cols = this.sqlite.prepare('PRAGMA table_info(codebase_indexes)').all() as { name: string }[]
+    const hasIndexName = cols.some((c) => c.name === 'index_name')
+    
+    if (hasIndexName) {
+      console.log('   ⚙️  Removing legacy index_name column from codebase_indexes...')
+      
+      // SQLite requires recreating the table to drop a column
+      this.sqlite.exec(`
+        -- Create temp table with correct schema
+        CREATE TABLE codebase_indexes_new (
+          project_path TEXT PRIMARY KEY,
+          project_name TEXT NOT NULL,
+          total_files INTEGER NOT NULL DEFAULT 0,
+          total_chunks INTEGER NOT NULL DEFAULT 0,
+          total_size INTEGER NOT NULL DEFAULT 0,
+          indexed_at INTEGER NOT NULL,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        );
+        
+        -- Copy data (excluding index_name)
+        INSERT INTO codebase_indexes_new 
+        SELECT project_path, project_name, total_files, total_chunks, total_size, 
+               indexed_at, created_at, updated_at
+        FROM codebase_indexes;
+        
+        -- Drop old table
+        DROP TABLE codebase_indexes;
+        
+        -- Rename new table
+        ALTER TABLE codebase_indexes_new RENAME TO codebase_indexes;
+      `)
+      
+      console.log('   ✓ index_name column removed')
     }
   }
 
