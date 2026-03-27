@@ -67,9 +67,10 @@ function ToastCopyButton({ text }: { text: string }) {
       onClick={handleCopy}
       className={cn(
         'group-hover/toast:opacity-100 opacity-0 transition-opacity',
-        'absolute right-2 top-2 flex items-center justify-center',
+        'absolute right-3 top-3 flex items-center justify-center',
         'h-6 w-6 rounded-md hover:bg-black/5 dark:hover:bg-white/5',
-        'text-muted-foreground hover:text-foreground transition-colors'
+        'text-muted-foreground hover:text-foreground transition-colors',
+        'z-10'
       )}
       title={t('common.copy')}
     >

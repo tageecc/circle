@@ -78,7 +78,7 @@ export function StatusBar({
           title={t('terminal.toggle_terminal')}
         >
           <Terminal className="size-3.5" />
-          <span className="text-xs">终端</span>
+          <span className="text-xs">{t('bottom_panel.terminal')}</span>
           {terminalTabCount > 0 && (
             <span className="ml-1 text-[10px] leading-none text-muted-foreground font-medium">
               {terminalTabCount}
@@ -97,7 +97,7 @@ export function StatusBar({
           title={t('terminal.toggle_problems')}
         >
           <AlertCircle className="size-3.5" />
-          <span className="text-xs">问题</span>
+          <span className="text-xs">{t('bottom_panel.problems')}</span>
           {(errorCount > 0 || warningCount > 0) && (
             <span className="ml-1 flex items-center gap-0.5">
               {errorCount > 0 && (

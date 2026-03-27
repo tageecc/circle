@@ -276,9 +276,12 @@ export function useChatMessages(
         addSession(newSession)
         onMarkSessionAsLoaded(sessionId)
         setCurrentSessionId(sessionId)
-      } catch (error) {
+      } catch (error: any) {
         console.error('自动创建会话失败:', error)
-        toast.error(t('chat.toast_create_session_failed'))
+        const errorMsg = error?.message || t('chat.toast_create_session_failed')
+        toast.error(t('chat.toast_create_session_failed'), {
+          description: errorMsg
+        })
         return
       }
     }

@@ -333,6 +333,9 @@
     "add_pattern": "Add Pattern",
     "delete": "Delete"
   },
+  "provider_select": {
+    "models_count": "{{count}} models"
+  },
   "api_providers": {
     "dashscope_desc": "Alibaba Cloud API Key",
     "openai_desc": "OpenAI API Key",
@@ -1038,6 +1041,10 @@
   "terminal": {
     "toggle_terminal": "Toggle Terminal (Ctrl+`)",
     "toggle_problems": "Toggle Problems Panel (Ctrl+Shift+M)"
+  },
+  "bottom_panel": {
+    "terminal": "Terminal",
+    "problems": "Problems"
   },
   "status_bar": {
     "line": "Ln",

@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react'
 import { useChatStore, selectIsSessionLoaded, selectCurrentSession } from '@/stores/chat.store'
 import type { Session, Message } from '@/types/chat'
+import { toast } from '@/components/ui/sonner'
 
 export function useChatSession(workspaceRoot: string | null) {
   const sessions = useChatStore((state) => state.sessions)
@@ -139,8 +140,12 @@ export function useChatSession(workspaceRoot: string | null) {
       }
 
       addSession(newSession)
-    } catch (error) {
+    } catch (error: any) {
       console.error('创建新会话失败:', error)
+      const errorMsg = error?.message || 'Failed to create new session'
+      toast.error('Failed to create session', {
+        description: errorMsg
+      })
     }
   }, [workspaceRoot, addSession])
 

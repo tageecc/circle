@@ -333,6 +333,9 @@
     "add_pattern": "添加模式",
     "delete": "删除"
   },
+  "provider_select": {
+    "models_count": "{{count}} 个模型"
+  },
   "api_providers": {
     "dashscope_desc": "阿里云百炼 API Key",
     "openai_desc": "OpenAI API Key",
@@ -1060,6 +1063,10 @@
   "terminal": {
     "toggle_terminal": "切换终端 (Ctrl+`)",
     "toggle_problems": "切换问题面板 (Ctrl+Shift+M)"
+  },
+  "bottom_panel": {
+    "terminal": "终端",
+    "problems": "问题"
   },
   "status_bar": {
     "line": "行",

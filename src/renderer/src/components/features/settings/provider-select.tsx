@@ -10,6 +10,7 @@ import {
   CommandItem
 } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { useTranslation } from 'react-i18next'
 
 // 支持的所有模型提供商
 // value 使用标准 provider ID，label 用于 UI 显示
@@ -75,6 +76,7 @@ interface ProviderSelectProps {
 }
 
 export function ProviderSelect({ value, onChange, disabled }: ProviderSelectProps) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
   return (
@@ -115,7 +117,7 @@ export function ProviderSelect({ value, onChange, disabled }: ProviderSelectProp
                 <div className="flex flex-1 items-center justify-between">
                   <span>{provider.label}</span>
                   {provider.models > 0 && (
-                    <span className="text-xs text-muted-foreground">{provider.models} 个模型</span>
+                    <span className="text-xs text-muted-foreground">{t('provider_select.models_count', { count: provider.models })}</span>
                   )}
                 </div>
               </CommandItem>
