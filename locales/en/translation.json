@@ -774,11 +774,20 @@
     "results": "{{count}} results"
   },
   "notifications": {
+    "panel_title": "Notifications",
     "title": "Notifications",
     "mark_as_read": "Mark as Read",
     "mark_all_read": "Mark All as Read",
+    "mark_all_read_tooltip": "Mark all as read",
+    "unread_count": "{{count}} unread",
+    "all_read_short": "All read",
+    "showing_recent": "Showing recent {{count}} notifications",
     "clear_all": "Clear All",
-    "no_notifications": "No Notifications"
+    "no_notifications": "No Notifications",
+    "copy_failed": "Failed to copy",
+    "copy_success": "Copied",
+    "delete_tooltip": "Delete notification",
+    "clear_all_tooltip": "Clear all notifications"
   },
   "mcp": {
     "title": "MCP Servers",
