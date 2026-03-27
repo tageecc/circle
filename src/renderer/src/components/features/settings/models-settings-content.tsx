@@ -44,7 +44,6 @@ export function ModelsSettingsContent() {
   const [modelId, setModelId] = useState('')
   const [apiKey, setApiKey] = useState('')
   const [baseURL, setBaseURL] = useState('')
-  const [displayName, setDisplayName] = useState('')
   const [modelPopoverOpen, setModelPopoverOpen] = useState(false)
 
   // Load configured models
@@ -120,7 +119,6 @@ export function ModelsSettingsContent() {
       await window.api.modelConfig.add({
         providerId: selectedProvider,
         modelId: modelId.trim(),
-        displayName: displayName.trim() || undefined,
         isDefault: models.length === 0
       })
 
@@ -139,7 +137,6 @@ export function ModelsSettingsContent() {
     setModelId('')
     setApiKey('')
     setBaseURL('')
-    setDisplayName('')
     setModelPopoverOpen(false)
   }
 
@@ -421,16 +418,6 @@ export function ModelsSettingsContent() {
                       {t('models_settings.model_hint', { model: selectedProviderData.modelHint })}
                     </p>
                   )}
-                </div>
-
-                {/* Display Name (Optional) */}
-                <div className="space-y-2">
-                  <Label>{t('models_settings.display_name_optional')}</Label>
-                  <Input
-                    placeholder={t('models_settings.display_name_placeholder')}
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                  />
                 </div>
               </>
             )}
