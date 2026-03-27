@@ -45,6 +45,10 @@
     "select_scale": "选择缩放比例"
   },
   "user_rules": {
+    "title": "User Rules",
+    "loading": "加载中...",
+    "add": "添加",
+    "empty_state": "暂无规则",
     "load_failed": "加载规则失败",
     "empty_content": "内容不能为空",
     "create_success": "规则创建成功",
@@ -56,6 +60,10 @@
     "placeholder": "例如：Always respond in 中文，使用 TypeScript 而不是 JavaScript..."
   },
   "memories": {
+    "title": "AI 记忆",
+    "loading": "加载中...",
+    "add": "添加",
+    "empty_state": "暂无记忆",
     "load_failed": "加载记忆失败",
     "empty_content": "内容不能为空",
     "create_success": "记忆创建成功",
@@ -333,7 +341,18 @@
     "deepseek_desc": "DeepSeek API Key",
     "voyageai_desc": "VoyageAI Embeddings API Key"
   },
+  "model_select": {
+    "search_placeholder": "搜索模型...",
+    "no_models": "该提供商暂无预设模型",
+    "manual_input_hint": "请手动输入模型名称"
+  },
   "ai_config": {
+    "loading": "加载中...",
+    "load_failed": "加载配置失败",
+    "save_failed": "保存失败",
+    "api_key_saved": "{{provider}} API Key 已保存",
+    "api_key_deleted": "{{provider}} API Key 已删除",
+    "embedding_provider_updated": "Embedding Provider 已更新",
     "title": "AI 配置",
     "api_keys": "API Keys 配置",
     "api_keys_desc": "配置 API Keys 和向量搜索，以使用 AI 服务",
@@ -471,6 +490,10 @@
     }
   },
   "chat": {
+    "empty_title": "创建新对话",
+    "empty_description_prefix": "点击右上角的",
+    "empty_description_suffix": "按钮开始一个新的对话",
+    "empty_history_hint": "或从历史记录中选择",
     "new_chat": "新对话",
     "rename_chat": "重命名对话",
     "delete_chat": "删除会话",

@@ -110,7 +110,7 @@ export function UserRulesSettingsContent() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-sm text-muted-foreground">加载中...</div>
+        <div className="text-sm text-muted-foreground">{t('user_rules.loading')}</div>
       </div>
     )
   }
@@ -118,11 +118,11 @@ export function UserRulesSettingsContent() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-muted-foreground">User Rules</h3>
+        <h3 className="text-sm font-medium text-muted-foreground">{t('user_rules.title')}</h3>
         {!isCreating && !editingId && (
           <Button onClick={startCreate} variant="ghost" size="sm" className="h-7 gap-1">
             <Plus className="w-3.5 h-3.5" />
-            添加
+            {t('user_rules.add')}
           </Button>
         )}
       </div>
@@ -164,7 +164,7 @@ export function UserRulesSettingsContent() {
         {/* 规则列表 */}
         {rules.length === 0 && !isCreating ? (
           <div className="py-8 text-center">
-            <p className="text-sm text-muted-foreground">暂无规则</p>
+            <p className="text-sm text-muted-foreground">{t('user_rules.empty_state')}</p>
           </div>
         ) : (
           rules.map((rule) => (

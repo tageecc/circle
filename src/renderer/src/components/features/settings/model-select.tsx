@@ -10,6 +10,7 @@ import {
   CommandItem
 } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { useTranslation } from 'react-i18next'
 
 // 各提供商支持的模型列表
 const PROVIDER_MODELS: Record<string, string[]> = {
@@ -100,6 +101,7 @@ interface ModelSelectProps {
 }
 
 export function ModelSelect({ provider, value, onChange, disabled }: ModelSelectProps) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
   const availableModels = provider ? PROVIDER_MODELS[provider] || [] : []
@@ -134,11 +136,11 @@ export function ModelSelect({ provider, value, onChange, disabled }: ModelSelect
       </PopoverTrigger>
       <PopoverContent className="w-[400px] p-0">
         <Command>
-          <CommandInput placeholder="搜索模型..." />
+          <CommandInput placeholder={t('model_select.search_placeholder')} />
           {!hasModels ? (
             <div className="p-4 text-center text-sm text-muted-foreground">
-              <p>该提供商暂无预设模型</p>
-              <p className="mt-1 text-xs">请手动输入模型名称</p>
+              <p>{t('model_select.no_models')}</p>
+              <p className="mt-1 text-xs">{t('model_select.manual_input_hint')}</p>
             </div>
           ) : (
             <>

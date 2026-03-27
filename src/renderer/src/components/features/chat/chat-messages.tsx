@@ -11,6 +11,7 @@ import type { Session, Message as MessageType, ToolCallPart } from '@/types/chat
 import type { PendingFileEdit } from '@/types/ide'
 import type { ToolCallData } from './tool-call'
 import { getContentParts, getToolUIState } from '@/utils/message-adapter'
+import { useTranslation } from 'react-i18next'
 
 function convertToolCallToData(
   toolCall: ToolCallPart,
@@ -240,6 +241,8 @@ function EmptyState() {
  * 无会话状态 - 没有当前会话时显示
  */
 function NoSessionState() {
+  const { t } = useTranslation()
+  
   return (
     <div className="flex h-full items-center justify-center px-6 py-12">
       <div className="text-center space-y-6 max-w-xs">
@@ -250,14 +253,14 @@ function NoSessionState() {
           </div>
         </div>
         <div className="space-y-2">
-          <h3 className="text-base font-semibold text-foreground">创建新对话</h3>
+          <h3 className="text-base font-semibold text-foreground">{t('chat.empty_title')}</h3>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            点击右上角的 <span className="font-medium text-foreground">+</span> 按钮开始一个新的对话
+            {t('chat.empty_description_prefix')} <span className="font-medium text-foreground">+</span> {t('chat.empty_description_suffix')}
           </p>
         </div>
         <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground/60">
           <Clock className="size-3.5" />
-          <span>或从历史记录中选择</span>
+          <span>{t('chat.empty_history_hint')}</span>
         </div>
       </div>
     </div>

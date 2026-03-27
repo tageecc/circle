@@ -96,10 +96,12 @@ export function ApiKeysSettings() {
     try {
       if (value.trim()) {
         await window.api.config.setApiKey(provider, value.trim())
-        toast.success(`${PROVIDERS.find((p) => p.id === provider)?.name} API Key 已保存`)
+        const providerName = PROVIDERS.find((p) => p.id === provider)?.name || provider
+        toast.success(t('ai_config.api_key_saved', { provider: providerName }))
       } else {
         await window.api.config.deleteApiKey(provider)
-        toast.success(`${PROVIDERS.find((p) => p.id === provider)?.name} API Key 已删除`)
+        const providerName = PROVIDERS.find((p) => p.id === provider)?.name || provider
+        toast.success(t('ai_config.api_key_deleted', { provider: providerName }))
       }
       await loadSettings()
     } catch (error) {
@@ -123,7 +125,7 @@ export function ApiKeysSettings() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="text-sm text-muted-foreground">加载中...</div>
+        <div className="text-sm text-muted-foreground">{t('ai_config.loading')}</div>
       </div>
     )
   }
@@ -147,7 +149,7 @@ export function ApiKeysSettings() {
       await window.api.config.setServiceSettings({
         embeddingProvider: value
       })
-      toast.success('Embedding Provider 已更新')
+      toast.success(t('ai_config.embedding_provider_updated'))
     } catch (error) {
       console.error('Failed to save embedding provider:', error)
       toast.error(t('ai_config.save_failed'))

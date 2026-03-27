@@ -45,6 +45,10 @@
     "select_scale": "Select Scale"
   },
   "user_rules": {
+    "title": "User Rules",
+    "loading": "Loading...",
+    "add": "Add",
+    "empty_state": "No rules yet",
     "load_failed": "Failed to load rules",
     "empty_content": "Content cannot be empty",
     "create_success": "Rule created successfully",
@@ -56,6 +60,10 @@
     "placeholder": "e.g.: Always respond in English, use TypeScript instead of JavaScript..."
   },
   "memories": {
+    "title": "AI Memories",
+    "loading": "Loading...",
+    "add": "Add",
+    "empty_state": "No memories yet",
     "load_failed": "Failed to load memories",
     "empty_content": "Content cannot be empty",
     "create_success": "Memory created successfully",
@@ -333,7 +341,18 @@
     "deepseek_desc": "DeepSeek API Key",
     "voyageai_desc": "VoyageAI Embeddings API Key"
   },
+  "model_select": {
+    "search_placeholder": "Search models...",
+    "no_models": "No preset models for this provider",
+    "manual_input_hint": "Please enter model name manually"
+  },
   "ai_config": {
+    "loading": "Loading...",
+    "load_failed": "Failed to load configuration",
+    "save_failed": "Failed to save",
+    "api_key_saved": "{{provider}} API Key saved",
+    "api_key_deleted": "{{provider}} API Key deleted",
+    "embedding_provider_updated": "Embedding Provider updated",
     "title": "AI Configuration",
     "api_keys": "API Keys Configuration",
     "api_keys_desc": "Configure API Keys and vector search to use AI services",
@@ -465,6 +484,10 @@
     }
   },
   "chat": {
+    "empty_title": "Create New Chat",
+    "empty_description_prefix": "Click the",
+    "empty_description_suffix": "button in the top right to start a new conversation",
+    "empty_history_hint": "Or select from history",
     "new_chat": "New Chat",
     "rename_chat": "Rename Chat",
     "delete_chat": "Delete Session",

@@ -111,7 +111,7 @@ export function MemoriesSettingsContent() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-sm text-muted-foreground">加载中...</div>
+        <div className="text-sm text-muted-foreground">{t('memories.loading')}</div>
       </div>
     )
   }
@@ -119,11 +119,11 @@ export function MemoriesSettingsContent() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-muted-foreground">AI 记忆</h3>
+        <h3 className="text-sm font-medium text-muted-foreground">{t('memories.title')}</h3>
         {!isCreating && !editingId && (
           <Button onClick={startCreate} variant="ghost" size="sm" className="h-7 gap-1">
             <Plus className="w-3.5 h-3.5" />
-            添加
+            {t('memories.add')}
           </Button>
         )}
       </div>
@@ -165,7 +165,7 @@ export function MemoriesSettingsContent() {
         {/* 记忆列表 */}
         {memories.length === 0 && !isCreating ? (
           <div className="py-8 text-center">
-            <p className="text-sm text-muted-foreground">暂无记忆</p>
+            <p className="text-sm text-muted-foreground">{t('memories.empty_state')}</p>
           </div>
         ) : (
           memories.map((memory) => (
