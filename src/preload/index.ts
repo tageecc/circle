@@ -868,6 +868,13 @@ const api = {
     exists: (providerId: string, modelId: string) =>
       ipcRenderer.invoke('model-config:exists', providerId, modelId)
   },
+  providerApiKey: {
+    get: (providerId: string) => ipcRenderer.invoke('provider-api-key:get', providerId),
+    getAll: () => ipcRenderer.invoke('provider-api-key:getAll'),
+    set: (input: { providerId: string; apiKey: string; baseURL?: string }) =>
+      ipcRenderer.invoke('provider-api-key:set', input),
+    delete: (providerId: string) => ipcRenderer.invoke('provider-api-key:delete', providerId)
+  },
 
   // Shell APIs
   shell: {

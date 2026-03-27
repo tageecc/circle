@@ -244,6 +244,14 @@ export class CircleDatabase {
         updated_at INTEGER NOT NULL
       );
       CREATE INDEX IF NOT EXISTS idx_model_configs_provider ON model_configs(provider_id);
+
+      CREATE TABLE IF NOT EXISTS provider_api_keys (
+        provider_id TEXT PRIMARY KEY,
+        api_key TEXT NOT NULL,
+        base_url TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
     `)
   }
 

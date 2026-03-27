@@ -219,6 +219,14 @@ export const modelConfigs = sqliteTable('model_configs', {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull()
 })
 
+export const providerApiKeys = sqliteTable('provider_api_keys', {
+  providerId: text('provider_id').primaryKey(),
+  apiKey: text('api_key').notNull(),
+  baseURL: text('base_url'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull()
+})
+
 // Types
 export type AppConfig = typeof appConfig.$inferSelect
 export type WindowState = typeof windowState.$inferSelect
@@ -239,3 +247,4 @@ export type MessageSnapshot = typeof messageSnapshots.$inferSelect
 export type Memory = typeof memories.$inferSelect
 export type SkillPreference = typeof skillPreferences.$inferSelect
 export type ModelConfig = typeof modelConfigs.$inferSelect
+export type ProviderApiKey = typeof providerApiKeys.$inferSelect

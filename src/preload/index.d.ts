@@ -961,6 +961,34 @@ declare global {
         delete: (id: string) => Promise<{ success: boolean }>
         exists: (providerId: string, modelId: string) => Promise<boolean>
       }
+      providerApiKey: {
+        get: (providerId: string) => Promise<{
+          providerId: string
+          apiKey: string
+          baseURL: string | null
+          createdAt: Date
+          updatedAt: Date
+        } | undefined>
+        getAll: () => Promise<Array<{
+          providerId: string
+          apiKey: string
+          baseURL: string | null
+          createdAt: Date
+          updatedAt: Date
+        }>>
+        set: (input: {
+          providerId: string
+          apiKey: string
+          baseURL?: string
+        }) => Promise<{
+          providerId: string
+          apiKey: string
+          baseURL: string | null
+          createdAt: Date
+          updatedAt: Date
+        }>
+        delete: (providerId: string) => Promise<{ success: boolean }>
+      }
       shell: {
         openExternal: (url: string) => Promise<void>
       }
