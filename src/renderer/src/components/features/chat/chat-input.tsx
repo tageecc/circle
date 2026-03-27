@@ -15,6 +15,7 @@ import { getProviderLogo } from '@/lib/provider-logos'
 import { cn } from '@/lib/utils'
 import { getProvider } from '@/constants/providers'
 import { getModelInfo } from '@/constants/models'
+import { eventBus } from '@/lib/event-bus'
 import {
   Context,
   ContextCacheUsage,
@@ -137,7 +138,7 @@ export function ChatInput({
   const hasConfiguredModels = configuredModels.length > 0
   
   const selectedModelName = useMemo(() => {
-    if (!hasConfiguredModels) return t('no_model')
+    if (!hasConfiguredModels) return t('chat.no_model')
     
     const configModel = configuredModels.find(
       (m) => m.providerId === selectedProvider && m.modelId === selectedModel
@@ -165,7 +166,9 @@ export function ChatInput({
       <InputGroup ref={inputGroupRef} className="[--radius:1.5rem]">
         <RichTextInput
           placeholder={
-            hasConfiguredModels ? placeholder ?? t('type_message') : t('configure_model_first')
+            hasConfiguredModels
+              ? placeholder ?? t('chat.type_message')
+              : t('chat.configure_model_first')
           }
           value={value}
           onChange={onChange}
@@ -209,17 +212,18 @@ export function ChatInput({
                 </div>
               ) : configuredModels.length === 0 ? (
                 <div className="px-4 py-6 text-center space-y-3">
-                  <p className="text-sm text-muted-foreground">{t('no_models_configured')}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {t('chat.no_models_configured')}
+                  </p>
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={() => {
-                      const event = new CustomEvent('open-settings', { detail: { tab: 'models' } })
-                      window.dispatchEvent(event)
+                      eventBus.emit('open-settings', { tab: 'models' })
                     }}
                     className="mx-auto"
                   >
-                    {t('open_settings')}
+                    {t('chat.open_settings')}
                   </Button>
                 </div>
               ) : (

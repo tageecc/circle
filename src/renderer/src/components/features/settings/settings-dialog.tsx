@@ -151,6 +151,20 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [activeSection, setActiveSection] = useState('general')
   const settings = useSettings()
 
+  useEffect(() => {
+    const handleOpenSettings = ({ tab }: { tab?: string }) => {
+      onOpenChange(true)
+      if (tab) {
+        setActiveSection(tab)
+      }
+    }
+
+    eventBus.on('open-settings', handleOpenSettings)
+    return () => {
+      eventBus.off('open-settings', handleOpenSettings)
+    }
+  }, [onOpenChange])
+
   // Navigation items
   const NAV_ITEMS: Array<{ key: string; name: string; icon: any }> = [
     { key: 'general', name: t('settings.general'), icon: Settings },

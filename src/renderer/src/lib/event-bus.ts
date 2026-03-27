@@ -17,6 +17,11 @@ export type AppEvents = {
   'terminal:focus': {
     terminalId: string
   }
+
+  /** Open settings dialog with optional tab. */
+  'open-settings': {
+    tab?: string
+  }
 }
 
 /**
