@@ -115,7 +115,7 @@ function createWrappedToast() {
       : textContent
     
     const result = sonnerToast.error(
-      <div className="group/toast relative pr-10">
+      <div className="group/toast pr-10">
         <div>{message}</div>
         {options?.description && (
           <div className="text-xs opacity-80 mt-1">{options.description}</div>
@@ -142,7 +142,7 @@ function createWrappedToast() {
       : textContent
     
     const result = sonnerToast.warning(
-      <div className="group/toast relative pr-10">
+      <div className="group/toast pr-10">
         <div>{message}</div>
         {options?.description && (
           <div className="text-xs opacity-80 mt-1">{options.description}</div>

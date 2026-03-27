@@ -602,7 +602,7 @@
 
   /* Toast 内容区域 */
   [data-sonner-toast] [data-content] {
-    position: relative;
+    position: static;
   }
 
   /* 隐藏 Monaco 查找组件的 hover 提示（如 "Find", "Replace"） */
