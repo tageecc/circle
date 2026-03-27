@@ -71,7 +71,7 @@
     "ai-elements": "^1.6.3",
     "ansi-to-react": "^6.1.6",
     "better-sqlite3": "^12.5.0",
-    "chokidar": "^4.0.3",
+    "chokidar": "^5.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
