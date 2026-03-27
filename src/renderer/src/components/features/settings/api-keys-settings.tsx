@@ -205,13 +205,11 @@ export function ApiKeysSettings() {
                     <div className="relative flex-1">
                       <Input
                         id={`apikey-${provider.id}`}
-                        type={isVisible ? 'text' : 'password'}
+                        type={isVisible || !hasKey ? 'text' : 'password'}
                         placeholder={provider.placeholder}
-                        value={isVisible ? currentValue : maskApiKey(currentValue)}
+                        value={isVisible || !hasKey ? currentValue : maskApiKey(currentValue)}
                         onChange={(e) => {
-                          if (isVisible) {
-                            setApiKeys((prev) => ({ ...prev, [provider.id]: e.target.value }))
-                          }
+                          setApiKeys((prev) => ({ ...prev, [provider.id]: e.target.value }))
                         }}
                         onFocus={() => {
                           if (!isVisible && hasKey) {
@@ -220,13 +218,15 @@ export function ApiKeysSettings() {
                         }}
                         className="pr-10"
                       />
-                      <button
-                        type="button"
-                        onClick={() => toggleVisibility(provider.id)}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        {isVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                      </button>
+                      {hasKey && (
+                        <button
+                          type="button"
+                          onClick={() => toggleVisibility(provider.id)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {isVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                        </button>
+                      )}
                     </div>
                     <Button
                       onClick={() => handleSave(provider.id, apiKeys[provider.id] || '')}
