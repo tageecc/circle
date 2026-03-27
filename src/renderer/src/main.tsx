@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import App from './app'
 import { initI18n } from './i18n'
 
-// Initialize i18n before rendering
-initI18n().then(() => {
+;(async () => {
+  await initI18n()
   createRoot(document.getElementById('root')!).render(<App />)
-})
+})()

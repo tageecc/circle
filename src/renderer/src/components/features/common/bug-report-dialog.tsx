@@ -1,4 +1,5 @@
 import { useForm } from '@tanstack/react-form'
+import { useTranslation } from 'react-i18next'
 import * as z from 'zod'
 import { Button } from '@/components/ui/button'
 import {
@@ -24,12 +25,19 @@ interface BugReportDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-const formSchema = z.object({
-  title: z.string().min(5, '标题至少需要 5 个字符').max(64, '标题最多 64 个字符'),
-  description: z.string().min(20, '描述至少需要 20 个字符').max(500, '描述最多 500 个字符')
-})
-
 export function BugReportDialog({ open, onOpenChange }: BugReportDialogProps) {
+  const { t } = useTranslation()
+
+  const formSchema = z.object({
+    title: z
+      .string()
+      .min(5, t('bug_report.validation.title_min'))
+      .max(64, t('bug_report.validation.title_max')),
+    description: z
+      .string()
+      .min(20, t('bug_report.validation.desc_min'))
+      .max(500, t('bug_report.validation.desc_max'))
+  })
   const form = useForm({
     defaultValues: {
       title: '',
@@ -43,21 +51,21 @@ export function BugReportDialog({ open, onOpenChange }: BugReportDialogProps) {
         const result = await window.api.bugReport.submit(value.title, value.description)
 
         if (result.success) {
-          toast.success('感谢您的反馈！', {
-            description: '问题报告已提交，我们会尽快处理。'
+          toast.success(t('bug_report.submit_success'), {
+            description: t('bug_report.submit_success_desc')
           })
 
           form.reset()
           onOpenChange(false)
         } else {
-          toast.error('提交失败', {
-            description: result.error || '保存报告时出错，请重试。'
+          toast.error(t('bug_report.submit_failed'), {
+            description: result.error || t('bug_report.submit_failed_desc')
           })
         }
       } catch (error: any) {
         console.error('Failed to submit bug report:', error)
-        toast.error('提交失败', {
-          description: error.message || '未知错误'
+        toast.error(t('bug_report.submit_failed'), {
+          description: error.message || t('errors.unknown_error')
         })
       }
     }
@@ -72,8 +80,8 @@ export function BugReportDialog({ open, onOpenChange }: BugReportDialogProps) {
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>问题反馈</DialogTitle>
-          <DialogDescription>发现了 Bug？告诉我们，帮助我们改进 Circle。</DialogDescription>
+          <DialogTitle>{t('bug_report.title')}</DialogTitle>
+          <DialogDescription>{t('bug_report.description')}</DialogDescription>
         </DialogHeader>
 
         <form
@@ -90,7 +98,7 @@ export function BugReportDialog({ open, onOpenChange }: BugReportDialogProps) {
                 const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
                 return (
                   <Field data-invalid={isInvalid}>
-                    <FieldLabel htmlFor={field.name}>问题标题</FieldLabel>
+                    <FieldLabel htmlFor={field.name}>{t('bug_report.issue_title')}</FieldLabel>
                     <Input
                       id={field.name}
                       name={field.name}
@@ -98,7 +106,7 @@ export function BugReportDialog({ open, onOpenChange }: BugReportDialogProps) {
                       onBlur={field.handleBlur}
                       onChange={(e) => field.handleChange(e.target.value)}
                       aria-invalid={isInvalid}
-                      placeholder="例如：保存文件时应用崩溃"
+                      placeholder={t('bug_report.title_placeholder')}
                       autoComplete="off"
                     />
                     {isInvalid && <FieldError errors={field.state.meta.errors} />}
@@ -112,7 +120,9 @@ export function BugReportDialog({ open, onOpenChange }: BugReportDialogProps) {
                 const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
                 return (
                   <Field data-invalid={isInvalid}>
-                    <FieldLabel htmlFor={field.name}>详细描述</FieldLabel>
+                    <FieldLabel htmlFor={field.name}>
+                      {t('bug_report.issue_description')}
+                    </FieldLabel>
                     <InputGroup>
                       <InputGroupTextarea
                         id={field.name}
@@ -120,18 +130,18 @@ export function BugReportDialog({ open, onOpenChange }: BugReportDialogProps) {
                         value={field.state.value}
                         onBlur={field.handleBlur}
                         onChange={(e) => field.handleChange(e.target.value)}
-                        placeholder="请描述您遇到的问题，包括复现步骤、预期行为和实际行为..."
+                        placeholder={t('bug_report.description_placeholder')}
                         rows={6}
                         className="min-h-24 resize-none"
                         aria-invalid={isInvalid}
                       />
                       <InputGroupAddon align="block-end">
                         <InputGroupText className="tabular-nums">
-                          {field.state.value.length}/500 字符
+                          {field.state.value.length}/500
                         </InputGroupText>
                       </InputGroupAddon>
                     </InputGroup>
-                    <FieldDescription>详细的描述有助于我们更快定位和修复问题</FieldDescription>
+                    <FieldDescription>{t('bug_report.description_placeholder')}</FieldDescription>
                     {isInvalid && <FieldError errors={field.state.meta.errors} />}
                   </Field>
                 )
@@ -142,10 +152,10 @@ export function BugReportDialog({ open, onOpenChange }: BugReportDialogProps) {
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => form.reset()}>
-            重置
+            {t('common.reset')}
           </Button>
           <Button type="submit" form="bug-report-form">
-            提交反馈
+            {t('bug_report.submit')}
           </Button>
         </DialogFooter>
       </DialogContent>

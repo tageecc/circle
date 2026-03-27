@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Files, Search, GitBranch, GitCompare, History, Unplug, Settings, Puzzle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { LeftTabType } from '@/hooks/use-layout-manager'
@@ -11,30 +12,34 @@ interface ActivityBarProps {
   showCompareTab?: boolean
 }
 
-const baseTabs: Array<{ id: LeftTabType; icon: typeof Files; label: string }> = [
-  { id: 'explorer', icon: Files, label: '资源管理器' },
-  { id: 'search', icon: Search, label: '搜索' },
-  { id: 'changes', icon: GitBranch, label: '源代码管理' },
-  { id: 'history', icon: History, label: 'Git 历史' },
-  { id: 'skills', icon: Puzzle, label: 'Skills' },
-  { id: 'mcp', icon: Unplug, label: 'MCP' }
-]
-
 export function ActivityBar({
   activeTab,
   onTabChange,
   showGitTab = true,
   showCompareTab = false
 }: ActivityBarProps) {
+  const { t } = useTranslation()
   const openDialog = useWorkspaceUIStore((state) => state.openDialog)
   const isFullscreen = useWorkspaceUIStore((state) => state.isFullscreen)
+
+  const baseTabs: Array<{ id: LeftTabType; icon: typeof Files; label: string }> = useMemo(
+    () => [
+      { id: 'explorer', icon: Files, label: t('activity_bar.explorer') },
+      { id: 'search', icon: Search, label: t('activity_bar.search') },
+      { id: 'changes', icon: GitBranch, label: t('activity_bar.git') },
+      { id: 'history', icon: History, label: t('activity_bar.history') },
+      { id: 'skills', icon: Puzzle, label: t('activity_bar.skills') },
+      { id: 'mcp', icon: Unplug, label: t('activity_bar.mcp') }
+    ],
+    [t]
+  )
 
   const visibleTabs = useMemo(() => {
     const tabs = showGitTab ? baseTabs : baseTabs.filter((t) => t.id !== 'changes')
     return showCompareTab
-      ? [...tabs, { id: 'compare' as LeftTabType, icon: GitCompare, label: '比较分支' }]
+      ? [...tabs, { id: 'compare' as LeftTabType, icon: GitCompare, label: t('activity_bar.compare') }]
       : tabs
-  }, [showGitTab, showCompareTab])
+  }, [showGitTab, showCompareTab, baseTabs, t])
 
   return (
     <div className="flex flex-col h-full w-12 border-r border-border/30 bg-sidebar">
@@ -71,7 +76,7 @@ export function ActivityBar({
         <button
           onClick={() => openDialog('settings')}
           className="w-10 h-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/30 transition-colors cursor-pointer"
-          title="设置"
+          title={t('activity_bar.settings')}
         >
           <Settings className="size-5" strokeWidth={1.5} />
         </button>

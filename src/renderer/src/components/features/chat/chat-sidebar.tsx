@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from '@/components/ui/sonner'
 import { ChatInput, type PastedImage, type Attachment } from './chat-input'
 import { ChatHeader } from './chat-header'
@@ -44,6 +45,7 @@ export function ChatSidebar({
   onClearSessionPendingEdits,
   onInitialized
 }: ChatSidebarProps) {
+  const { t } = useTranslation()
   const [inputValue, setInputValue] = useState('')
   const [pastedImages, setPastedImages] = useState<PastedImage[]>([])
   const [attachments, setAttachments] = useState<Attachment[]>([])
@@ -178,11 +180,11 @@ export function ChatSidebar({
       onClearSessionPendingEdits?.(sessionId)
       await deleteSession(sessionId)
 
-      toast.success('会话已删除')
+      toast.success(t('chat.delete_chat_success'))
     } catch (error) {
       console.error('删除会话失败:', error)
-      toast.error('删除会话失败', {
-        description: error instanceof Error ? error.message : '未知错误'
+      toast.error(t('chat.delete_chat_failed'), {
+        description: error instanceof Error ? error.message : t('errors.unknown_error')
       })
     }
   }
@@ -280,7 +282,7 @@ export function ChatSidebar({
       {/* Input Area */}
       <div className="px-3 pb-3 pt-0">
         <ChatInput
-          placeholder={workspaceRoot ? 'Ask, Search or Chat...' : '请先打开项目'}
+          placeholder={workspaceRoot ? t('chat.type_message') : t('chat.open_project_first')}
           value={inputValue}
           onChange={setInputValue}
           onSend={handleSendMessage}

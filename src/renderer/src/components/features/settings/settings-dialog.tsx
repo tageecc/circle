@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Settings,
   Palette,
@@ -141,8 +142,21 @@ function FontSelector({
 }
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
+  const { t } = useTranslation()
   const [activeSection, setActiveSection] = useState('general')
   const settings = useSettings()
+
+  // Navigation items
+  const NAV_ITEMS: Array<{ key: string; name: string; icon: any }> = [
+    { key: 'general', name: t('settings.general'), icon: Settings },
+    { key: 'appearance', name: t('settings.appearance'), icon: Palette },
+    { key: 'editor', name: t('settings.editor'), icon: Code },
+    { key: 'terminal', name: t('settings.terminal'), icon: Monitor },
+    { key: 'keyboard', name: t('settings.keyboard'), icon: Keyboard },
+    { key: 'aiconfig', name: t('settings.ai_config'), icon: Key },
+    { key: 'rules', name: t('settings.rules'), icon: FileText },
+    { key: 'memories', name: t('settings.memories'), icon: Brain }
+  ]
 
   // 本地状态用于编辑
   const [localEditorOptions, setLocalEditorOptions] = useState<
@@ -404,7 +418,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               <Breadcrumb>
                 <BreadcrumbList>
                   <BreadcrumbItem className="hidden md:block">
-                    <BreadcrumbLink href="#">设置</BreadcrumbLink>
+                    <BreadcrumbLink href="#">{t('settings.title')}</BreadcrumbLink>
                   </BreadcrumbItem>
                   <BreadcrumbSeparator className="hidden md:block" />
                   <BreadcrumbItem>
@@ -424,7 +438,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     size="sm"
                     className="text-muted-foreground hover:text-destructive"
                   >
-                    重置为默认
+                    {t('settings.reset_to_default')}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-80" side="top" align="start">

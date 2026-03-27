@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -86,6 +87,7 @@ export function ChatHeader({
   onCloseSessionTab,
   onDeleteSession
 }: ChatHeaderProps) {
+  const { t } = useTranslation()
   const [searchQuery, setSearchQuery] = useState('')
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const activeTabRef = useRef<HTMLDivElement>(null)
@@ -162,7 +164,7 @@ export function ChatHeader({
             size="icon"
             className="size-7 hover:bg-destructive/10 hover:text-destructive"
             onClick={(e) => handleDeleteClick(e, session.id)}
-            title="删除会话"
+            title={t('chat.delete_chat')}
           >
             <Trash2 className="size-3.5" />
           </Button>
@@ -195,7 +197,9 @@ export function ChatHeader({
                       : 'text-muted-foreground hover:text-foreground'
                   )}
                 >
-                  <span className="max-w-[120px] truncate">{session.title || '新对话'}</span>
+                  <span className="max-w-[120px] truncate">
+                    {session.title || t('chat.new_chat')}
+                  </span>
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
@@ -206,7 +210,7 @@ export function ChatHeader({
                       'hover:bg-destructive/10 hover:text-destructive',
                       isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                     )}
-                    title="关闭标签页"
+                    title={t('chat.close_tab')}
                   >
                     <X className="size-3" />
                   </button>
@@ -225,7 +229,7 @@ export function ChatHeader({
           size="icon"
           className="size-8 hover:bg-sidebar-accent"
           onClick={onNewSession}
-          title="新建对话"
+          title={t('chat.new_chat')}
         >
           <Plus className="size-4" />
         </Button>
@@ -237,7 +241,7 @@ export function ChatHeader({
               variant="ghost"
               size="icon"
               className="size-8 hover:bg-sidebar-accent"
-              title="历史会话"
+              title={t('chat.history')}
             >
               <Clock className="size-4" />
             </Button>
@@ -263,7 +267,7 @@ export function ChatHeader({
             <div className="max-h-[500px] overflow-y-auto">
               {!hasSessions ? (
                 <div className="p-8 text-center text-sm text-muted-foreground/60">
-                  {searchQuery ? '未找到匹配的会话' : '暂无历史会话'}
+                  {searchQuery ? t('chat.no_match') : t('chat.no_history')}
                 </div>
               ) : (
                 <>
@@ -309,7 +313,7 @@ export function ChatHeader({
           variant="ghost"
           size="icon"
           className="size-8 hover:bg-sidebar-accent"
-          title="更多"
+          title={t('common.more')}
           disabled
         >
           <MoreHorizontal className="size-4" />
