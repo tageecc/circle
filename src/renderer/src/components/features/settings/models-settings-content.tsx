@@ -297,7 +297,7 @@ export function ModelsSettingsContent() {
             <div className="space-y-2">
               <Label>{t('models_settings.provider')}</Label>
               <Select value={selectedProvider} onValueChange={setSelectedProvider}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder={t('models_settings.select_provider')} />
                 </SelectTrigger>
                 <SelectContent className="max-h-[300px]">
@@ -372,13 +372,17 @@ export function ModelsSettingsContent() {
                       </div>
                     </PopoverTrigger>
                     {availableModels.length > 0 && (
-                      <PopoverContent align="start" className="w-[400px] p-0">
-                        <div className="max-h-[300px] overflow-y-auto p-2">
+                      <PopoverContent 
+                        align="start" 
+                        className="w-[var(--radix-popover-trigger-width)] p-0"
+                        style={{ maxHeight: '300px' }}
+                      >
+                        <div className="max-h-[300px] overflow-y-auto p-2 overscroll-contain">
                           {availableModels.map((model) => (
                             <button
                               key={model.id}
                               onClick={() => setModelId(model.id)}
-                              className="w-full flex flex-col items-start gap-1 rounded-md px-3 py-2 text-left hover:bg-accent"
+                              className="w-full flex flex-col items-start gap-1 rounded-md px-3 py-2 text-left hover:bg-accent transition-colors"
                             >
                               <span className="font-mono text-sm font-medium">{model.id}</span>
                               <span className="text-xs text-muted-foreground">
