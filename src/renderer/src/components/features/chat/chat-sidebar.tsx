@@ -9,7 +9,7 @@ import { useChatMessages } from '@/hooks/use-chat-messages'
 import type { PendingFileEdit } from '@/types/ide'
 import { useChatSession } from '@/hooks/use-chat-session'
 import { useMessageQueueStore, type QueuedMessage } from '@/stores/message-queue.store'
-import { PROVIDER_MODELS } from '@/config/models'
+import { getModelInfo } from '@/constants/models'
 
 interface ChatSidebarProps {
   workspaceRoot: string | null
@@ -49,8 +49,8 @@ export function ChatSidebar({
   const [inputValue, setInputValue] = useState('')
   const [pastedImages, setPastedImages] = useState<PastedImage[]>([])
   const [attachments, setAttachments] = useState<Attachment[]>([])
-  const [selectedProvider, setSelectedProvider] = useState('Alibaba (China)')
-  const [selectedModel, setSelectedModel] = useState('qwen-plus')
+  const [selectedProvider, setSelectedProvider] = useState('')
+  const [selectedModel, setSelectedModel] = useState('')
 
   // 会话管理
   const {
@@ -65,21 +65,11 @@ export function ChatSidebar({
     createNewSession
   } = useChatSession(workspaceRoot)
 
-  // 计算当前模型的 context window
   const maxTokens = useMemo(() => {
-    const providerConfig = PROVIDER_MODELS[selectedProvider]
-    if (!providerConfig) return undefined
-    const modelInfo = providerConfig.models.find((m) => m.id === selectedModel)
-    if (!modelInfo?.contextWindow) return undefined
-    // 解析 contextWindow 字符串 (例如: "128K" -> 128000)
-    const match = modelInfo.contextWindow.match(/^(\d+(?:\.\d+)?)(K|M)?$/)
-    if (!match) return undefined
-    const value = parseFloat(match[1])
-    const unit = match[2]
-    if (unit === 'K') return Math.round(value * 1000)
-    if (unit === 'M') return Math.round(value * 1000000)
-    return Math.round(value)
-  }, [selectedProvider, selectedModel])
+    if (!selectedModel) return undefined
+    const modelInfo = getModelInfo(selectedModel)
+    return modelInfo?.contextWindow
+  }, [selectedModel])
 
   const usageData = useMemo(() => {
     const { lastUsage, totalUsage } = currentSession?.metadata || {}
@@ -89,31 +79,6 @@ export function ChatSidebar({
     }
   }, [currentSession])
 
-  // 加载用户默认模型
-  useEffect(() => {
-    const loadDefaultModel = async () => {
-      try {
-        const defaultModelId = await window.api.config.getDefaultModel()
-        const [provider, model] = defaultModelId.split('/')
-
-        if (provider && model) {
-          setSelectedProvider(provider)
-          setSelectedModel(model)
-          return
-        }
-
-        console.error('Invalid modelId format:', defaultModelId)
-      } catch (error) {
-        console.error('Failed to load default model:', error)
-      }
-
-      // Fallback 到默认值
-      setSelectedProvider('Alibaba (China)')
-      setSelectedModel('qwen-plus')
-    }
-
-    loadDefaultModel()
-  }, [])
 
   // 消息处理
   const { isStreaming, sendMessage, stopStreaming, onApprovalDecision } = useChatMessages(
@@ -295,20 +260,12 @@ export function ChatSidebar({
           onPastedImagesChange={setPastedImages}
           attachments={attachments}
           onAttachmentsChange={setAttachments}
-          defaultProvider={selectedProvider}
-          defaultModel={selectedModel}
           maxTokens={maxTokens}
           usedTokens={usageData.usedTokens}
           usage={usageData.usage}
-          onModelChange={async (provider, model) => {
+          onModelChange={(provider, model) => {
             setSelectedProvider(provider)
             setSelectedModel(model)
-            // 保存用户选择的默认模型
-            try {
-              await window.api.config.setDefaultModel(`${provider}/${model}`)
-            } catch (error) {
-              console.error('Failed to save default model:', error)
-            }
           }}
         />
       </div>

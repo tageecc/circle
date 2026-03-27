@@ -55,8 +55,6 @@ interface ChatInputProps {
   attachments?: Attachment[]
   onAttachmentsChange?: (attachments: Attachment[]) => void
   onModelChange?: (provider: string, model: string) => void
-  defaultProvider?: string
-  defaultModel?: string
   autoFocus?: boolean
   minHeight?: string
   // Context usage
@@ -78,8 +76,6 @@ export function ChatInput({
   attachments = [],
   onAttachmentsChange,
   onModelChange,
-  defaultProvider = 'Alibaba (China)',
-  defaultModel = 'qwen-plus',
   autoFocus = false,
   minHeight,
   maxTokens,
@@ -169,9 +165,7 @@ export function ChatInput({
       <InputGroup ref={inputGroupRef} className="[--radius:1.5rem]">
         <RichTextInput
           placeholder={
-            hasConfiguredModels
-              ? placeholder ?? t('chat.type_message')
-              : t('chat.configure_model_first')
+            hasConfiguredModels ? placeholder ?? t('type_message') : t('configure_model_first')
           }
           value={value}
           onChange={onChange}
@@ -215,9 +209,7 @@ export function ChatInput({
                 </div>
               ) : configuredModels.length === 0 ? (
                 <div className="px-4 py-6 text-center space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    {t('chat.no_models_configured')}
-                  </p>
+                  <p className="text-sm text-muted-foreground">{t('no_models_configured')}</p>
                   <Button
                     size="sm"
                     variant="outline"
@@ -227,7 +219,7 @@ export function ChatInput({
                     }}
                     className="mx-auto"
                   >
-                    {t('chat.open_settings')}
+                    {t('open_settings')}
                   </Button>
                 </div>
               ) : (
