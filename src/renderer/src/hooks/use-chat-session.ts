@@ -140,12 +140,9 @@ export function useChatSession(workspaceRoot: string | null) {
       }
 
       addSession(newSession)
-    } catch (error: any) {
+    } catch (error) {
       console.error('创建新会话失败:', error)
-      const errorMsg = error?.message || 'Failed to create new session'
-      toast.error('Failed to create session', {
-        description: errorMsg
-      })
+      toast.error('Failed to create session')
     }
   }, [workspaceRoot, addSession])
 

@@ -37,34 +37,21 @@ export class SessionService {
     const newSessionId = `session_${nanoid()}`
     const now = new Date()
 
-    try {
-      db.insert(schema.sessions)
-        .values({
-          id: newSessionId,
-          projectPath,
-          modelId,
-          title: 'New Chat',
-          metadata: '{}',
-          lastMessageAt: now,
-          createdAt: now,
-          updatedAt: now
-        })
-        .run()
+    db.insert(schema.sessions)
+      .values({
+        id: newSessionId,
+        projectPath,
+        modelId,
+        title: 'New Chat',
+        metadata: '{}',
+        lastMessageAt: now,
+        createdAt: now,
+        updatedAt: now
+      })
+      .run()
 
-      console.log(`[SessionService] Created session: ${newSessionId} with model: ${modelId}`)
-      return newSessionId
-    } catch (error: any) {
-      // Handle database schema mismatch
-      if (error?.code === 'SQLITE_CONSTRAINT_NOTNULL' && error?.message?.includes('user_id')) {
-        const errorMsg = 'Database schema is outdated. Please restart the application to update the database.'
-        console.error(`[SessionService] ${errorMsg}`, error)
-        throw new Error(errorMsg)
-      }
-      
-      // Handle other database errors
-      console.error('[SessionService] Failed to create session:', error)
-      throw new Error(`Failed to create chat session: ${error?.message || 'Unknown error'}`)
-    }
+    console.log(`[SessionService] Created session: ${newSessionId} with model: ${modelId}`)
+    return newSessionId
   }
 
   async getProjectSessions(projectPath: string): Promise<ChatSession[]> {
