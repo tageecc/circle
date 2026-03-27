@@ -25,6 +25,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { PROVIDERS, getProvider } from '@/constants/providers'
 import { getModelsByProvider, getModelInfo } from '@/constants/models'
 import { cn } from '@/lib/utils'
+import { eventBus } from '@/lib/event-bus'
 
 interface ModelConfig {
   id: string
@@ -125,6 +126,7 @@ export function ModelsSettingsContent() {
       setIsAddDialogOpen(false)
       resetAddDialog()
       loadModels()
+      eventBus.emit('models-updated')
     } catch (error) {
       console.error('Failed to add model:', error)
       toast.error(t('models_settings.add_failed'))
@@ -145,6 +147,7 @@ export function ModelsSettingsContent() {
       await window.api.modelConfig.delete(modelId)
       toast.success(t('models_settings.model_deleted'))
       loadModels()
+      eventBus.emit('models-updated')
     } catch (error) {
       console.error('Failed to delete model:', error)
       toast.error(t('models_settings.delete_failed'))
@@ -157,6 +160,7 @@ export function ModelsSettingsContent() {
       await window.api.modelConfig.setDefault(modelId)
       toast.success(t('models_settings.default_set'))
       loadModels()
+      eventBus.emit('models-updated')
     } catch (error) {
       console.error('Failed to set default:', error)
       toast.error(t('models_settings.set_default_failed'))

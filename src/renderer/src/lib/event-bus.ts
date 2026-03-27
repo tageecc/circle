@@ -22,6 +22,9 @@ export type AppEvents = {
   'open-settings': {
     tab?: string
   }
+
+  /** Model configuration has been updated. */
+  'models-updated': void
 }
 
 /**

@@ -113,6 +113,16 @@ export function ChatInput({
       }
     }
     loadModels()
+
+    // Listen for model updates
+    const handleModelsUpdated = () => {
+      loadModels()
+    }
+    eventBus.on('models-updated', handleModelsUpdated)
+
+    return () => {
+      eventBus.off('models-updated', handleModelsUpdated)
+    }
   }, [onModelChange])
 
   // Group models by provider
