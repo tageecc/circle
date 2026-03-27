@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from '@/components/ui/sonner'
 import type { Session, Message, StreamChunk, ContentPart, ToolCallPart } from '@/types/chat'
 import type { PastedImage, Attachment } from '@/components/features/chat/chat-input'
@@ -33,6 +34,7 @@ export function useChatMessages(
   currentSessionId: string | null,
   onMarkSessionAsLoaded: (sessionId: string) => void
 ) {
+  const { t } = useTranslation()
   const workspaceRoot = useWorkspaceStore((state) => state.workspaceRoot)
 
   // ✅ 使用 Zustand store 中的 sessions 和操作
@@ -276,7 +278,7 @@ export function useChatMessages(
         setCurrentSessionId(sessionId)
       } catch (error) {
         console.error('自动创建会话失败:', error)
-        toast.error('创建会话失败')
+        toast.error(t('chat.toast_create_session_failed'))
         return
       }
     }
@@ -429,9 +431,9 @@ export function useChatMessages(
         },
         (error) => {
           // 用户主动停止不显示错误提示
-          if (error !== '对话已停止') {
+          if (error !== 'Chat stopped by user') {
             console.error('Stream error:', error)
-            toast.error(error || '发送消息失败')
+            toast.error((typeof error === 'string' && error) || t('chat.toast_send_failed'))
           }
           setIsStreaming(false)
         }
@@ -441,7 +443,7 @@ export function useChatMessages(
       streamStopRef.current = stop
     } catch (error: any) {
       console.error('Stream error:', error)
-      toast.error('发送消息失败')
+      toast.error(t('chat.toast_send_failed'))
       setIsStreaming(false)
     }
   }

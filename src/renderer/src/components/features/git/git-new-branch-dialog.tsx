@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -26,6 +27,7 @@ export function GitNewBranchDialog({
   onClose,
   onSuccess
 }: GitNewBranchDialogProps) {
+  const { t } = useTranslation()
   const [branchName, setBranchName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -33,10 +35,10 @@ export function GitNewBranchDialog({
   const validateBranchName = (name: string): string | null => {
     if (!name.trim()) return null
     if (name.includes('..') || name.startsWith('.') || name.endsWith('.')) {
-      return '分支名格式无效'
+      return t('git.branch_name_invalid_format')
     }
     if (/[\s~^:?*\[\\]/.test(name)) {
-      return '分支名包含无效字符'
+      return t('git.branch_name_invalid_chars')
     }
     return null
   }
@@ -54,11 +56,11 @@ export function GitNewBranchDialog({
     try {
       // 默认创建并切换
       await window.api.git.createBranch(workspaceRoot, branchName.trim(), true)
-      toast.success(`已创建并切换到 ${branchName.trim()}`)
+      toast.success(t('git.branch_created_switched', { name: branchName.trim() }))
       onSuccess()
       handleClose()
     } catch (error: any) {
-      setError(error.message || '创建失败')
+      setError(error.message || t('git.branch_create_failed'))
     } finally {
       setLoading(false)
     }
@@ -102,11 +104,11 @@ export function GitNewBranchDialog({
 
         <DialogFooter>
           <Button variant="ghost" onClick={handleClose} disabled={loading}>
-            取消
+            {t('common.cancel')}
           </Button>
           <Button onClick={handleCreate} disabled={!branchName.trim() || loading}>
             {loading && <Loader2 className="mr-2 size-4 animate-spin" />}
-            创建
+            {t('git.branch_create')}
           </Button>
         </DialogFooter>
       </DialogContent>

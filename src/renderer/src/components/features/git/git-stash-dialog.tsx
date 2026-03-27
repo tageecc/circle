@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -29,6 +30,7 @@ export function GitStashDialog({
   onClose,
   onSuccess
 }: GitStashDialogProps) {
+  const { t } = useTranslation()
   const [message, setMessage] = useState('')
   const [includeUntracked, setIncludeUntracked] = useState(true)
   const [loading, setLoading] = useState(false)
@@ -50,8 +52,8 @@ export function GitStashDialog({
     try {
       await window.api.git.stash(workspaceRoot, message || undefined, includeUntracked)
 
-      toast.success('Stash 创建成功', {
-        description: message ? `"${message}"` : '已保存当前工作区更改'
+      toast.success(t('git.stash_create_success'), {
+        description: message ? `"${message}"` : t('git.stash_saved_working_tree')
       })
 
       onSuccess()
@@ -87,24 +89,26 @@ export function GitStashDialog({
             Stash Changes
           </DialogTitle>
           <DialogDescription>
-            临时保存{currentBranch ? <> <strong>{currentBranch}</strong> 分支上的</> : ''}本地更改
+            {currentBranch
+              ? t('git.stash_dialog_description_with_branch', { branch: currentBranch })
+              : t('git.stash_dialog_description_plain')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           {/* Stash Message */}
           <div className="space-y-2">
-            <Label htmlFor="stash-message">消息（可选）</Label>
+            <Label htmlFor="stash-message">{t('git.stash_message_label')}</Label>
             <Input
               id="stash-message"
-              placeholder="WIP: 正在开发的功能..."
+              placeholder={t('git.stash_message_placeholder')}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={handleKeyDown}
               disabled={loading}
               autoFocus
             />
-            <p className="text-xs text-muted-foreground">添加描述信息方便后续识别</p>
+            <p className="text-xs text-muted-foreground">{t('git.stash_message_hint')}</p>
           </div>
 
           {/* Include Untracked Option */}
@@ -116,7 +120,7 @@ export function GitStashDialog({
               disabled={loading}
             />
             <Label htmlFor="include-untracked" className="cursor-pointer text-sm font-normal">
-              包含未跟踪的文件（新建的文件）
+              {t('git.stash_include_untracked')}
             </Label>
           </div>
 
@@ -131,7 +135,7 @@ export function GitStashDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose} disabled={loading}>
-            取消
+            {t('common.cancel')}
           </Button>
           <Button onClick={handleStash} disabled={loading}>
             {loading && <Loader2 className="mr-2 size-4 animate-spin" />}

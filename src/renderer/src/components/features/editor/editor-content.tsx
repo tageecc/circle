@@ -10,6 +10,7 @@ import { File } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { DiffAction } from './monaco-editor.types'
 import type { editor } from 'monaco-editor'
+import { useTranslation } from 'react-i18next'
 
 interface EditorContentProps {
   currentFile: FileTab | undefined
@@ -55,13 +56,15 @@ export function EditorContent({
   onCurrentDiffChange,
   onDiffEditorMount
 }: EditorContentProps) {
+  const { t } = useTranslation()
+
   if (!currentFile) {
     return (
       <div className="flex h-full items-center justify-center text-muted-foreground">
         <div className="text-center">
           <File className="mx-auto mb-2 size-12 opacity-20" />
-          <p className="text-sm">No file open</p>
-          <p className="mt-1 text-xs">Select a file to start editing</p>
+          <p className="text-sm">{t('editor.no_file_open')}</p>
+          <p className="mt-1 text-xs">{t('editor.select_file_to_edit')}</p>
         </div>
       </div>
     )
@@ -174,14 +177,14 @@ export function EditorContent({
       // 截断过长的 stash 消息
       const message = currentFile.stashMessage || `Stash #${currentFile.stashIndex}`
       const truncatedMessage = message.length > 40 ? message.slice(0, 40) + '...' : message
-      originalTitle = `Stash: ${truncatedMessage}`
-      modifiedTitle = '当前版本'
+      originalTitle = t('editor.git_stash_title', { message: truncatedMessage })
+      modifiedTitle = t('editor.git_diff_current_version')
     } else if (currentFile.isDeleted) {
-      originalTitle = '已删除 (HEAD)'
-      modifiedTitle = '(文件已删除)'
+      originalTitle = t('editor.git_diff_deleted_head')
+      modifiedTitle = t('editor.git_diff_file_deleted')
     } else {
-      originalTitle = '原始版本 (HEAD)'
-      modifiedTitle = '工作区'
+      originalTitle = t('editor.git_diff_original_head')
+      modifiedTitle = t('editor.git_diff_workspace')
     }
 
     return (

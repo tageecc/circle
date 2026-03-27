@@ -1,6 +1,5 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
-const Backend = require('i18next-electron-fs-backend')
 
 const isDev = import.meta.env.DEV
 
@@ -22,7 +21,10 @@ async function getInitialLanguage(): Promise<string> {
 export async function initI18n() {
   const initialLanguage = await getInitialLanguage()
   
+  const Backend = (await import('i18next-electron-fs-backend')).default
+  
   await i18n
+    // @ts-ignore - i18next-electron-fs-backend type definitions are incomplete
     .use(Backend)
     .use(initReactI18next)
     .init({

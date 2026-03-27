@@ -2,6 +2,7 @@ import { app, dialog } from 'electron'
 import fs from 'fs/promises'
 import path from 'path'
 import crypto from 'crypto'
+import { mainI18n as i18n } from '../i18n'
 
 /**
  * 头像管理服务
@@ -39,8 +40,10 @@ export class AvatarService {
    */
   static async selectAvatarFile(): Promise<string | null> {
     const result = await dialog.showOpenDialog({
-      title: '选择头像',
-      filters: [{ name: '图片', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'] }],
+      title: i18n.t('dialog.select_avatar.title'),
+      filters: [
+        { name: i18n.t('dialog.select_avatar.image_filter'), extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'] }
+      ],
       properties: ['openFile']
     })
 
@@ -64,13 +67,13 @@ export class AvatarService {
     // 验证文件大小（限制为 5MB）
     const maxSize = 5 * 1024 * 1024 // 5MB
     if (fileBuffer.length > maxSize) {
-      throw new Error('图片文件太大，请选择小于 5MB 的图片')
+      throw new Error(i18n.t('errors.avatar_file_too_large'))
     }
 
     // 获取文件扩展名
     const ext = path.extname(sourcePath).toLowerCase()
     if (!['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'].includes(ext)) {
-      throw new Error('不支持的图片格式')
+      throw new Error(i18n.t('errors.avatar_unsupported_format'))
     }
 
     const timestamp = Date.now()

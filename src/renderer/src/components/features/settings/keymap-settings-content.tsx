@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react'
 import { Search, Keyboard as KeyboardIcon, RotateCcw, SearchCode } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { useTranslation } from 'react-i18next'
 import {
   Select,
   SelectContent,
@@ -18,8 +19,12 @@ import {
   DialogDescription
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import { KEYMAP_PRESETS, COMMANDS } from '@/config/keymaps'
+import { KEYMAP_PRESETS, COMMANDS, type CommandEntry } from '@/config/keymaps'
 import { useSettings } from '@/contexts/settings-context'
+
+function commandLabelKey(id: string): string {
+  return `keymaps.commands.${id.replace(/\./g, '_')}`
+}
 
 interface KeyRecorderProps {
   initialKeys?: string
@@ -28,6 +33,7 @@ interface KeyRecorderProps {
 }
 
 const KeyRecorder = ({ initialKeys, onSave, onCancel }: KeyRecorderProps) => {
+  const { t } = useTranslation()
   const [recordedString, setRecordedString] = useState<string>(initialKeys || '')
 
   useEffect(() => {
@@ -101,15 +107,15 @@ const KeyRecorder = ({ initialKeys, onSave, onCancel }: KeyRecorderProps) => {
             </React.Fragment>
           ))
         ) : (
-          <span className="text-muted-foreground text-lg">按下键盘组合键...</span>
+          <span className="text-muted-foreground text-lg">{t('keymaps.record_hint')}</span>
         )}
       </div>
       <div className="flex gap-2 mt-4">
         <Button variant="outline" onClick={onCancel}>
-          取消
+          {t('common.cancel')}
         </Button>
         <Button onClick={() => onSave(recordedString)} disabled={!recordedString}>
-          确认
+          {t('common.confirm')}
         </Button>
       </div>
     </div>
@@ -117,6 +123,7 @@ const KeyRecorder = ({ initialKeys, onSave, onCancel }: KeyRecorderProps) => {
 }
 
 export function KeymapSettingsContent() {
+  const { t } = useTranslation()
   const { keymapSettings, updateKeymapSettings } = useSettings()
   const [searchQuery, setSearchQuery] = useState('')
   const [editingCommand, setEditingCommand] = useState<string | null>(null)
@@ -143,17 +150,18 @@ export function KeymapSettingsContent() {
     const query = searchQuery.toLowerCase()
     return COMMANDS.filter((cmd) => {
       const binding = keymapSettings.bindings[cmd.id] || ''
+      const label = t(commandLabelKey(cmd.id))
       return (
-        cmd.label.toLowerCase().includes(query) ||
+        label.toLowerCase().includes(query) ||
         cmd.id.toLowerCase().includes(query) ||
         binding.toLowerCase().includes(query)
       )
     })
-  }, [searchQuery, keymapSettings.bindings])
+  }, [searchQuery, keymapSettings.bindings, t])
 
   // Group by category
   const groupedCommands = useMemo(() => {
-    const groups: Record<string, typeof COMMANDS> = {}
+    const groups: Record<string, CommandEntry[]> = {}
     filteredCommands.forEach((cmd) => {
       if (!groups[cmd.category]) {
         groups[cmd.category] = []
@@ -193,7 +201,7 @@ export function KeymapSettingsContent() {
         <div className="flex items-center gap-2 flex-1">
           <Select value={keymapSettings.profile} onValueChange={handleProfileChange}>
             <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="选择键位映射" />
+              <SelectValue placeholder={t('keymaps.select_keymap')} />
             </SelectTrigger>
             <SelectContent>
               {Object.entries(KEYMAP_PRESETS).map(([key, preset]) => (
@@ -206,7 +214,7 @@ export function KeymapSettingsContent() {
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="搜索命令或快捷键 (如: '保存', 'Cmd+S')"
+              placeholder={t('keymaps.search_placeholder')}
               value={searchQuery}
               onChange={handleSearchChange}
               className="pl-8"
@@ -221,13 +229,13 @@ export function KeymapSettingsContent() {
             {Object.entries(groupedCommands).length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                 <SearchCode className="h-12 w-12 mb-4 opacity-20" />
-                <p>未找到匹配的命令</p>
+                <p>{t('keymaps.no_results')}</p>
               </div>
             ) : (
               Object.entries(groupedCommands).map(([category, commands]) => (
                 <div key={category}>
                   <div className="sticky top-0 bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground backdrop-blur-sm border-y border-border first:border-t-0">
-                    {category}
+                    {t(`keymaps.categories.${category}`)}
                   </div>
                   <div className="divide-y divide-border">
                     {commands.map((cmd) => {
@@ -238,7 +246,7 @@ export function KeymapSettingsContent() {
                           className="flex items-center justify-between px-4 py-3 hover:bg-accent/50 group transition-colors"
                         >
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-sm font-medium">{cmd.label}</span>
+                            <span className="text-sm font-medium">{t(commandLabelKey(cmd.id))}</span>
                             <span className="text-xs text-muted-foreground font-mono">
                               {cmd.id}
                             </span>
@@ -263,7 +271,7 @@ export function KeymapSettingsContent() {
                                   </React.Fragment>
                                 ))
                               ) : (
-                                <span className="text-xs italic">点击设置快捷键</span>
+                                <span className="text-xs italic">{t('keymaps.click_set_binding')}</span>
                               )}
                               <KeyboardIcon className="h-3 w-3 ml-2 opacity-0 group-hover:opacity-50" />
                             </button>
@@ -273,7 +281,7 @@ export function KeymapSettingsContent() {
                                 size="icon"
                                 className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                                 onClick={() => handleResetBinding(cmd.id)}
-                                title="重置"
+                                title={t('keymaps.reset')}
                               >
                                 <RotateCcw className="h-3 w-3" />
                               </Button>
@@ -293,10 +301,17 @@ export function KeymapSettingsContent() {
       <Dialog open={!!editingCommand} onOpenChange={(open) => !open && setEditingCommand(null)}>
         <DialogContent className="sm:max-w-[400px]" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
-            <DialogTitle>输入快捷键</DialogTitle>
+            <DialogTitle>{t('keymaps.dialog.shortcut_title')}</DialogTitle>
             <DialogDescription>
-              为 <b>{COMMANDS.find((c) => c.id === editingCommand)?.label}</b> 输入新的组合键。
-              <br />按 Esc 取消，Enter 确认。
+              {t('keymaps.dialog.shortcut_desc_prefix')}{' '}
+              <b>
+                {editingCommand
+                  ? t(commandLabelKey(editingCommand))
+                  : ''}
+              </b>{' '}
+              {t('keymaps.dialog.shortcut_desc_suffix')}
+              <br />
+              {t('keymaps.dialog.shortcut_hint')}
             </DialogDescription>
           </DialogHeader>
 

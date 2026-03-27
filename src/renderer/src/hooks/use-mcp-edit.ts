@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from '@/components/ui/sonner'
 import { parseConfigJson } from '@/utils/mcp-helpers'
 import { useMCPStore } from '@/stores/mcp.store'
@@ -7,6 +8,7 @@ import { useMCPStore } from '@/stores/mcp.store'
  * MCP 服务器编辑逻辑的自定义 Hook
  */
 export function useMCPEdit(onSuccess?: () => Promise<void>) {
+  const { t } = useTranslation()
   const [openEditDialog, setOpenEditDialog] = useState(false)
   const [configJson, setConfigJson] = useState('')
   const { batchAddServers } = useMCPStore()
@@ -16,7 +18,7 @@ export function useMCPEdit(onSuccess?: () => Promise<void>) {
       const servers = await window.api.mcp.getAllServers()
       const server = servers.find((s: any) => s.id === serverId)
       if (!server) {
-        toast.error('服务不存在')
+        toast.error(t('mcp.service_not_exist'))
         return
       }
 
@@ -24,7 +26,7 @@ export function useMCPEdit(onSuccess?: () => Promise<void>) {
       setOpenEditDialog(true)
     } catch (error) {
       console.error('获取服务配置失败:', error)
-      toast.error('获取服务配置失败')
+      toast.error(t('mcp.fetch_config_failed'))
     }
   }
 
@@ -41,13 +43,13 @@ export function useMCPEdit(onSuccess?: () => Promise<void>) {
 
   const handleUpdateServer = async (serverId: string) => {
     if (!configJson.trim()) {
-      toast.error('配置不能为空')
+      toast.error(t('mcp.config_empty'))
       return
     }
 
     const parseResult = parseConfigJson(configJson)
     if (!parseResult) {
-      toast.error('配置格式错误，请检查 JSON 格式')
+      toast.error(t('mcp.invalid_config_json'))
       return
     }
 
@@ -56,7 +58,9 @@ export function useMCPEdit(onSuccess?: () => Promise<void>) {
       const { successCount, failCount } = await batchAddServers(parseResult.servers)
       if (successCount > 0) {
         toast.success(
-          `已添加 ${successCount} 个服务器${failCount > 0 ? `，${failCount} 个失败` : ''}`
+          failCount > 0
+            ? t('mcp.batch_add_partial', { success: successCount, fail: failCount })
+            : t('mcp.batch_add_success', { count: successCount })
         )
         setOpenEditDialog(false)
         setConfigJson('')
@@ -64,7 +68,7 @@ export function useMCPEdit(onSuccess?: () => Promise<void>) {
           await onSuccess()
         }
       } else {
-        toast.error('所有服务器添加失败')
+        toast.error(t('mcp.add_all_failed'))
       }
       return
     }
@@ -75,12 +79,12 @@ export function useMCPEdit(onSuccess?: () => Promise<void>) {
       const servers = await window.api.mcp.getAllServers()
       const server = servers.find((s: any) => s.id === serverId)
       if (!server) {
-        toast.error('服务不存在')
+        toast.error(t('mcp.service_not_exist'))
         return
       }
 
       await window.api.mcp.updateServer(serverId, server.name, config)
-      toast.success('配置已更新')
+      toast.success(t('mcp.config_updated'))
       setOpenEditDialog(false)
       setConfigJson('')
 
@@ -89,7 +93,11 @@ export function useMCPEdit(onSuccess?: () => Promise<void>) {
       }
     } catch (error) {
       console.error('更新配置失败:', error)
-      toast.error(`更新失败: ${error instanceof Error ? error.message : String(error)}`)
+      toast.error(
+        t('mcp.update_failed_message', {
+          message: error instanceof Error ? error.message : String(error)
+        })
+      )
     }
   }
 

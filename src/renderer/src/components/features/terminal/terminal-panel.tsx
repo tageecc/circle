@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Terminal } from './terminal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -37,6 +38,7 @@ export function TerminalPanel({
   onCommandHandled,
   onInitialized
 }: TerminalPanelProps) {
+  const { t } = useTranslation()
   const [tabs, setTabs] = useState<TerminalTab[]>([])
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
   const [nextTabNumber, setNextTabNumber] = useState(1)
@@ -52,7 +54,7 @@ export function TerminalPanel({
     setTerminalTabCount(tabs.length)
   }, [tabs.length, setTerminalTabCount])
 
-  const createNewTerminal = async () => {
+  const createNewTerminal = useCallback(async () => {
     try {
       const cwd = workspaceRoot || '~'
       const terminalId = await window.api.terminal.create(cwd)
@@ -60,7 +62,7 @@ export function TerminalPanel({
       const newTab: TerminalTab = {
         id: `tab-${Date.now()}`,
         terminalId,
-        title: `终端 ${nextTabNumber}`
+        title: t('terminal.tab_title', { n: nextTabNumber })
       }
 
       setTabs((prev) => [...prev, newTab])
@@ -78,7 +80,7 @@ export function TerminalPanel({
       console.error('Failed to create terminal:', error)
       return null
     }
-  }
+  }, [workspaceRoot, nextTabNumber, t, onInitialized])
 
   const closeTab = async (tabId: string) => {
     const tab = tabs.find((t) => t.id === tabId)
@@ -184,7 +186,7 @@ export function TerminalPanel({
     if (tabs.length === 0 && workspaceRoot && !pendingCommand) {
       createNewTerminal()
     }
-  }, [workspaceRoot])
+  }, [workspaceRoot, tabs.length, pendingCommand, createNewTerminal])
 
   // 处理待执行命令
   useEffect(() => {
@@ -207,7 +209,7 @@ export function TerminalPanel({
     }
 
     handleCommand()
-  }, [pendingCommand])
+  }, [pendingCommand, createNewTerminal, onCommandHandled])
 
   // 监听工具创建的 terminal（自动创建 tab）
   useEffect(() => {
@@ -221,7 +223,7 @@ export function TerminalPanel({
       const newTab: TerminalTab = {
         id: `tab-${Date.now()}`,
         terminalId,
-        title: `Auto: ${commandName}` // Cursor 风格标记
+        title: t('terminal.auto_tab_title', { name: commandName })
       }
 
       setTabs((prev) => [...prev, newTab])
@@ -232,7 +234,7 @@ export function TerminalPanel({
     })
 
     return unsubscribe
-  }, [nextTabNumber])
+  }, [t])
 
   // 监听 terminal focus 事件（从聊天界面跳转）
   useEffect(() => {
@@ -251,7 +253,7 @@ export function TerminalPanel({
 
   return (
     <div className={cn('flex flex-col h-full w-full', className)}>
-      <div className="flex items-center h-10 border-b bg-background">
+      <div className="flex items-center h-10 bg-background">
         <div className="flex flex-1 items-center gap-1 px-2 overflow-x-auto scrollbar-thin-x">
           {tabs.map((tab) => (
             <ContextMenu key={tab.id}>
@@ -301,33 +303,33 @@ export function TerminalPanel({
               <ContextMenuContent>
                 <ContextMenuItem onClick={() => startRename(tab.id)}>
                   <Pencil className="size-4 mr-2" />
-                  重命名
+                  {t('terminal.rename')}
                 </ContextMenuItem>
                 <ContextMenuSeparator />
-                <ContextMenuItem onClick={() => closeTab(tab.id)}>关闭</ContextMenuItem>
+                <ContextMenuItem onClick={() => closeTab(tab.id)}>{t('terminal.close')}</ContextMenuItem>
                 <ContextMenuItem onClick={() => closeOtherTabs(tab.id)} disabled={tabs.length <= 1}>
-                  关闭其他
+                  {t('terminal.close_other')}
                 </ContextMenuItem>
                 <ContextMenuItem
                   onClick={() => closeTabsToRight(tab.id)}
-                  disabled={tabs.findIndex((t) => t.id === tab.id) === tabs.length - 1}
+                  disabled={tabs.findIndex((x) => x.id === tab.id) === tabs.length - 1}
                 >
-                  关闭右侧
+                  {t('terminal.close_right')}
                 </ContextMenuItem>
                 <ContextMenuSeparator />
-                <ContextMenuItem onClick={closeAllTabs}>关闭全部</ContextMenuItem>
+                <ContextMenuItem onClick={closeAllTabs}>{t('terminal.close_all')}</ContextMenuItem>
               </ContextMenuContent>
             </ContextMenu>
           ))}
         </div>
 
-        <div className="flex items-center gap-1 px-2 border-l">
+        <div className="flex items-center gap-1 px-2">
           <Button
             variant="ghost"
             size="sm"
             className="h-7 w-7 p-0"
             onClick={createNewTerminal}
-            title="新建终端"
+            title={t('terminal.new_terminal')}
           >
             <Plus className="size-4" />
           </Button>

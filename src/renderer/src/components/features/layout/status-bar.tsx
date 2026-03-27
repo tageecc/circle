@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { AlertCircle, Terminal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useTranslation } from 'react-i18next'
 import { CodebaseIndexStatus } from './codebase-index-status'
 import { ProjectSwitcher } from './project-switcher'
 import { GitBranchSwitcher } from './git-branch-switcher'
@@ -23,6 +24,7 @@ export function StatusBar({
   onGitStatusChange,
   onStartCompare
 }: StatusBarProps) {
+  const { t } = useTranslation()
   // Store - 精确订阅
   const bottomPanel = useWorkspaceUIStore((state) => state.bottomPanel)
   const setBottomPanel = useWorkspaceUIStore((state) => state.setBottomPanel)
@@ -73,7 +75,7 @@ export function StatusBar({
             bottomPanel === 'terminal' && 'bg-accent'
           )}
           onClick={() => handleTogglePanel('terminal')}
-          title="切换终端 (Ctrl+`)"
+          title={t('terminal.toggle_terminal')}
         >
           <Terminal className="size-3.5" />
           <span className="text-xs">终端</span>
@@ -92,7 +94,7 @@ export function StatusBar({
             bottomPanel === 'problems' && 'bg-accent'
           )}
           onClick={() => handleTogglePanel('problems')}
-          title="切换问题面板 (Ctrl+Shift+M)"
+          title={t('terminal.toggle_problems')}
         >
           <AlertCircle className="size-3.5" />
           <span className="text-xs">问题</span>

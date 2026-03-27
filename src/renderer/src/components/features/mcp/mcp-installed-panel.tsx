@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Trash2, Power, RefreshCw, Key, Package, Plus, Edit } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -21,6 +22,7 @@ import type { MCPServer, MCPTool } from '@/types/mcp'
 import { parseConfigJson } from '@/utils/mcp-helpers'
 
 export function MCPInstalledPanel() {
+  const { t } = useTranslation()
   const [servers, setServers] = useState<MCPServer[]>([])
   const [loading, setLoading] = useState(true)
   const [serverTools, setServerTools] = useState<Record<string, MCPTool[]>>({})
@@ -67,7 +69,7 @@ export function MCPInstalledPanel() {
       }
     } catch (error) {
       console.error('加载 MCP 服务失败:', error)
-      toast.error('加载服务列表失败')
+      toast.error(t('mcp.load_failed'))
     } finally {
       setLoading(false)
     }
@@ -82,16 +84,20 @@ export function MCPInstalledPanel() {
       const success = await window.api.mcp.startAuth(serverId)
 
       if (success) {
-        toast.success(`${serverName} 授权成功`)
+        toast.success(t('mcp.auth_success', { name: serverName }))
         setNeedsAuthMap((prev) => ({ ...prev, [serverId]: false }))
         // 授权成功后自动连接
         await handleConnect(serverId)
       } else {
-        toast.error(`${serverName} 授权失败`)
+        toast.error(t('mcp.auth_failed_name', { name: serverName }))
       }
     } catch (error) {
       console.error('[MCP UI] Auth failed:', error)
-      toast.error(`授权失败: ${error instanceof Error ? error.message : String(error)}`)
+      toast.error(
+        t('mcp.auth_failed_message', {
+          message: error instanceof Error ? error.message : String(error)
+        })
+      )
     }
   }
 
@@ -119,14 +125,14 @@ export function MCPInstalledPanel() {
           ...prev,
           [serverId]: tools.map((t: any) => ({ name: t.name, description: t.description }))
         }))
-        toast.success('连接成功')
+        toast.success(t('mcp.connect_success'))
       } else {
         setConnectionStatus(serverId, 'error')
-        toast.error('连接失败')
+        toast.error(t('mcp.connect_failed'))
       }
     } catch (error: any) {
       setConnectionStatus(serverId, 'error')
-      toast.error('连接失败')
+      toast.error(t('mcp.connect_failed'))
     }
   }
 
@@ -141,10 +147,10 @@ export function MCPInstalledPanel() {
         const { [serverId]: _, ...rest } = prev
         return rest
       })
-      toast.success('断开连接成功')
+      toast.success(t('mcp.disconnect_success'))
     } catch (error) {
       setConnectionStatus(serverId, 'error')
-      toast.error('断开连接失败')
+      toast.error(t('mcp.disconnect_failed'))
     }
   }
 
@@ -154,9 +160,9 @@ export function MCPInstalledPanel() {
       removeConnectionStatus(serverId) // 清理连接状态
       await loadServers()
       await loadInstalledServers()
-      toast.success(`${serverName} 已删除`)
+      toast.success(t('mcp.delete_success_name', { name: serverName }))
     } catch (error) {
-      toast.error('删除失败')
+      toast.error(t('mcp.delete_failed'))
     }
   }
 
@@ -173,13 +179,13 @@ export function MCPInstalledPanel() {
 
   const handleAddServer = async () => {
     if (!configJson.trim()) {
-      toast.error('请输入配置 JSON')
+      toast.error(t('mcp.enter_config_json'))
       return
     }
 
     const parseResult = parseConfigJson(configJson)
     if (!parseResult) {
-      toast.error('配置格式错误，请检查 JSON 格式')
+      toast.error(t('mcp.invalid_config_json'))
       return
     }
 
@@ -188,13 +194,15 @@ export function MCPInstalledPanel() {
       const { successCount, failCount } = await batchAddServers(parseResult.servers)
       if (successCount > 0) {
         toast.success(
-          `已添加 ${successCount} 个服务器${failCount > 0 ? `，${failCount} 个失败` : ''}`
+          failCount > 0
+            ? t('mcp.batch_add_partial', { success: successCount, fail: failCount })
+            : t('mcp.batch_add_success', { count: successCount })
         )
         setOpenAddDialog(false)
         setConfigJson('')
         await loadServers()
       } else {
-        toast.error('所有服务器添加失败')
+        toast.error(t('mcp.add_all_failed'))
       }
       return
     }
@@ -203,14 +211,18 @@ export function MCPInstalledPanel() {
     const { config, serverName } = parseResult
     try {
       await window.api.mcp.addServer({ name: serverName, configJson: config })
-      toast.success(`已添加 ${serverName}`)
+      toast.success(t('mcp.server_added', { name: serverName }))
       setOpenAddDialog(false)
       setConfigJson('')
       await loadInstalledServers()
       await loadServers()
     } catch (error) {
       console.error('Failed to add MCP server:', error)
-      toast.error(`添加失败: ${error instanceof Error ? error.message : String(error)}`)
+      toast.error(
+        t('mcp.add_failed_message', {
+          message: error instanceof Error ? error.message : String(error)
+        })
+      )
     }
   }
 
@@ -222,13 +234,13 @@ export function MCPInstalledPanel() {
 
   const handleUpdateServer = async () => {
     if (!editingServer || !configJson.trim()) {
-      toast.error('配置不能为空')
+      toast.error(t('mcp.config_empty'))
       return
     }
 
     const parseResult = parseConfigJson(configJson)
     if (!parseResult) {
-      toast.error('配置格式错误，请检查 JSON 格式')
+      toast.error(t('mcp.invalid_config_json'))
       return
     }
 
@@ -237,14 +249,16 @@ export function MCPInstalledPanel() {
       const { successCount, failCount } = await batchAddServers(parseResult.servers)
       if (successCount > 0) {
         toast.success(
-          `已添加 ${successCount} 个服务器${failCount > 0 ? `，${failCount} 个失败` : ''}`
+          failCount > 0
+            ? t('mcp.batch_add_partial', { success: successCount, fail: failCount })
+            : t('mcp.batch_add_success', { count: successCount })
         )
         setOpenEditDialog(false)
         setEditingServer(null)
         setConfigJson('')
         await loadServers()
       } else {
-        toast.error('所有服务器添加失败')
+        toast.error(t('mcp.add_all_failed'))
       }
       return
     }
@@ -253,7 +267,7 @@ export function MCPInstalledPanel() {
     const { config, serverName } = parseResult
     try {
       await window.api.mcp.updateServer(editingServer.id, serverName, config)
-      toast.success(`已更新 ${serverName}`)
+      toast.success(t('mcp.server_updated', { name: serverName }))
       setOpenEditDialog(false)
       setEditingServer(null)
       setConfigJson('')
@@ -261,7 +275,11 @@ export function MCPInstalledPanel() {
       loadServers()
     } catch (error) {
       console.error('Failed to update MCP server:', error)
-      toast.error(`更新失败: ${error instanceof Error ? error.message : String(error)}`)
+      toast.error(
+        t('mcp.update_failed_message', {
+          message: error instanceof Error ? error.message : String(error)
+        })
+      )
     }
   }
 
@@ -302,8 +320,8 @@ export function MCPInstalledPanel() {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center p-6">
         <Power className="size-12 mb-4 text-muted-foreground opacity-50" />
-        <h3 className="text-lg font-medium mb-2">暂无已安装的服务</h3>
-        <p className="text-sm text-muted-foreground">点击「添加」配置本地或 HTTP MCP 服务</p>
+        <h3 className="text-lg font-medium mb-2">{t('mcp.no_installed_services')}</h3>
+        <p className="text-sm text-muted-foreground">{t('mcp.add_services_hint')}</p>
       </div>
     )
   }
@@ -314,7 +332,7 @@ export function MCPInstalledPanel() {
       <div className="px-3 py-2 border-b border-border/30">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-foreground uppercase tracking-wide">
-            已安装 {servers.length} 个服务
+            {t('mcp.installed_services_count', { count: servers.length })}
           </span>
           <div className="flex items-center gap-1">
             <Button
@@ -324,7 +342,7 @@ export function MCPInstalledPanel() {
               onClick={() => setOpenAddDialog(true)}
             >
               <Plus className="size-3.5" />
-              <span>添加</span>
+              <span>{t('mcp.add_button')}</span>
             </Button>
             <Button
               variant="ghost"
@@ -332,7 +350,7 @@ export function MCPInstalledPanel() {
               className="h-6 w-6 hover:bg-accent/50"
               onClick={loadServers}
               disabled={loading}
-              title="刷新"
+              title={t('common.refresh')}
             >
               <RefreshCw className={cn('size-3.5', loading && 'animate-spin')} />
             </Button>
@@ -391,7 +409,7 @@ export function MCPInstalledPanel() {
                             e.stopPropagation()
                             handleEditServer(server)
                           }}
-                          title="编辑"
+                          title={t('common.edit')}
                         >
                           <Edit className="size-3" />
                         </Button>
@@ -405,7 +423,7 @@ export function MCPInstalledPanel() {
                             e.stopPropagation()
                             handleDelete(server.id, server.name)
                           }}
-                          title="删除"
+                          title={t('common.delete')}
                         >
                           <Trash2 className="size-3" />
                         </Button>
@@ -422,7 +440,7 @@ export function MCPInstalledPanel() {
                             }}
                           >
                             <Key className="size-3 mr-1" />
-                            授权
+                            {t('mcp.authorize')}
                           </Button>
                         ) : (
                           <div
@@ -452,24 +470,24 @@ export function MCPInstalledPanel() {
                       {needsAuth ? (
                         <Badge variant="secondary" className="text-[10px] h-5 gap-1">
                           <Key className="size-3" />
-                          需要授权
+                          {t('mcp.needs_auth_badge')}
                         </Badge>
                       ) : status === 'error' ? (
                         <Badge variant="destructive" className="text-[10px] h-5">
-                          错误
+                          {t('mcp.error_badge')}
                         </Badge>
                       ) : null}
 
                       {status === 'connected' && tools.length > 0 && (
                         <span className="text-[10px] text-muted-foreground">
-                          {tools.length} 个工具
+                          {t('mcp.tools_count', { count: tools.length })}
                         </span>
                       )}
 
                       {/* Stdio 服务提示 */}
                       {isStdio && (
                         <Badge variant="outline" className="text-[10px]">
-                          本地
+                          {t('mcp.local_badge')}
                         </Badge>
                       )}
                     </div>
@@ -496,28 +514,18 @@ export function MCPInstalledPanel() {
       <Dialog open={openAddDialog} onOpenChange={setOpenAddDialog}>
         <DialogContent className="sm:max-w-[600px]" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
-            <DialogTitle>添加 MCP 服务器</DialogTitle>
-            <DialogDescription>粘贴或输入 MCP 服务器的配置信息</DialogDescription>
+            <DialogTitle>{t('mcp.dialog_add_title')}</DialogTitle>
+            <DialogDescription>{t('mcp.dialog_add_description')}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="server-config">配置 JSON</Label>
+              <Label htmlFor="server-config">{t('mcp.config_json_label')}</Label>
               <Textarea
                 id="server-config"
                 value={configJson}
                 onChange={(e) => setConfigJson(e.target.value)}
                 onPaste={handlePaste}
-                placeholder={`粘贴或输入 MCP 服务器配置，支持批量添加
-
-示例：
-{
-  "mcpServers": {
-    "playwright": {
-      "command": "npx",
-      "args": ["@playwright/mcp@latest"]
-    }
-  }
-}`}
+                placeholder={t('mcp.placeholder_server_config')}
                 rows={12}
                 className="font-mono text-sm"
                 spellCheck={false}
@@ -526,9 +534,9 @@ export function MCPInstalledPanel() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpenAddDialog(false)}>
-              取消
+              {t('common.cancel')}
             </Button>
-            <Button onClick={handleAddServer}>添加</Button>
+            <Button onClick={handleAddServer}>{t('mcp.add_button')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -537,25 +545,18 @@ export function MCPInstalledPanel() {
       <Dialog open={openEditDialog} onOpenChange={setOpenEditDialog}>
         <DialogContent className="sm:max-w-[600px]" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
-            <DialogTitle>编辑 MCP 服务器</DialogTitle>
-            <DialogDescription>修改 MCP 服务器的配置信息</DialogDescription>
+            <DialogTitle>{t('mcp.edit_server_dialog_title')}</DialogTitle>
+            <DialogDescription>{t('mcp.edit_server_dialog_desc')}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="edit-server-config">配置 JSON</Label>
+              <Label htmlFor="edit-server-config">{t('mcp.config_json_label')}</Label>
               <Textarea
                 id="edit-server-config"
                 value={configJson}
                 onChange={(e) => setConfigJson(e.target.value)}
                 onPaste={handlePaste}
-                placeholder={`修改服务器配置，支持智能批量添加
-
-示例：
-{
-  "command": "npx",
-  "args": ["@playwright/mcp@latest"],
-  "env": {}
-}`}
+                placeholder={t('mcp.placeholder_edit_server_config')}
                 rows={12}
                 className="font-mono text-sm"
                 spellCheck={false}
@@ -571,9 +572,9 @@ export function MCPInstalledPanel() {
                 setConfigJson('')
               }}
             >
-              取消
+              {t('common.cancel')}
             </Button>
-            <Button onClick={handleUpdateServer}>保存</Button>
+            <Button onClick={handleUpdateServer}>{t('common.save')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

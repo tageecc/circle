@@ -1,6 +1,7 @@
 import * as path from 'path'
 import * as fs from 'fs'
 import simpleGit, { SimpleGit, SimpleGitOptions } from 'simple-git'
+import { mainI18n as i18n } from '../i18n'
 
 const gitOptions: Partial<SimpleGitOptions> = {
   binary: 'git',
@@ -16,25 +17,33 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
-function formatGitError(error: unknown, operation: string): Error {
+function formatGitError(error: unknown, operationKey: string): Error {
   const message = getErrorMessage(error)
-  if (message.includes('index.lock'))
-    return new Error(`Git 操作冲突：有其他 Git 操作正在进行中，请稍后再试`)
-  if (message.includes('not a git repository')) return new Error('当前目录不是 Git 仓库')
-  if (message.includes('nothing to commit')) return new Error('没有可提交的更改')
-  if (message.includes('No local changes to save')) return new Error('没有可暂存的更改')
-  return new Error(`${operation}失败: ${message}`)
+  if (message.includes('index.lock')) {
+    return new Error(i18n.t('errors.git.index_lock'))
+  }
+  if (message.includes('not a git repository')) {
+    return new Error(i18n.t('errors.git.not_a_repository'))
+  }
+  if (message.includes('nothing to commit')) {
+    return new Error(i18n.t('errors.git.nothing_to_commit'))
+  }
+  if (message.includes('No local changes to save')) {
+    return new Error(i18n.t('errors.git.no_local_changes_to_save'))
+  }
+  const operation = i18n.t(operationKey)
+  return new Error(i18n.t('errors.git.operation_failed', { operation, message }))
 }
 
 async function execGit<T>(
   projectPath: string,
-  operation: string,
+  operationKey: string,
   fn: (git: SimpleGit) => Promise<T>
 ): Promise<T> {
   try {
     return await fn(getGit(projectPath))
   } catch (error) {
-    throw formatGitError(error, operation)
+    throw formatGitError(error, operationKey)
   }
 }
 
@@ -118,10 +127,12 @@ export class GitService {
     targetPath: string,
     onProgress?: (message: string) => void
   ): Promise<string> {
-    if (fs.existsSync(targetPath)) throw new Error(`Target directory already exists: ${targetPath}`)
-    onProgress?.('正在克隆仓库...')
-    await execGit('', '克隆仓库', () => simpleGit().clone(repoUrl, targetPath))
-    onProgress?.('克隆完成！')
+    if (fs.existsSync(targetPath)) {
+      throw new Error(i18n.t('errors.git.target_directory_exists', { path: targetPath }))
+    }
+    onProgress?.(i18n.t('main.git.clone_progress'))
+    await execGit('', 'errors.git.ops.clone_repo', () => simpleGit().clone(repoUrl, targetPath))
+    onProgress?.(i18n.t('main.git.clone_complete'))
     return targetPath
   }
 
@@ -196,7 +207,7 @@ export class GitService {
    * 切换分支
    */
   static async checkoutBranch(projectPath: string, branchName: string): Promise<void> {
-    await execGit(projectPath, '切换分支', (git) => git.checkout(branchName))
+    await execGit(projectPath, 'errors.git.ops.checkout_branch', (git) => git.checkout(branchName))
   }
 
   /**
@@ -219,7 +230,7 @@ export class GitService {
         await git.branch(options)
       }
     } catch (error) {
-      throw formatGitError(error, '创建分支')
+      throw formatGitError(error, 'errors.git.ops.create_branch')
     }
   }
 
@@ -242,7 +253,7 @@ export class GitService {
     branchName: string,
     force: boolean = false
   ): Promise<void> {
-    await execGit(projectPath, '删除分支', (git) => git.branch([force ? '-D' : '-d', branchName]))
+    await execGit(projectPath, 'errors.git.ops.delete_branch', (git) => git.branch([force ? '-D' : '-d', branchName]))
   }
 
   /**
@@ -253,7 +264,7 @@ export class GitService {
     remoteName: string,
     branchName: string
   ): Promise<void> {
-    await execGit(projectPath, '删除远程分支', (git) =>
+    await execGit(projectPath, 'errors.git.ops.delete_remote_branch', (git) =>
       git.push([remoteName, '--delete', branchName])
     )
   }
@@ -284,7 +295,7 @@ export class GitService {
    * 取消分支的上游追踪
    */
   static async unsetUpstream(projectPath: string, branchName: string): Promise<void> {
-    await execGit(projectPath, '取消上游分支', (git) =>
+    await execGit(projectPath, 'errors.git.ops.unset_upstream', (git) =>
       git.branch(['--unset-upstream', branchName])
     )
   }
@@ -293,7 +304,7 @@ export class GitService {
    * 重命名分支
    */
   static async renameBranch(projectPath: string, oldName: string, newName: string): Promise<void> {
-    await execGit(projectPath, '重命名分支', (git) => git.branch(['-m', oldName, newName]))
+    await execGit(projectPath, 'errors.git.ops.rename_branch', (git) => git.branch(['-m', oldName, newName]))
   }
 
   /**
@@ -306,13 +317,13 @@ export class GitService {
     try {
       const git = getGit(projectPath)
       await git.merge([branchName])
-      return { success: true, message: '合并成功' }
+      return { success: true, message: i18n.t('main.git.merge_success') }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       if (message.includes('CONFLICT') || message.includes('Automatic merge failed')) {
-        return { success: false, message: '合并冲突，请手动解决冲突后提交' }
+        return { success: false, message: i18n.t('main.git.merge_conflict') }
       }
-      throw formatGitError(error, '合并分支')
+      throw formatGitError(error, 'errors.git.ops.merge_branch')
     }
   }
 
@@ -390,7 +401,7 @@ export class GitService {
         }
       }
     } catch (error) {
-      throw formatGitError(error, '比较分支')
+      throw formatGitError(error, 'errors.git.ops.compare_branches')
     }
   }
 
@@ -422,7 +433,7 @@ export class GitService {
 
       return { baseContent, compareContent }
     } catch (error) {
-      throw formatGitError(error, '获取文件差异')
+      throw formatGitError(error, 'errors.git.ops.get_file_diff')
     }
   }
 
@@ -467,7 +478,7 @@ export class GitService {
         conflicted
       }
     } catch (error) {
-      throw formatGitError(error, '获取状态')
+      throw formatGitError(error, 'errors.git.ops.get_status')
     }
   }
 
@@ -475,14 +486,14 @@ export class GitService {
    * 暂存文件
    */
   static async stageFiles(projectPath: string, files: string[]): Promise<void> {
-    await execGit(projectPath, '暂存文件', (git) => git.add(files.length === 0 ? ['-A'] : files))
+    await execGit(projectPath, 'errors.git.ops.stage_files', (git) => git.add(files.length === 0 ? ['-A'] : files))
   }
 
   /**
    * 提交更改
    */
   static async commit(projectPath: string, message: string): Promise<void> {
-    await execGit(projectPath, '提交', (git) => git.commit(message))
+    await execGit(projectPath, 'errors.git.ops.commit', (git) => git.commit(message))
   }
 
   /**
@@ -507,7 +518,7 @@ export class GitService {
       }
       await git.push(options)
     } catch (error) {
-      throw formatGitError(error, '推送')
+      throw formatGitError(error, 'errors.git.ops.push')
     }
   }
 
@@ -530,7 +541,7 @@ export class GitService {
       }
       await git.push(options)
     } catch (error) {
-      throw formatGitError(error, '推送')
+      throw formatGitError(error, 'errors.git.ops.push')
     }
   }
 
@@ -583,7 +594,7 @@ export class GitService {
 
       return { commits, files, insertions, deletions }
     } catch (error) {
-      throw formatGitError(error, '拉取')
+      throw formatGitError(error, 'errors.git.ops.pull')
     }
   }
 
@@ -591,7 +602,7 @@ export class GitService {
    * 获取远程更新
    */
   static async fetch(projectPath: string, remote: string = 'origin'): Promise<void> {
-    await execGit(projectPath, '获取远程更新', (git) => git.fetch([remote]))
+    await execGit(projectPath, 'errors.git.ops.fetch', (git) => git.fetch([remote]))
   }
 
   /**
@@ -639,7 +650,7 @@ export class GitService {
    * 取消暂存文件
    */
   static async unstageFiles(projectPath: string, files: string[]): Promise<void> {
-    await execGit(projectPath, '取消暂存', (git) => git.reset(['HEAD', '--', ...files]))
+    await execGit(projectPath, 'errors.git.ops.unstage', (git) => git.reset(['HEAD', '--', ...files]))
   }
 
   /**
@@ -736,7 +747,7 @@ export class GitService {
         }
       }
     } catch (error) {
-      throw formatGitError(error, '放弃更改')
+      throw formatGitError(error, 'errors.git.ops.discard_changes')
     }
   }
 
@@ -807,7 +818,7 @@ export class GitService {
    * 从 Git HEAD 获取文件内容（用于读取已删除的文件）
    */
   static async getFileFromHead(projectPath: string, filePath: string): Promise<string> {
-    return await execGit(projectPath, '获取 HEAD 文件内容', (git) =>
+    return await execGit(projectPath, 'errors.git.ops.get_head_file', (git) =>
       git.show([`HEAD:${path.relative(projectPath, filePath)}`])
     )
   }
@@ -825,7 +836,7 @@ export class GitService {
     const options = ['push']
     if (includeUntracked) options.push('--include-untracked')
     if (message) options.push('-m', message)
-    await execGit(projectPath, '暂存更改', (git) => git.stash(options))
+    await execGit(projectPath, 'errors.git.ops.stash', (git) => git.stash(options))
   }
 
   /**
@@ -860,28 +871,28 @@ export class GitService {
    * 应用 stash（保留 stash）
    */
   static async stashApply(projectPath: string, index: number = 0): Promise<void> {
-    await execGit(projectPath, '恢复暂存', (git) => git.stash(['apply', `stash@{${index}}`]))
+    await execGit(projectPath, 'errors.git.ops.stash_apply', (git) => git.stash(['apply', `stash@{${index}}`]))
   }
 
   /**
    * 弹出 stash（应用并删除）
    */
   static async stashPop(projectPath: string, index: number = 0): Promise<void> {
-    await execGit(projectPath, '恢复并移除暂存', (git) => git.stash(['pop', `stash@{${index}}`]))
+    await execGit(projectPath, 'errors.git.ops.stash_pop', (git) => git.stash(['pop', `stash@{${index}}`]))
   }
 
   /**
    * 删除 stash
    */
   static async stashDrop(projectPath: string, index: number): Promise<void> {
-    await execGit(projectPath, '删除暂存', (git) => git.stash(['drop', `stash@{${index}}`]))
+    await execGit(projectPath, 'errors.git.ops.stash_drop', (git) => git.stash(['drop', `stash@{${index}}`]))
   }
 
   /**
    * 清空所有 stash
    */
   static async stashClear(projectPath: string): Promise<void> {
-    await execGit(projectPath, '清空暂存', (git) => git.stash(['clear']))
+    await execGit(projectPath, 'errors.git.ops.stash_clear', (git) => git.stash(['clear']))
   }
 
   /**
@@ -1160,7 +1171,7 @@ export class GitService {
         await git.raw(['commit', '--amend', '--no-edit'])
       }
     } catch (error) {
-      throw formatGitError(error, 'Amend 提交')
+      throw formatGitError(error, 'errors.git.ops.amend_commit')
     }
   }
 
@@ -1172,7 +1183,7 @@ export class GitService {
     commitHash: string,
     mode: 'soft' | 'mixed' | 'hard' = 'mixed'
   ): Promise<void> {
-    await execGit(projectPath, 'Reset', (git) => git.reset([`--${mode}`, commitHash]))
+    await execGit(projectPath, 'errors.git.ops.reset', (git) => git.reset([`--${mode}`, commitHash]))
   }
 
   /**
@@ -1185,9 +1196,9 @@ export class GitService {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       if (message.includes('conflict') || message.includes('CONFLICT')) {
-        throw new Error('回退过程中发生冲突，请手动解决冲突后提交')
+        throw new Error(i18n.t('errors.git.revert_conflict'))
       }
-      throw formatGitError(error, 'Revert')
+      throw formatGitError(error, 'errors.git.ops.revert')
     }
   }
 
@@ -1326,7 +1337,7 @@ export class GitService {
 
       return { ours, theirs, base, current, oursBranch, theirsBranch }
     } catch (error) {
-      throw formatGitError(error, '获取冲突版本')
+      throw formatGitError(error, 'errors.git.ops.get_conflict_versions')
     }
   }
 
@@ -1340,21 +1351,21 @@ export class GitService {
   ): Promise<void> {
     const relativePath = path.isAbsolute(filePath) ? path.relative(projectPath, filePath) : filePath
     await fs.promises.writeFile(path.join(projectPath, relativePath), resolvedContent, 'utf-8')
-    await execGit(projectPath, '解决冲突', (git) => git.add([relativePath]))
+    await execGit(projectPath, 'errors.git.ops.resolve_conflict', (git) => git.add([relativePath]))
   }
 
   /**
    * 中止合并操作
    */
   static async abortMerge(projectPath: string): Promise<void> {
-    await execGit(projectPath, '中止合并', (git) => git.merge(['--abort']))
+    await execGit(projectPath, 'errors.git.ops.merge_abort', (git) => git.merge(['--abort']))
   }
 
   /**
    * 接受所有"我们的"更改（批量解决冲突）
    */
   static async acceptAllOurs(projectPath: string, conflictedFiles: string[]): Promise<void> {
-    await execGit(projectPath, '接受所有本地更改', async (git) => {
+    await execGit(projectPath, 'errors.git.ops.accept_all_ours', async (git) => {
       for (const filePath of conflictedFiles) {
         const relativePath = path.isAbsolute(filePath)
           ? path.relative(projectPath, filePath)
@@ -1369,7 +1380,7 @@ export class GitService {
    * 接受所有"他们的"更改（批量解决冲突）
    */
   static async acceptAllTheirs(projectPath: string, conflictedFiles: string[]): Promise<void> {
-    await execGit(projectPath, '接受所有远程更改', async (git) => {
+    await execGit(projectPath, 'errors.git.ops.accept_all_theirs', async (git) => {
       for (const filePath of conflictedFiles) {
         const relativePath = path.isAbsolute(filePath)
           ? path.relative(projectPath, filePath)
@@ -1438,9 +1449,9 @@ export class GitService {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       if (message.includes('already exists')) {
-        throw new Error(`标签 "${tagName}" 已存在`)
+        throw new Error(i18n.t('errors.git.tag_already_exists', { tagName }))
       }
-      throw formatGitError(error, '创建标签')
+      throw formatGitError(error, 'errors.git.ops.create_tag')
     }
   }
 
@@ -1448,7 +1459,7 @@ export class GitService {
    * 删除本地标签
    */
   static async deleteTag(projectPath: string, tagName: string): Promise<void> {
-    await execGit(projectPath, '删除标签', (git) => git.tag(['-d', tagName]))
+    await execGit(projectPath, 'errors.git.ops.delete_tag', (git) => git.tag(['-d', tagName]))
   }
 
   /**
@@ -1459,7 +1470,7 @@ export class GitService {
     tagName: string,
     remote: string = 'origin'
   ): Promise<void> {
-    await execGit(projectPath, '推送标签', (git) => git.push([remote, tagName]))
+    await execGit(projectPath, 'errors.git.ops.push_tag', (git) => git.push([remote, tagName]))
   }
 
   /**
@@ -1470,7 +1481,7 @@ export class GitService {
     tagName: string,
     remote: string = 'origin'
   ): Promise<void> {
-    await execGit(projectPath, '删除远程标签', (git) => git.push([remote, '--delete', tagName]))
+    await execGit(projectPath, 'errors.git.ops.delete_remote_tag', (git) => git.push([remote, '--delete', tagName]))
   }
 
   // ==================== Rebase ====================
@@ -1485,13 +1496,13 @@ export class GitService {
     try {
       const git = getGit(projectPath)
       await git.rebase([onto])
-      return { success: true, message: 'Rebase 成功' }
+      return { success: true, message: i18n.t('main.git.rebase_success') }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       if (message.includes('CONFLICT') || message.includes('conflict')) {
-        return { success: false, message: 'Rebase 过程中发生冲突，请解决冲突后继续' }
+        return { success: false, message: i18n.t('main.git.rebase_conflict') }
       }
-      throw formatGitError(error, 'Rebase')
+      throw formatGitError(error, 'errors.git.ops.rebase')
     }
   }
 
@@ -1501,7 +1512,7 @@ export class GitService {
    * 合并最近 N 个提交为一个（Squash）
    */
   static async squashCommits(projectPath: string, count: number, message: string): Promise<void> {
-    await execGit(projectPath, 'Squash', async (git) => {
+    await execGit(projectPath, 'errors.git.ops.squash', async (git) => {
       await git.reset(['--soft', `HEAD~${count}`])
       await git.commit(message)
     })
@@ -1513,7 +1524,7 @@ export class GitService {
    * 初始化 Git 仓库
    */
   static async initRepository(projectPath: string): Promise<void> {
-    await execGit(projectPath, '初始化仓库', (git) => git.init())
+    await execGit(projectPath, 'errors.git.ops.init_repo', (git) => git.init())
   }
 
   // ==================== 远程仓库管理 ====================
@@ -1522,21 +1533,21 @@ export class GitService {
    * 添加远程仓库
    */
   static async addRemote(projectPath: string, name: string, url: string): Promise<void> {
-    await execGit(projectPath, '添加远程仓库', (git) => git.addRemote(name, url))
+    await execGit(projectPath, 'errors.git.ops.add_remote', (git) => git.addRemote(name, url))
   }
 
   /**
    * 删除远程仓库
    */
   static async removeRemote(projectPath: string, name: string): Promise<void> {
-    await execGit(projectPath, '删除远程仓库', (git) => git.removeRemote(name))
+    await execGit(projectPath, 'errors.git.ops.remove_remote', (git) => git.removeRemote(name))
   }
 
   /**
    * 修改远程仓库 URL
    */
   static async setRemoteUrl(projectPath: string, name: string, url: string): Promise<void> {
-    await execGit(projectPath, '修改远程仓库', (git) => git.raw(['remote', 'set-url', name, url]))
+    await execGit(projectPath, 'errors.git.ops.set_remote_url', (git) => git.raw(['remote', 'set-url', name, url]))
   }
 
   // ==================== Cherry-pick ====================
@@ -1551,13 +1562,13 @@ export class GitService {
     try {
       const git = getGit(projectPath)
       await git.raw(['cherry-pick', commitHash])
-      return { success: true, message: 'Cherry-pick 成功' }
+      return { success: true, message: i18n.t('main.git.cherry_pick_success') }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       if (message.includes('CONFLICT') || message.includes('conflict')) {
-        return { success: false, message: 'Cherry-pick 过程中发生冲突，请手动解决冲突后提交' }
+        return { success: false, message: i18n.t('main.git.cherry_pick_conflict') }
       }
-      throw formatGitError(error, 'Cherry-pick')
+      throw formatGitError(error, 'errors.git.ops.cherry_pick')
     }
   }
 }

@@ -36,7 +36,7 @@ function Sidebar({
   return (
     <div
       data-slot="sidebar"
-      className={cn('flex h-full w-[--sidebar-width] flex-col border-r bg-sidebar', className)}
+      className={cn('flex h-full w-[--sidebar-width] flex-col border-r border-border bg-sidebar', className)}
       style={
         {
           '--sidebar-width': '16rem'

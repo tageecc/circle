@@ -26,6 +26,7 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -46,24 +47,25 @@
 
 :root {
   --radius: 0.625rem;
-  /* One Light 主题配色 - 优化版本，更好的层次和对比 */
+  /* One Light 主题配色 - 优化版本，柔和的边框和更好的层次 */
   --background: #fafafa;
   --foreground: #383a42;
-  --card: #f2f2f3;
+  --card: #ffffff;
   --card-foreground: #383a42;
   --popover: #ffffff;
   --popover-foreground: #383a42;
   --primary: #4078f2;
   --primary-foreground: #ffffff;
-  --secondary: #e5e5e6;
+  --secondary: #f0f0f1;
   --secondary-foreground: #383a42;
-  --muted: #e5e5e6;
-  --muted-foreground: #a0a1a7;
-  --accent: #e5e5e6;
+  --muted: #f0f0f1;
+  --muted-foreground: #9ca3af;
+  --accent: #f0f0f1;
   --accent-foreground: #4078f2;
   --destructive: #e45649;
-  -border: var(--color-neutral-200);
-  --input: #ffffff;
+  --destructive-foreground: #ffffff;
+  --border: #e5e5e8;
+  --input: #e5e5e8;
   --ring: #4078f2;
   --chart-1: #4078f2;
   --chart-2: #50a14f;
@@ -74,9 +76,9 @@
   --sidebar-foreground: #383a42;
   --sidebar-primary: #4078f2;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e5e5e6;
+  --sidebar-accent: #f0f0f1;
   --sidebar-accent-foreground: #383a42;
-  --sidebar-border: #d3d3d4;
+  --sidebar-border: #e5e5e8;
   --sidebar-ring: #4078f2;
 }
 
@@ -97,6 +99,7 @@
   --accent: #2c313c;
   --accent-foreground: #61afef;
   --destructive: #e06c75;
+  --destructive-foreground: #ffffff;
   --border: #181a1f;
   --input: #1e2127;
   --ring: #61afef;
@@ -133,7 +136,6 @@
 @layer base {
   * {
     @apply outline-none;
-    border-color: transparent;
     /* 全局禁用文本选择，让应用更像原生应用 */
     user-select: none;
     -webkit-user-select: none;

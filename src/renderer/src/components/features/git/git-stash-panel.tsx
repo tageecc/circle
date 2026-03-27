@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
+import type { TFunction } from 'i18next'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -51,8 +53,7 @@ interface GitStashPanelProps {
   onExpandedChange?: (expanded: boolean) => void
 }
 
-// 格式化相对时间
-function formatRelativeTime(dateStr: string): string {
+function formatStashRelativeTime(dateStr: string, t: TFunction): string {
   const date = new Date(dateStr)
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
@@ -60,11 +61,11 @@ function formatRelativeTime(dateStr: string): string {
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 
-  if (diffMins < 1) return '刚刚'
-  if (diffMins < 60) return `${diffMins} 分钟前`
-  if (diffHours < 24) return `${diffHours} 小时前`
-  if (diffDays < 7) return `${diffDays} 天前`
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} 周前`
+  if (diffMins < 1) return t('git.time_just_now')
+  if (diffMins < 60) return t('git.time_minutes_ago', { count: diffMins })
+  if (diffHours < 24) return t('git.time_hours_ago', { count: diffHours })
+  if (diffDays < 7) return t('git.time_days_ago', { count: diffDays })
+  if (diffDays < 30) return t('git.time_weeks_ago', { count: Math.floor(diffDays / 7) })
   return date.toLocaleDateString()
 }
 
@@ -76,6 +77,7 @@ export function GitStashPanel({
   expanded: controlledExpanded,
   onExpandedChange
 }: GitStashPanelProps) {
+  const { t } = useTranslation()
   const [stashes, setStashes] = useState<GitStashEntry[]>([])
   const [loading, setLoading] = useState(false)
   const [internalExpanded, setInternalExpanded] = useState(false) // 默认收起
@@ -151,17 +153,17 @@ export function GitStashPanel({
       setActionLoading(true)
       try {
         await window.api.git.stashApply(workspaceRoot, index)
-        toast.success('已恢复到工作区')
+        toast.success(t('git.stash_apply_success'))
         onRefresh?.()
       } catch (error: any) {
-        toast.error('恢复失败', {
+        toast.error(t('git.stash_apply_failed'), {
           description: error.message
         })
       } finally {
         setActionLoading(false)
       }
     },
-    [workspaceRoot, onRefresh]
+    [workspaceRoot, onRefresh, t]
   )
 
   // Pop stash
@@ -170,14 +172,14 @@ export function GitStashPanel({
       setActionLoading(true)
       try {
         await window.api.git.stashPop(workspaceRoot, index)
-        toast.success('已恢复并移除')
+        toast.success(t('git.stash_pop_success'))
         await loadStashes()
         // 清除所有文件缓存（因为 stash 索引会重新排列）
         setStashFiles({})
         setExpandedStash(null)
         onRefresh?.()
       } catch (error: any) {
-        toast.error('恢复失败', {
+        toast.error(t('git.stash_pop_failed'), {
           description: error.message
         })
       } finally {
@@ -185,7 +187,7 @@ export function GitStashPanel({
         setConfirmDialog(null)
       }
     },
-    [workspaceRoot, loadStashes, onRefresh]
+    [workspaceRoot, loadStashes, onRefresh, t]
   )
 
   // Drop stash
@@ -194,13 +196,13 @@ export function GitStashPanel({
       setActionLoading(true)
       try {
         await window.api.git.stashDrop(workspaceRoot, index)
-        toast.success('已丢弃')
+        toast.success(t('git.stash_drop_success'))
         await loadStashes()
         // 清除所有文件缓存（因为 stash 索引会重新排列）
         setStashFiles({})
         setExpandedStash(null)
       } catch (error: any) {
-        toast.error('操作失败', {
+        toast.error(t('git.stash_operation_failed'), {
           description: error.message
         })
       } finally {
@@ -208,7 +210,7 @@ export function GitStashPanel({
         setConfirmDialog(null)
       }
     },
-    [workspaceRoot, loadStashes]
+    [workspaceRoot, loadStashes, t]
   )
 
   // Clear all stashes
@@ -216,19 +218,19 @@ export function GitStashPanel({
     setActionLoading(true)
     try {
       await window.api.git.stashClear(workspaceRoot)
-      toast.success('已清空全部')
+      toast.success(t('git.stash_clear_success'))
       await loadStashes()
       setStashFiles({})
       setExpandedStash(null)
     } catch (error: any) {
-      toast.error('操作失败', {
+      toast.error(t('git.stash_operation_failed'), {
         description: error.message
       })
     } finally {
       setActionLoading(false)
       setConfirmDialog(null)
     }
-  }, [workspaceRoot, loadStashes])
+  }, [workspaceRoot, loadStashes, t])
 
   // 渲染单个 stash 条目
   const renderStashItem = (stash: GitStashEntry) => {
@@ -271,7 +273,7 @@ export function GitStashPanel({
               </span>
               <span className="flex items-center gap-0.5">
                 <Clock className="size-3" />
-                {formatRelativeTime(stash.date)}
+                {formatStashRelativeTime(stash.date, t)}
               </span>
             </div>
           </div>
@@ -294,7 +296,7 @@ export function GitStashPanel({
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                <p>恢复到工作区</p>
+                <p>{t('git.stash_tooltip_apply')}</p>
               </TooltipContent>
             </Tooltip>
 
@@ -313,15 +315,19 @@ export function GitStashPanel({
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem onClick={() => handleApply(stash.index)}>
                   <RotateCcw className="mr-2 size-4" />
-                  恢复
-                  <span className="ml-auto text-[10px] text-muted-foreground">保留此条</span>
+                  {t('git.stash_menu_apply')}
+                  <span className="ml-auto text-[10px] text-muted-foreground">
+                    {t('git.stash_menu_apply_keep')}
+                  </span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setConfirmDialog({ type: 'pop', index: stash.index })}
                 >
                   <RotateCcw className="mr-2 size-4" />
-                  恢复并移除
-                  <span className="ml-auto text-[10px] text-muted-foreground">移除此条</span>
+                  {t('git.stash_menu_pop')}
+                  <span className="ml-auto text-[10px] text-muted-foreground">
+                    {t('git.stash_menu_pop_hint')}
+                  </span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -329,8 +335,10 @@ export function GitStashPanel({
                   onClick={() => setConfirmDialog({ type: 'drop', index: stash.index })}
                 >
                   <Trash2 className="mr-2 size-4" />
-                  丢弃
-                  <span className="ml-auto text-[10px] text-muted-foreground">不恢复</span>
+                  {t('git.stash_menu_drop')}
+                  <span className="ml-auto text-[10px] text-muted-foreground">
+                    {t('git.stash_menu_drop_hint')}
+                  </span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -395,7 +403,7 @@ export function GitStashPanel({
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">
-              <p>创建 Stash</p>
+              <p>{t('git.stash_tooltip_create')}</p>
             </TooltipContent>
           </Tooltip>
 
@@ -415,7 +423,7 @@ export function GitStashPanel({
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">
-              <p>刷新</p>
+              <p>{t('git.stash_tooltip_refresh')}</p>
             </TooltipContent>
           </Tooltip>
 
@@ -435,7 +443,7 @@ export function GitStashPanel({
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                <p>清空所有 Stash</p>
+                <p>{t('git.stash_tooltip_clear_all')}</p>
               </TooltipContent>
             </Tooltip>
           )}
@@ -463,7 +471,7 @@ export function GitStashPanel({
           ) : stashes.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-6 text-center">
               <FileText className="size-8 text-muted-foreground/50 mb-2" />
-              <p className="text-xs text-muted-foreground">没有 stash</p>
+              <p className="text-xs text-muted-foreground">{t('git.stash_empty')}</p>
               <Button
                 variant="ghost"
                 size="sm"
@@ -471,7 +479,7 @@ export function GitStashPanel({
                 onClick={onCreateStash}
               >
                 <Plus className="size-3 mr-1" />
-                创建 Stash
+                {t('git.stash_create')}
               </Button>
             </div>
           ) : (
@@ -489,17 +497,17 @@ export function GitStashPanel({
           <DialogHeader>
             <DialogTitle>
               {confirmDialog?.type === 'clear'
-                ? '清空全部?'
+                ? t('git.stash_clear_all_confirm_title')
                 : confirmDialog?.type === 'drop'
-                  ? '丢弃此暂存?'
-                  : '恢复并移除?'}
+                  ? t('git.stash_drop_confirm_title')
+                  : t('git.stash_pop_confirm_title')}
             </DialogTitle>
             <DialogDescription>
               {confirmDialog?.type === 'clear'
-                ? '将删除所有暂存的更改，此操作无法撤销。'
+                ? t('git.stash_clear_all_description')
                 : confirmDialog?.type === 'drop'
-                  ? '将丢弃这些更改，此操作无法撤销。'
-                  : '更改将恢复到工作区，此暂存将被移除。'}
+                  ? t('git.stash_drop_description')
+                  : t('git.stash_pop_description')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -508,7 +516,7 @@ export function GitStashPanel({
               onClick={() => setConfirmDialog(null)}
               disabled={actionLoading}
             >
-              取消
+              {t('common.cancel')}
             </Button>
             <Button
               variant={confirmDialog?.type !== 'pop' ? 'destructive' : 'default'}
@@ -525,10 +533,10 @@ export function GitStashPanel({
             >
               {actionLoading && <Loader2 className="mr-2 size-4 animate-spin" />}
               {confirmDialog?.type === 'clear'
-                ? '清空'
+                ? t('git.stash_confirm_clear')
                 : confirmDialog?.type === 'drop'
-                  ? '丢弃'
-                  : '确认'}
+                  ? t('git.stash_confirm_drop')
+                  : t('git.stash_confirm_pop')}
             </Button>
           </DialogFooter>
         </DialogContent>

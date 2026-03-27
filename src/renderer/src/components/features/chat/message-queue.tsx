@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useMessageQueueStore, type QueuedMessage } from '@/stores/message-queue.store'
 import { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface MessageQueueProps {
   sessionId: string | null
@@ -16,6 +17,7 @@ interface MessageQueueProps {
  * 显示待发送的消息队列，类似 Cursor 的设计
  */
 export function MessageQueue({ sessionId, onSendNow, className }: MessageQueueProps) {
+  const { t } = useTranslation()
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [collapsed, setCollapsed] = useState(false)
   
@@ -46,7 +48,7 @@ export function MessageQueue({ sessionId, onSendNow, className }: MessageQueuePr
           <ChevronDown className="size-3 text-muted-foreground/60 group-hover:text-muted-foreground transition-colors" />
         )}
         <span className="text-[11px] font-medium text-muted-foreground/70 group-hover:text-muted-foreground/90 transition-colors">
-          {queue.length} Queued
+          {t('message_queue.queued_count', { count: queue.length })}
         </span>
       </div>
 
@@ -86,6 +88,7 @@ function QueuedMessageItem({
   onSendNow,
   onRemove
 }: QueuedMessageItemProps) {
+  const { t } = useTranslation()
   // 消息预览（最多显示一行）
   const preview = message.content.split('\n')[0]
   const isTruncated = message.content.length > preview.length || preview.length > 60
@@ -135,10 +138,10 @@ function QueuedMessageItem({
             size="sm"
             className="h-7 px-2.5 text-xs gap-1.5 hover:bg-accent rounded-lg font-normal text-muted-foreground hover:text-foreground"
             onClick={onSendNow}
-            title="立即发送（打断当前对话）"
+            title={t('message_queue.send_now_title')}
           >
             <Send className="size-3" />
-            <span>to send now</span>
+            <span>{t('message_queue.send_now_label')}</span>
           </Button>
 
           {/* 删除按钮 */}
@@ -147,7 +150,7 @@ function QueuedMessageItem({
             size="sm"
             className="h-7 w-7 p-0 hover:bg-destructive/10 hover:text-destructive rounded-lg"
             onClick={onRemove}
-            title="删除"
+            title={t('common.delete')}
           >
             <X className="size-3.5" />
           </Button>

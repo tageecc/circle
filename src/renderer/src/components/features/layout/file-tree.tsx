@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback, DragEvent, KeyboardEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   ChevronRight,
   ChevronDown,
@@ -134,6 +135,7 @@ export function FileTree({
   onGitRevert,
   onMove
 }: FileTreeProps) {
+  const { t } = useTranslation()
   const [tree, setTree] = useState<FileNode[]>([])
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(() => {
     return initialExpandedDirs ? new Set(initialExpandedDirs) : new Set()
@@ -867,7 +869,7 @@ export function FileTree({
             variant="ghost"
             size="icon"
             className="h-6 w-6 hover:bg-accent/50"
-            title="新建"
+            title={t('file_tree.tooltip_new')}
             onClick={(e) => e.stopPropagation()}
           >
             <Plus className="size-3.5" />
@@ -876,11 +878,11 @@ export function FileTree({
         <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuItem onClick={() => onNewFile?.(selectedDir || workspaceRoot)}>
             <FileText className="mr-2 size-4" />
-            <span>文件</span>
+            <span>{t('file_tree.item_file')}</span>
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => onNewFolder?.(selectedDir || workspaceRoot)}>
             <FolderPlus className="mr-2 size-4" />
-            <span>文件夹</span>
+            <span>{t('file_tree.item_folder')}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -893,7 +895,7 @@ export function FileTree({
           locateActiveFile()
         }}
         disabled={!activeFile}
-        title="定位当前文件"
+        title={t('file_tree.tooltip_reveal_active')}
       >
         <LocateFixed className="size-3.5" />
       </Button>
@@ -905,7 +907,7 @@ export function FileTree({
           e.stopPropagation()
           collapseAll()
         }}
-        title="收起所有文件夹"
+        title={t('file_tree.tooltip_collapse_all')}
       >
         <Minimize2 className="size-3.5" />
       </Button>
@@ -917,7 +919,7 @@ export function FileTree({
           e.stopPropagation()
           expandAll()
         }}
-        title="展开所有文件夹"
+        title={t('file_tree.tooltip_expand_all')}
       >
         <Maximize2 className="size-3.5" />
       </Button>
@@ -930,7 +932,7 @@ export function FileTree({
           refreshFileTree()
           onRefresh?.()
         }}
-        title="刷新"
+        title={t('common.refresh')}
       >
         <RefreshCw className="size-3.5" />
       </Button>

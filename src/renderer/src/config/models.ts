@@ -1,162 +1,176 @@
 /**
- * AI 模型配置
+ * AI model catalog. User-visible copy uses i18n keys; resolve with t() in UI.
  */
 
 export interface ModelInfo {
   id: string
   name: string
-  description: string
+  descriptionKey: string
   contextWindow: string
-  capabilities?: string[]
+  capabilityKeys?: string[]
 }
 
 export interface ProviderConfig {
-  name: string
+  nameKey: string
   models: ModelInfo[]
 }
 
 export const PROVIDER_MODELS: Record<string, ProviderConfig> = {
   'Alibaba (China)': {
-    name: '阿里云百炼',
+    nameKey: 'models.providers.alibaba_china',
     models: [
       {
         id: 'qwen-plus',
         name: 'Qwen Plus',
-        description: '平衡性能与成本的通用模型',
+        descriptionKey: 'models.descriptions.qwen_plus',
         contextWindow: '1M',
-        capabilities: ['文本生成', '代码', '推理']
+        capabilityKeys: ['models.caps.text_generation', 'models.caps.code', 'models.caps.reasoning']
       },
       {
         id: 'qwen-max',
         name: 'Qwen Max',
-        description: '最强大的通义千问模型',
+        descriptionKey: 'models.descriptions.qwen_max',
         contextWindow: '256K',
-        capabilities: ['复杂推理', '代码', '长文本']
+        capabilityKeys: [
+          'models.caps.complex_reasoning',
+          'models.caps.code',
+          'models.caps.long_context'
+        ]
       },
       {
         id: 'qwen-turbo',
         name: 'Qwen Turbo',
-        description: '快速响应的轻量级模型',
+        descriptionKey: 'models.descriptions.qwen_turbo',
         contextWindow: '1M',
-        capabilities: ['快速响应', '日常任务']
+        capabilityKeys: ['models.caps.fast_response', 'models.caps.daily_tasks']
       },
       {
         id: 'qwq-plus',
         name: 'QwQ Plus',
-        description: '思维链推理模型',
+        descriptionKey: 'models.descriptions.qwq_plus',
         contextWindow: '128K',
-        capabilities: ['思维链', '复杂推理']
+        capabilityKeys: ['models.caps.chain_of_thought', 'models.caps.complex_reasoning']
       },
       {
         id: 'deepseek-r1',
         name: 'DeepSeek R1',
-        description: '强大的推理模型',
+        descriptionKey: 'models.descriptions.deepseek_r1',
         contextWindow: '128K',
-        capabilities: ['推理', '数学', '代码']
+        capabilityKeys: ['models.caps.reasoning', 'models.caps.math', 'models.caps.code']
       }
     ]
   },
   OpenAI: {
-    name: 'OpenAI',
+    nameKey: 'models.providers.openai',
     models: [
       {
         id: 'gpt-4o',
         name: 'GPT-4o',
-        description: '最新的多模态旗舰模型',
+        descriptionKey: 'models.descriptions.gpt_4o',
         contextWindow: '128K',
-        capabilities: ['视觉', '音频', '代码', '推理']
+        capabilityKeys: ['models.caps.vision', 'models.caps.audio', 'models.caps.code', 'models.caps.reasoning']
       },
       {
         id: 'gpt-4o-mini',
         name: 'GPT-4o Mini',
-        description: '快速且经济的智能模型',
+        descriptionKey: 'models.descriptions.gpt_4o_mini',
         contextWindow: '128K',
-        capabilities: ['日常任务', '代码', '快速响应']
+        capabilityKeys: ['models.caps.daily_tasks', 'models.caps.code', 'models.caps.fast_response']
       },
       {
         id: 'o1',
         name: 'O1',
-        description: '深度推理模型，擅长复杂问题',
+        descriptionKey: 'models.descriptions.o1',
         contextWindow: '128K',
-        capabilities: ['深度推理', '科学', '数学', '编程']
+        capabilityKeys: [
+          'models.caps.deep_reasoning',
+          'models.caps.science',
+          'models.caps.math',
+          'models.caps.programming'
+        ]
       },
       {
         id: 'o1-mini',
         name: 'O1 Mini',
-        description: '快速的推理模型',
+        descriptionKey: 'models.descriptions.o1_mini',
         contextWindow: '128K',
-        capabilities: ['推理', '代码', '数学']
+        capabilityKeys: ['models.caps.reasoning', 'models.caps.code', 'models.caps.math']
       }
     ]
   },
   Anthropic: {
-    name: 'Anthropic',
+    nameKey: 'models.providers.anthropic',
     models: [
       {
         id: 'claude-3-5-sonnet-20241022',
         name: 'Claude 3.5 Sonnet',
-        description: 'Anthropic 最智能的模型',
+        descriptionKey: 'models.descriptions.claude_35_sonnet',
         contextWindow: '200K',
-        capabilities: ['复杂推理', '代码', '长文本', '分析']
+        capabilityKeys: [
+          'models.caps.complex_reasoning',
+          'models.caps.code',
+          'models.caps.long_context',
+          'models.caps.analysis'
+        ]
       },
       {
         id: 'claude-3-5-haiku-20241022',
         name: 'Claude 3.5 Haiku',
-        description: '快速响应的高效模型',
+        descriptionKey: 'models.descriptions.claude_35_haiku',
         contextWindow: '200K',
-        capabilities: ['快速响应', '日常任务']
+        capabilityKeys: ['models.caps.fast_response', 'models.caps.daily_tasks']
       },
       {
         id: 'claude-3-opus-20240229',
         name: 'Claude 3 Opus',
-        description: '旗舰级模型，最强性能',
+        descriptionKey: 'models.descriptions.claude_3_opus',
         contextWindow: '200K',
-        capabilities: ['复杂任务', '创作', '分析']
+        capabilityKeys: ['models.caps.complex_tasks', 'models.caps.creative', 'models.caps.analysis']
       }
     ]
   },
   Google: {
-    name: 'Google',
+    nameKey: 'models.providers.google',
     models: [
       {
         id: 'gemini-2.0-flash-exp',
         name: 'Gemini 2.0 Flash',
-        description: '实验性的快速模型',
+        descriptionKey: 'models.descriptions.gemini_20_flash',
         contextWindow: '1M',
-        capabilities: ['超长上下文', '多模态', '快速']
+        capabilityKeys: ['models.caps.ultra_long_context', 'models.caps.multimodal', 'models.caps.fast_response']
       },
       {
         id: 'gemini-1.5-pro',
         name: 'Gemini 1.5 Pro',
-        description: '强大的多模态模型',
+        descriptionKey: 'models.descriptions.gemini_15_pro',
         contextWindow: '2M',
-        capabilities: ['超长上下文', '多模态', '推理']
+        capabilityKeys: ['models.caps.ultra_long_context', 'models.caps.multimodal', 'models.caps.reasoning']
       },
       {
         id: 'gemini-1.5-flash',
         name: 'Gemini 1.5 Flash',
-        description: '快速的多模态模型',
+        descriptionKey: 'models.descriptions.gemini_15_flash',
         contextWindow: '1M',
-        capabilities: ['长上下文', '多模态', '快速']
+        capabilityKeys: ['models.caps.long_context', 'models.caps.multimodal', 'models.caps.fast_response']
       }
     ]
   },
   DeepSeek: {
-    name: 'DeepSeek',
+    nameKey: 'models.providers.deepseek',
     models: [
       {
         id: 'deepseek-chat',
         name: 'DeepSeek Chat',
-        description: '通用对话模型',
+        descriptionKey: 'models.descriptions.deepseek_chat',
         contextWindow: '128K',
-        capabilities: ['对话', '代码', '推理']
+        capabilityKeys: ['models.caps.conversation', 'models.caps.code', 'models.caps.reasoning']
       },
       {
         id: 'deepseek-reasoner',
         name: 'DeepSeek Reasoner',
-        description: '专注推理的模型',
+        descriptionKey: 'models.descriptions.deepseek_reasoner',
         contextWindow: '128K',
-        capabilities: ['推理', '数学', '逻辑']
+        capabilityKeys: ['models.caps.reasoning', 'models.caps.math', 'models.caps.logic']
       }
     ]
   }

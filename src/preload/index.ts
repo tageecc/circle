@@ -5,7 +5,7 @@ const i18nextBackend = require('i18next-electron-fs-backend')
 // Custom API definition
 const api = {
   // i18next backend
-  i18nextElectronBackend: i18nextBackend.preloadBindings(ipcRenderer),
+  i18nextElectronBackend: i18nextBackend.preloadBindings(ipcRenderer, process),
   
   // Get system locale
   getSystemLocale: () => ipcRenderer.invoke('system:getLocale'),

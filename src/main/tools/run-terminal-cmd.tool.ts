@@ -6,6 +6,7 @@ import { getToolContext } from '../services/tool-context'
 import { getConfigService } from '../index'
 import { sendToRenderer } from '../utils/ipc'
 import { SessionService } from '../services/session.service'
+import { mainI18n as i18n } from '../i18n'
 
 // 常量
 const DEFAULT_SHELL = '/bin/bash'
@@ -279,7 +280,7 @@ In using these tools, adhere to the following guidelines:
         return JSON.stringify({
           success: false,
           command,
-          message: '用户拒绝执行命令，会话已停止。',
+          message: i18n.t('main.terminal.user_rejected_command'),
           exitCode: 1,
           rejected: true
         })
@@ -289,7 +290,7 @@ In using these tools, adhere to the following guidelines:
         return JSON.stringify({
           success: true,
           command,
-          message: '用户跳过此命令，请继续下一个任务。',
+          message: i18n.t('main.terminal.user_skipped_command'),
           skipped: true
         })
       }
@@ -355,8 +356,11 @@ async function executeInTerminal(
       exitCode,
       streaming: true,
       message: stdout.substring(0, 2000).trim()
-        ? `命令已在终端 ${terminalId} 中执行。初始输出：\n${stdout.substring(0, 2000).trim()}`
-        : `命令已在终端 ${terminalId} 中执行（后台服务）`
+        ? i18n.t('main.terminal.ran_in_terminal_with_output', {
+            terminalId,
+            output: stdout.substring(0, 2000).trim()
+          })
+        : i18n.t('main.terminal.ran_in_terminal_background', { terminalId })
     }),
     abortSignal
   })
@@ -451,7 +455,7 @@ async function spawnCommand(options: SpawnOptions): Promise<string> {
           resolveOnce({
             success: false,
             command,
-            stderr: '命令执行已被用户停止',
+            stderr: i18n.t('main.terminal.command_aborted_by_user'),
             exitCode: 130 // SIGTERM 的标准退出码
           })
         }

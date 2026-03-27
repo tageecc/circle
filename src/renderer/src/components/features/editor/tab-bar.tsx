@@ -11,6 +11,7 @@ import {
   ContextMenuTrigger
 } from '@/components/ui/context-menu'
 import { useWorkspaceUIStore } from '@/stores/workspace-ui.store'
+import { useTranslation } from 'react-i18next'
 
 // Git状态颜色映射
 const getGitStatusColor = (gitStatus?: GitStatus): string => {
@@ -101,6 +102,7 @@ export function TabBar({
   onMarkdownModeChange,
   onReorder
 }: TabBarProps) {
+  const { t } = useTranslation()
   // Store - 精确订阅
   const showFileTree = useWorkspaceUIStore((state) => state.showFileTree)
 
@@ -202,7 +204,7 @@ export function TabBar({
                             : file.showConflict
                               ? ' (Merge)'
                               : file.showDiff && ' (Diff)'}
-                      {file.isDeleted && ' (已删除)'}
+                      {file.isDeleted && t('editor.tab_deleted_suffix')}
                     </span>
 
                     {/* Git状态徽章 */}
@@ -239,21 +241,23 @@ export function TabBar({
                   </button>
                 </ContextMenuTrigger>
                 <ContextMenuContent>
-                  <ContextMenuItem onClick={() => onTabClose(tabId)}>关闭</ContextMenuItem>
+                  <ContextMenuItem onClick={() => onTabClose(tabId)}>
+                    {t('editor.close_tab')}
+                  </ContextMenuItem>
                   <ContextMenuItem
                     onClick={() => onCloseOthers(tabId)}
                     disabled={openFiles.length === 1}
                   >
-                    关闭其他
+                    {t('editor.close_other_tabs')}
                   </ContextMenuItem>
                   <ContextMenuItem
                     onClick={() => onCloseToRight(tabId)}
                     disabled={index === openFiles.length - 1}
                   >
-                    关闭右侧
+                    {t('editor.close_tabs_to_right')}
                   </ContextMenuItem>
                   <ContextMenuSeparator />
-                  <ContextMenuItem onClick={onCloseAll}>关闭所有</ContextMenuItem>
+                  <ContextMenuItem onClick={onCloseAll}>{t('editor.close_all_tabs')}</ContextMenuItem>
                 </ContextMenuContent>
               </ContextMenu>
             )
@@ -268,7 +272,7 @@ export function TabBar({
             size="sm"
             className="h-7 w-7 p-0"
             onClick={() => onMarkdownModeChange('edit')}
-            title="仅编辑"
+            title={t('editor.markdown_edit_only')}
           >
             <Code className="size-4" />
           </Button>
@@ -277,7 +281,7 @@ export function TabBar({
             size="sm"
             className="h-7 w-7 p-0"
             onClick={() => onMarkdownModeChange('split')}
-            title="分屏"
+            title={t('editor.markdown_split')}
           >
             <Columns className="size-4" />
           </Button>
@@ -286,7 +290,7 @@ export function TabBar({
             size="sm"
             className="h-7 w-7 p-0"
             onClick={() => onMarkdownModeChange('preview')}
-            title="仅预览"
+            title={t('editor.markdown_preview_only')}
           >
             <Eye className="size-4" />
           </Button>

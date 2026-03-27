@@ -18,6 +18,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Terminal, Play, X, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useTranslation } from 'react-i18next'
 
 interface CommandConfirmCardProps {
   command: string
@@ -44,6 +45,7 @@ export function CommandConfirmCard({
   onCancel,
   isProcessing = false
 }: CommandConfirmCardProps) {
+  const { t } = useTranslation()
   const [isExecuting, setIsExecuting] = useState(false)
 
   const handleApprove = async () => {
@@ -77,12 +79,12 @@ export function CommandConfirmCard({
             <Terminal
               className={cn('h-5 w-5', isDangerous ? 'text-destructive' : 'text-primary')}
             />
-            <CardTitle className="text-base">命令执行确认</CardTitle>
+            <CardTitle className="text-base">{t('command_confirm.title')}</CardTitle>
           </div>
           {isDangerous && (
             <Badge variant="destructive" className="gap-1">
               <AlertTriangle className="h-3 w-3" />
-              危险命令
+              {t('command_confirm.dangerous_badge')}
             </Badge>
           )}
         </div>
@@ -100,7 +102,7 @@ export function CommandConfirmCard({
           <div className="flex gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
             <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
             <div>
-              <div className="font-semibold mb-1">⚠️ 警告</div>
+              <div className="font-semibold mb-1">{t('command_confirm.warning_title')}</div>
               <div className="text-xs">{dangerReason}</div>
             </div>
           </div>
@@ -109,7 +111,7 @@ export function CommandConfirmCard({
         {/* 权限要求 */}
         {requiredPermissions && requiredPermissions.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
-            <span className="text-xs text-muted-foreground">需要权限:</span>
+            <span className="text-xs text-muted-foreground">{t('command_confirm.permissions_label')}</span>
             {requiredPermissions.map((perm) => (
               <Badge key={perm} variant="outline" className="text-xs">
                 {perm}
@@ -128,7 +130,7 @@ export function CommandConfirmCard({
           className="flex-1 gap-2"
         >
           <X className="h-4 w-4" />
-          取消
+          {t('common.cancel')}
         </Button>
         <Button
           onClick={handleApprove}
@@ -138,7 +140,7 @@ export function CommandConfirmCard({
           className="flex-1 gap-2"
         >
           <Play className="h-4 w-4" />
-          {isDangerous ? '确认执行（危险）' : '执行'}
+          {isDangerous ? t('command_confirm.run_dangerous') : t('command_confirm.run')}
         </Button>
       </CardFooter>
 

@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from '@/components/ui/sonner'
 
 interface PushMismatchState {
@@ -19,6 +20,7 @@ interface UseGitActionsOptions {
  * 封装所有 Git 操作的业务逻辑，包括错误处理和特殊情况处理
  */
 export function useGitActions({ workspaceRoot, onSuccess, onOpenHistory }: UseGitActionsOptions) {
+  const { t } = useTranslation()
   const [pushMismatch, setPushMismatch] = useState<PushMismatchState>({
     open: false,
     remote: '',
@@ -51,16 +53,16 @@ export function useGitActions({ workspaceRoot, onSuccess, onOpenHistory }: UseGi
 
         // 正常推送
         await window.api.git.push(workspaceRoot, 'origin', currentBranch, true)
-        toast.success(`已推送到 origin/${currentBranch}`)
+        toast.success(t('git.toast_push_origin', { branch: currentBranch }))
         onSuccess?.()
         return true
       } catch (error: any) {
         const errorMsg = error.message || String(error)
-        toast.error('推送失败', { description: errorMsg })
+        toast.error(t('git.toast_push_failed'), { description: errorMsg })
         return false
       }
     },
-    [workspaceRoot, onSuccess]
+    [workspaceRoot, onSuccess, t]
   )
 
   /**
@@ -70,14 +72,14 @@ export function useGitActions({ workspaceRoot, onSuccess, onOpenHistory }: UseGi
     const { remote, trackedBranch } = pushMismatch
     try {
       await window.api.git.pushToRef(workspaceRoot, remote, `HEAD:${trackedBranch}`)
-      toast.success(`已推送到 ${remote}/${trackedBranch}`)
+      toast.success(t('git.toast_push_ref', { remote, branch: trackedBranch }))
       onSuccess?.()
       return true
     } catch (error: any) {
-      toast.error('推送失败', { description: error.message })
+      toast.error(t('git.toast_push_failed'), { description: error.message })
       return false
     }
-  }, [workspaceRoot, pushMismatch, onSuccess])
+  }, [workspaceRoot, pushMismatch, onSuccess, t])
 
   /**
    * 推送并设置新的上游追踪（用于分支名不匹配时）
@@ -86,14 +88,14 @@ export function useGitActions({ workspaceRoot, onSuccess, onOpenHistory }: UseGi
     const { remote, currentBranch } = pushMismatch
     try {
       await window.api.git.pushToRef(workspaceRoot, remote, 'HEAD', true)
-      toast.success(`已推送到 ${remote}/${currentBranch}`)
+      toast.success(t('git.toast_push_ref', { remote, branch: currentBranch }))
       onSuccess?.()
       return true
     } catch (error: any) {
-      toast.error('推送失败', { description: error.message })
+      toast.error(t('git.toast_push_failed'), { description: error.message })
       return false
     }
-  }, [workspaceRoot, pushMismatch, onSuccess])
+  }, [workspaceRoot, pushMismatch, onSuccess, t])
 
   /**
    * 关闭 push mismatch 对话框
@@ -112,16 +114,20 @@ export function useGitActions({ workspaceRoot, onSuccess, onOpenHistory }: UseGi
       onSuccess?.()
 
       if (result.commits === 0) {
-        toast.success('Already up to date')
+        toast.success(t('git.toast_pull_up_to_date'))
       } else {
         const toastId = `pull-${Date.now()}`
-        toast.success(`Pull 成功: ${result.commits} 个提交`, {
+        toast.success(t('git.toast_pull_commits', { count: result.commits }), {
           id: toastId,
-          description: `${result.files} 个文件变更 (+${result.insertions} / -${result.deletions})`,
+          description: t('git.toast_pull_stats', {
+            files: result.files,
+            insertions: result.insertions,
+            deletions: result.deletions
+          }),
           duration: 6000,
           action: onOpenHistory
             ? {
-                label: '查看更新 →',
+                label: t('git.toast_view_updates'),
                 onClick: () => {
                   toast.dismiss(toastId)
                   onOpenHistory()
@@ -132,10 +138,10 @@ export function useGitActions({ workspaceRoot, onSuccess, onOpenHistory }: UseGi
       }
       return true
     } catch (error: any) {
-      toast.error('拉取失败', { description: error.message })
+      toast.error(t('git.toast_pull_failed'), { description: error.message })
       return false
     }
-  }, [workspaceRoot, onSuccess, onOpenHistory])
+  }, [workspaceRoot, onSuccess, onOpenHistory, t])
 
   /**
    * 获取远程更新
@@ -144,14 +150,14 @@ export function useGitActions({ workspaceRoot, onSuccess, onOpenHistory }: UseGi
     if (!workspaceRoot) return false
     try {
       await window.api.git.fetch(workspaceRoot, 'origin')
-      toast.success('获取成功')
+      toast.success(t('git.toast_fetch_success'))
       onSuccess?.()
       return true
     } catch (error: any) {
-      toast.error('获取失败', { description: error.message })
+      toast.error(t('git.toast_fetch_failed'), { description: error.message })
       return false
     }
-  }, [workspaceRoot, onSuccess])
+  }, [workspaceRoot, onSuccess, t])
 
   /**
    * 切换分支
@@ -161,15 +167,15 @@ export function useGitActions({ workspaceRoot, onSuccess, onOpenHistory }: UseGi
       if (!workspaceRoot) return false
       try {
         await window.api.git.checkoutBranch(workspaceRoot, branchName)
-        toast.success(`已切换到分支 ${branchName}`)
+        toast.success(t('git.toast_checkout_success', { branch: branchName }))
         onSuccess?.()
         return true
       } catch (error: any) {
-        toast.error('切换分支失败', { description: error.message })
+        toast.error(t('git.toast_checkout_failed'), { description: error.message })
         return false
       }
     },
-    [workspaceRoot, onSuccess]
+    [workspaceRoot, onSuccess, t]
   )
 
   return {

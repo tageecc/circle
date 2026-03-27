@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import Editor, { loader } from '@monaco-editor/react'
 import type { editor } from 'monaco-editor'
 import * as monaco from 'monaco-editor'
@@ -139,11 +140,14 @@ export function GitDiffEditor({
   original,
   modified,
   language = 'plaintext',
-  originalTitle = '原始版本 (HEAD)',
-  modifiedTitle = '工作区',
+  originalTitle,
+  modifiedTitle,
   height = '100%',
   onApplyChange
 }: GitDiffEditorProps) {
+  const { t } = useTranslation()
+  const resolvedOriginalTitle = originalTitle ?? t('git.diff_original_head')
+  const resolvedModifiedTitle = modifiedTitle ?? t('git.diff_working_tree')
   const { editorOptions: globalOptions } = useSettings()
 
   const [diffBlocks, setDiffBlocks] = useState<DiffBlock[]>([])
@@ -692,11 +696,11 @@ export function GitDiffEditor({
       {/* 标题栏 */}
       <div className="flex border-b border-border shrink-0">
         <div className="flex-1 px-3 py-2 text-xs font-medium text-red-600 dark:text-red-400 bg-muted/30">
-          {originalTitle}
+          {resolvedOriginalTitle}
         </div>
         <div className="bg-muted/50 shrink-0" style={{ width: CONNECTOR_WIDTH }} />
         <div className="flex-1 px-3 py-2 text-xs font-medium text-green-600 dark:text-green-400 bg-muted/30">
-          {modifiedTitle}
+          {resolvedModifiedTitle}
         </div>
       </div>
 
@@ -799,8 +803,8 @@ export function GitDiffEditor({
             transform: 'translateY(-50%)'
           }}
         >
-          <div>Revert</div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">点击恢复此更改</div>
+          <div>{t('git.diff_revert_title')}</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">{t('git.diff_revert_hint')}</div>
         </div>
       )}
     </div>

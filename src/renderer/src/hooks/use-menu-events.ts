@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from '@/components/ui/sonner'
 import { useWorkspaceUIStore } from '@/stores/workspace-ui.store'
 import { refreshGitStatus } from './use-git-manager'
@@ -17,6 +18,7 @@ export function useMenuEvents({
   handleOpenRecentProject,
   closeProject
 }: UseMenuEventsProps) {
+  const { t } = useTranslation()
   const openDialog = useWorkspaceUIStore((state) => state.openDialog)
   const toggleFileTree = useWorkspaceUIStore((state) => state.toggleFileTree)
   const toggleChatSidebar = useWorkspaceUIStore((state) => state.toggleChatSidebar)
@@ -31,7 +33,7 @@ export function useMenuEvents({
           fileManager.saveFile(fileManager.activeFile, undefined, () => refreshGitStatus())
       ),
       window.api.menu.onSaveAll(() => {
-        toast.info('全部保存功能开发中')
+        toast.info(t('menu.save_all_coming_soon'))
       }),
       window.api.menu.onCloseWorkspace(closeProject),
       window.api.menu.onOpenSettings(() => openDialog('settings')),
@@ -54,6 +56,7 @@ export function useMenuEvents({
     closeProject,
     openDialog,
     toggleFileTree,
-    toggleChatSidebar
+    toggleChatSidebar,
+    t
   ])
 }

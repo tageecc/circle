@@ -30,6 +30,7 @@ import {
   ContextTrigger,
 } from "@/components/ai-elements/context";
 import type { LanguageModelUsage } from 'ai'
+import { useTranslation } from 'react-i18next'
 
 export type { PastedImage, Attachment }
 
@@ -57,7 +58,7 @@ interface ChatInputProps {
 }
 
 export function ChatInput({
-  placeholder = 'Ask, Search or Chat...',
+  placeholder,
   value,
   onChange,
   onSend,
@@ -77,6 +78,7 @@ export function ChatInput({
   usedTokens,
   usage
 }: ChatInputProps) {
+  const { t } = useTranslation()
   const inputGroupRef = useRef<HTMLDivElement>(null)
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null)
   const [selectedProvider, setSelectedProvider] = useState(defaultProvider)
@@ -112,7 +114,7 @@ export function ChatInput({
     <div style={minHeight ? { minHeight } : undefined}>
       <InputGroup ref={inputGroupRef} className="[--radius:1.5rem]">
         <RichTextInput
-          placeholder={placeholder}
+          placeholder={placeholder ?? t('chat.type_message')}
           value={value}
           onChange={onChange}
           onSend={onSend}
@@ -146,7 +148,7 @@ export function ChatInput({
               className="w-[380px] max-h-[500px] overflow-y-auto [--radius:0.95rem] -translate-x-32"
               container={portalContainer}
             >
-              {Object.entries(PROVIDER_MODELS).map(([provider, { name, models }]) => (
+              {Object.entries(PROVIDER_MODELS).map(([provider, { nameKey, models }]) => (
                 <div key={provider}>
                   <DropdownMenuLabel className="flex items-center gap-2 px-3 py-2">
                     {getProviderLogo(provider) && (
@@ -156,7 +158,7 @@ export function ChatInput({
                         className="size-4 dark:invert opacity-70"
                       />
                     )}
-                    <span className="text-xs font-semibold text-foreground">{name}</span>
+                    <span className="text-xs font-semibold text-foreground">{t(nameKey)}</span>
                   </DropdownMenuLabel>
                   {models.map((model) => (
                     <DropdownMenuItem
@@ -177,16 +179,16 @@ export function ChatInput({
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground leading-relaxed">
-                          {model.description}
+                          {t(model.descriptionKey)}
                         </p>
-                        {model.capabilities && model.capabilities.length > 0 && (
+                        {model.capabilityKeys && model.capabilityKeys.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-0.5">
-                            {model.capabilities.map((cap) => (
+                            {model.capabilityKeys.map((capKey) => (
                               <span
-                                key={cap}
+                                key={capKey}
                                 className="inline-flex items-center rounded-md bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-secondary-foreground"
                               >
-                                {cap}
+                                {t(capKey)}
                               </span>
                             ))}
                           </div>
@@ -230,10 +232,10 @@ export function ChatInput({
                 className="rounded-full"
                 size="icon-xs"
                 onClick={onStop}
-                title="停止生成"
+                title={t('chat.stop_generating')}
               >
                 <Square className="size-3 fill-current" />
-                <span className="sr-only">Stop</span>
+                <span className="sr-only">{t('chat.stop')}</span>
               </InputGroupButton>
             ) : (
               <InputGroupButton
@@ -242,10 +244,10 @@ export function ChatInput({
                 size="icon-xs"
                 disabled={!hasContent || disabled}
                 onClick={onSend}
-                title={isSending ? '加入队列' : '发送消息'}
+                title={isSending ? t('chat.enqueue') : t('chat.send_message')}
               >
                 <ArrowUp className="size-4" />
-                <span className="sr-only">Send</span>
+                <span className="sr-only">{t('chat.send')}</span>
               </InputGroupButton>
             )}
           </div>

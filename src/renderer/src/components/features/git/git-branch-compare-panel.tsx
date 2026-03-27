@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import {
@@ -95,6 +96,7 @@ export function GitBranchComparePanel({
   onClose,
   onSwapBranches
 }: GitBranchComparePanelProps) {
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [files, setFiles] = useState<BranchCompareFile[]>([])
   const [stats, setStats] = useState({ additions: 0, deletions: 0, filesChanged: 0 })
@@ -119,11 +121,11 @@ export function GitBranchComparePanel({
       })
       setExpandedDirs(dirs)
     } catch (err: any) {
-      setError(err.message || '加载失败')
+      setError(err.message || t('git.compare_load_failed'))
     } finally {
       setLoading(false)
     }
-  }, [workspaceRoot, baseBranch, compareBranch])
+  }, [workspaceRoot, baseBranch, compareBranch, t])
 
   useEffect(() => {
     if (baseBranch && compareBranch) {
@@ -219,7 +221,7 @@ export function GitBranchComparePanel({
             size="icon"
             className="h-6 w-6 hover:bg-accent/50"
             onClick={loadComparison}
-            title="刷新"
+            title={t('common.refresh')}
           >
             <RefreshCw className="size-3.5" />
           </Button>
@@ -228,7 +230,7 @@ export function GitBranchComparePanel({
             size="icon"
             className="h-6 w-6 hover:bg-accent/50"
             onClick={onClose}
-            title="关闭"
+            title={t('common.close')}
           >
             <X className="size-3.5" />
           </Button>
@@ -250,7 +252,7 @@ export function GitBranchComparePanel({
               size="icon"
               className="h-5 w-5 shrink-0"
               onClick={onSwapBranches}
-              title="交换分支"
+              title={t('git.compare_swap_branches')}
             >
               <ArrowLeftRight className="size-3" />
             </Button>
@@ -264,7 +266,7 @@ export function GitBranchComparePanel({
         </div>
         {!loading && !error && files.length > 0 && (
           <div className="flex items-center gap-3 text-muted-foreground">
-            <span>{stats.filesChanged} files</span>
+            <span>{t('git.compare_files_stats', { count: stats.filesChanged })}</span>
             <span className="text-green-500">+{stats.additions}</span>
             <span className="text-red-500">-{stats.deletions}</span>
           </div>
@@ -284,7 +286,7 @@ export function GitBranchComparePanel({
         ) : files.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground text-sm">
             <GitBranch className="size-8 mb-2 opacity-20" />
-            <span>没有差异</span>
+            <span>{t('git.compare_no_diff')}</span>
           </div>
         ) : (
           <ScrollArea className="h-full">

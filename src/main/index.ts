@@ -15,6 +15,7 @@ import { ConfigService } from './services/config.service'
 import { WindowStateManager } from './services/window-state.service'
 import { AvatarService } from './services/avatar.service'
 import { MenuService } from './services/menu.service'
+import { initMainI18n } from './i18n'
 const i18nextBackend = require('i18next-electron-fs-backend')
 import * as fs from 'fs'
 
@@ -29,6 +30,10 @@ export function getConfigService(): ConfigService {
     throw new Error('ConfigService has not been initialized yet')
   }
   return configService
+}
+
+export function rebuildApplicationMenu(): void {
+  menuService?.createMenu()
 }
 
 // 根据主题获取窗口背景色
@@ -75,7 +80,9 @@ function createWindow(): void {
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: false,
+      contextIsolation: true,
+      nodeIntegration: false
     }
   })
 
@@ -224,6 +231,8 @@ async function initializeBackend(): Promise<boolean> {
 
     // Initialize config service (uses SQLite)
     configService = new ConfigService()
+
+    await initMainI18n(configService)
 
     // Initialize avatar service
     await AvatarService.initialize()

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,7 @@ interface GitAddRemoteDialogProps {
 const DEFAULT_REMOTE_NAME = 'origin'
 
 export function GitAddRemoteDialog({ open, onClose, onConfirm }: GitAddRemoteDialogProps) {
+  const { t } = useTranslation()
   const [remoteName, setRemoteName] = useState(DEFAULT_REMOTE_NAME)
   const [remoteUrl, setRemoteUrl] = useState('')
   const [isAdding, setIsAdding] = useState(false)
@@ -35,18 +37,18 @@ export function GitAddRemoteDialog({ open, onClose, onConfirm }: GitAddRemoteDia
   const handleConfirm = async () => {
     // 验证输入
     if (!remoteName.trim()) {
-      setError('请输入远程仓库名称')
+      setError(t('git.remote_name_required'))
       return
     }
     if (!remoteUrl.trim()) {
-      setError('请输入远程仓库 URL')
+      setError(t('git.remote_url_required'))
       return
     }
 
     // URL格式验证
     const urlPattern = /^(https?:\/\/|git@)/
     if (!urlPattern.test(remoteUrl.trim())) {
-      setError('请输入有效的 Git 仓库 URL（支持 HTTPS 或 SSH）')
+      setError(t('git.remote_url_invalid'))
       return
     }
 
@@ -57,7 +59,7 @@ export function GitAddRemoteDialog({ open, onClose, onConfirm }: GitAddRemoteDia
       resetForm()
       onClose()
     } catch (err: any) {
-      setError(err.message || '添加远程仓库失败')
+      setError(err.message || t('git.add_remote_failed'))
     } finally {
       setIsAdding(false)
     }
@@ -79,9 +81,9 @@ export function GitAddRemoteDialog({ open, onClose, onConfirm }: GitAddRemoteDia
               <GitBranch className="size-5 text-primary" />
             </div>
             <div>
-              <DialogTitle>添加远程仓库</DialogTitle>
+              <DialogTitle>{t('git.add_remote_title')}</DialogTitle>
               <DialogDescription className="mt-1">
-                配置远程仓库地址以便推送代码
+                {t('git.add_remote_description')}
               </DialogDescription>
             </div>
           </div>
@@ -89,7 +91,7 @@ export function GitAddRemoteDialog({ open, onClose, onConfirm }: GitAddRemoteDia
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="remote-name">远程仓库名称</Label>
+            <Label htmlFor="remote-name">{t('git.remote_name_label')}</Label>
             <Input
               id="remote-name"
               value={remoteName}
@@ -97,11 +99,11 @@ export function GitAddRemoteDialog({ open, onClose, onConfirm }: GitAddRemoteDia
               placeholder="origin"
               disabled={isAdding}
             />
-            <p className="text-xs text-muted-foreground">通常使用 "origin" 作为默认名称</p>
+            <p className="text-xs text-muted-foreground">{t('git.remote_name_hint')}</p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="remote-url">远程仓库 URL</Label>
+            <Label htmlFor="remote-url">{t('git.remote_url_label')}</Label>
             <Input
               id="remote-url"
               value={remoteUrl}
@@ -109,9 +111,7 @@ export function GitAddRemoteDialog({ open, onClose, onConfirm }: GitAddRemoteDia
               placeholder="https://github.com/username/repo.git"
               disabled={isAdding}
             />
-            <p className="text-xs text-muted-foreground">
-              支持 HTTPS (https://...) 或 SSH (git@...) 格式
-            </p>
+            <p className="text-xs text-muted-foreground">{t('git.remote_url_format_hint')}</p>
           </div>
 
           {error && (
@@ -121,22 +121,22 @@ export function GitAddRemoteDialog({ open, onClose, onConfirm }: GitAddRemoteDia
           )}
 
           <div className="rounded-lg bg-muted/50 p-3 space-y-2">
-            <p className="text-sm font-medium">💡 提示</p>
+            <p className="text-sm font-medium">💡 {t('git.add_remote_tips_title')}</p>
             <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
-              <li>HTTPS URL 示例: https://github.com/username/repo.git</li>
-              <li>SSH URL 示例: git@github.com:username/repo.git</li>
-              <li>添加后即可使用 Push 功能推送代码</li>
+              <li>{t('git.add_remote_tip_https')}</li>
+              <li>{t('git.add_remote_tip_ssh')}</li>
+              <li>{t('git.add_remote_tip_push')}</li>
             </ul>
           </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose} disabled={isAdding}>
-            取消
+            {t('common.cancel')}
           </Button>
           <Button onClick={handleConfirm} disabled={isAdding}>
             {isAdding && <Loader2 className="mr-2 size-4 animate-spin" />}
-            添加远程仓库
+            {t('git.add_remote_submit')}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import type { TFunction } from 'i18next'
+import { useTranslation } from 'react-i18next'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -89,8 +91,7 @@ const statusConfig = {
   renamed: { icon: FileSymlink, color: 'text-blue-500', label: 'R' }
 }
 
-// 格式化日期
-function formatDate(dateStr: string): string {
+function formatCommitDate(dateStr: string, t: TFunction, locale: string): string {
   const date = new Date(dateStr)
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
@@ -98,22 +99,21 @@ function formatDate(dateStr: string): string {
   const diffHours = Math.floor(diffMs / 3600000)
   const diffDays = Math.floor(diffMs / 86400000)
 
-  if (diffMins < 1) return '刚刚'
-  if (diffMins < 60) return `${diffMins} 分钟前`
-  if (diffHours < 24) return `${diffHours} 小时前`
-  if (diffDays < 7) return `${diffDays} 天前`
+  if (diffMins < 1) return t('git.time_just_now')
+  if (diffMins < 60) return t('git.time_minutes_ago', { count: diffMins })
+  if (diffHours < 24) return t('git.time_hours_ago', { count: diffHours })
+  if (diffDays < 7) return t('git.time_days_ago', { count: diffDays })
 
-  return date.toLocaleDateString('zh-CN', {
+  return date.toLocaleDateString(locale, {
     year: 'numeric',
     month: 'short',
     day: 'numeric'
   })
 }
 
-// 格式化完整日期时间
-function formatFullDate(dateStr: string): string {
+function formatCommitFullDate(dateStr: string, locale: string): string {
   const date = new Date(dateStr)
-  return date.toLocaleString('zh-CN', {
+  return date.toLocaleString(locale, {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -186,6 +186,8 @@ function CommitList({
   onLoadMore,
   renderRefs
 }: CommitListProps) {
+  const { t, i18n } = useTranslation()
+  const locale = i18n.language
   const parentRef = useRef<HTMLDivElement>(null)
 
   // 估算每个提交项的高度
@@ -279,7 +281,7 @@ function CommitList({
                 ) : (
                   <div className="flex items-center justify-center py-2">
                     <Button variant="ghost" size="sm" className="text-xs" onClick={onLoadMore}>
-                      加载更多
+                      {t('git.load_more')}
                     </Button>
                   </div>
                 )}
@@ -406,10 +408,10 @@ function CommitList({
                           onClick={(e) => {
                             e.stopPropagation()
                             navigator.clipboard.writeText(commit.hash)
-                            toast.success('已复制 Commit Hash')
+                            toast.success(t('git.copy_hash_success'))
                           }}
                         >
-                          复制 Hash
+                          {t('git.copy_hash')}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -424,7 +426,7 @@ function CommitList({
                     <span>·</span>
                     <span className="flex items-center gap-1">
                       <Clock className="size-3" />
-                      {formatDate(commit.date)}
+                      {formatCommitDate(commit.date, t, locale)}
                     </span>
                   </div>
                 </div>
@@ -453,7 +455,7 @@ function CommitList({
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-muted-foreground w-16">Date:</span>
-                          <span>{formatFullDate(commitDetail.date)}</span>
+                          <span>{formatCommitFullDate(commitDetail.date, locale)}</span>
                         </div>
                         {commitDetail.parents.length > 0 && (
                           <div className="flex items-center gap-2">
@@ -526,6 +528,7 @@ export function GitHistoryPanel({
   onFileClick,
   onRefresh
 }: GitHistoryPanelProps) {
+  const { t } = useTranslation()
   const [commits, setCommits] = useState<GitCommit[]>([])
   const [loading, setLoading] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -592,7 +595,7 @@ export function GitHistoryPanel({
         setHasMore(result.hasMore)
       } catch (error) {
         console.error('Failed to load commit history:', error)
-        toast.error('加载提交历史失败')
+        toast.error(t('git.load_commit_history_failed'))
       } finally {
         setLoading(false)
         setLoadingMore(false)
@@ -605,7 +608,8 @@ export function GitHistoryPanel({
       searchQuery,
       selectedBranch,
       selectedAuthor,
-      showAllBranches
+      showAllBranches,
+      t
     ]
   )
 
@@ -666,14 +670,14 @@ export function GitHistoryPanel({
 
     try {
       await window.api.git.resetToCommit(workspaceRoot, commit.hash, mode)
-      toast.success(`已 Reset 到 ${commit.shortHash}`, {
-        description: `模式: ${mode}`
+      toast.success(t('git.reset_to_commit_success', { shortHash: commit.shortHash }), {
+        description: t('git.reset_mode_description', { mode })
       })
       setResetDialog({ open: false, commit: null, mode: 'mixed' })
       loadCommits(true)
       onRefresh?.()
     } catch (error: any) {
-      toast.error('Reset 失败', { description: error.message })
+      toast.error(t('git.reset_failed'), { description: error.message })
     }
   }
 
@@ -683,13 +687,13 @@ export function GitHistoryPanel({
 
     try {
       await window.api.git.revertCommit(workspaceRoot, commit.hash)
-      toast.success(`已 Revert 提交 ${commit.shortHash}`, {
-        description: '已创建回退提交'
+      toast.success(t('git.revert_commit_success', { shortHash: commit.shortHash }), {
+        description: t('git.revert_commit_created')
       })
       loadCommits(true)
       onRefresh?.()
     } catch (error: any) {
-      toast.error('Revert 失败', { description: error.message })
+      toast.error(t('git.revert_failed'), { description: error.message })
     }
   }
 
@@ -707,12 +711,12 @@ export function GitHistoryPanel({
       // squashDialog.commitIndex 是目标提交的索引，count = 从 HEAD 到目标的提交数
       const count = squashDialog.commitIndex + 1
       await window.api.git.squashCommits(workspaceRoot, count, squashDialog.message)
-      toast.success(`已合并 ${count} 个提交`)
+      toast.success(t('git.squash_commits_success', { count }))
       setSquashDialog({ open: false, commitIndex: 0, message: '' })
       loadCommits(true)
       onRefresh?.()
     } catch (error: any) {
-      toast.error('Squash 失败', { description: error.message })
+      toast.error(t('git.squash_failed'), { description: error.message })
     }
   }
 
@@ -783,7 +787,7 @@ export function GitHistoryPanel({
               size="icon"
               className="h-6 w-6 hover:bg-accent/50"
               onClick={clearFilters}
-              title="清除过滤"
+              title={t('git.clear_filters')}
             >
               <X className="size-3.5" />
             </Button>
@@ -808,7 +812,7 @@ export function GitHistoryPanel({
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="搜索提交信息..."
+            placeholder={t('git.search_commits_placeholder')}
             className="h-7 pl-7 text-xs"
           />
         </div>
@@ -833,17 +837,17 @@ export function GitHistoryPanel({
           >
             <SelectTrigger className="h-7 text-xs flex-1">
               <GitBranch className="size-3 mr-1 text-muted-foreground" />
-              <SelectValue placeholder="分支" />
+              <SelectValue placeholder={t('git.filter_branch_placeholder')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="__current__">
                 <span className="flex items-center gap-1">
-                  当前分支
+                  {t('git.filter_current_branch')}
                   <span className="text-muted-foreground">({currentBranch})</span>
                 </span>
               </SelectItem>
               <SelectItem value="__all__">
-                <span className="text-primary font-medium">所有分支</span>
+                <span className="text-primary font-medium">{t('git.filter_all_branches')}</span>
               </SelectItem>
               {branches.map((branch) => (
                 <SelectItem key={branch.name} value={branch.name}>
@@ -861,10 +865,10 @@ export function GitHistoryPanel({
           >
             <SelectTrigger className="h-7 text-xs flex-1">
               <User className="size-3 mr-1 text-muted-foreground" />
-              <SelectValue placeholder="作者" />
+              <SelectValue placeholder={t('git.filter_author_placeholder')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="__all__">所有作者</SelectItem>
+              <SelectItem value="__all__">{t('git.filter_all_authors')}</SelectItem>
               {authors.map((author) => (
                 <SelectItem key={author} value={author}>
                   {author}
@@ -884,7 +888,7 @@ export function GitHistoryPanel({
         ) : commits.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground text-sm">
             <GitCommitIcon className="size-8 mb-2 opacity-20" />
-            <span>没有提交历史</span>
+            <span>{t('git.no_commit_history')}</span>
           </div>
         ) : (
           <CommitList
@@ -926,7 +930,7 @@ export function GitHistoryPanel({
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Reset to Commit</DialogTitle>
-            <DialogDescription>确定要将当前分支重置到此提交吗？</DialogDescription>
+            <DialogDescription>{t('git.reset_dialog_confirm')}</DialogDescription>
           </DialogHeader>
 
           {resetDialog.commit && (
@@ -941,25 +945,15 @@ export function GitHistoryPanel({
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Reset 模式:</label>
+                <label className="text-sm font-medium">{t('git.reset_mode_label')}</label>
                 <div className="space-y-2">
-                  {[
-                    {
-                      mode: 'soft' as const,
-                      title: 'Soft',
-                      desc: '保留所有更改在暂存区'
-                    },
-                    {
-                      mode: 'mixed' as const,
-                      title: 'Mixed',
-                      desc: '保留更改但取消暂存'
-                    },
-                    {
-                      mode: 'hard' as const,
-                      title: 'Hard',
-                      desc: '丢弃所有更改（危险）'
-                    }
-                  ].map((opt) => (
+                  {(
+                    [
+                      { mode: 'soft' as const, title: 'Soft', descKey: 'git.reset_mode_soft_desc' },
+                      { mode: 'mixed' as const, title: 'Mixed', descKey: 'git.reset_mode_mixed_desc' },
+                      { mode: 'hard' as const, title: 'Hard', descKey: 'git.reset_mode_hard_desc' }
+                    ] as const
+                  ).map((opt) => (
                     <label
                       key={opt.mode}
                       className={cn(
@@ -983,7 +977,7 @@ export function GitHistoryPanel({
                         >
                           {opt.title}
                         </div>
-                        <div className="text-xs text-muted-foreground">{opt.desc}</div>
+                        <div className="text-xs text-muted-foreground">{t(opt.descKey)}</div>
                       </div>
                     </label>
                   ))}
@@ -997,7 +991,7 @@ export function GitHistoryPanel({
               variant="outline"
               onClick={() => setResetDialog({ open: false, commit: null, mode: 'mixed' })}
             >
-              取消
+              {t('common.cancel')}
             </Button>
             <Button
               variant={resetDialog.mode === 'hard' ? 'destructive' : 'default'}
@@ -1020,21 +1014,21 @@ export function GitHistoryPanel({
           <DialogHeader>
             <DialogTitle>Squash Commits</DialogTitle>
             <DialogDescription>
-              将从 HEAD 到此提交的 {squashDialog.commitIndex + 1} 个提交合并为一个
+              {t('git.squash_dialog_description', { count: squashDialog.commitIndex + 1 })}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
             <div className="text-xs text-muted-foreground p-2 rounded bg-yellow-500/10 text-yellow-600">
-              ⚠️ 此操作会重写提交历史。如果这些提交已推送到远程，请谨慎操作。
+              ⚠️ {t('git.squash_history_warning')}
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">合并后的提交消息:</label>
+              <label className="text-sm font-medium">{t('git.squash_combined_message_label')}</label>
               <Textarea
                 value={squashDialog.message}
                 onChange={(e) => setSquashDialog((prev) => ({ ...prev, message: e.target.value }))}
-                placeholder="输入合并后的提交消息..."
+                placeholder={t('git.squash_combined_message_placeholder')}
                 className="min-h-[120px] text-sm font-mono"
               />
             </div>
@@ -1045,7 +1039,7 @@ export function GitHistoryPanel({
               variant="outline"
               onClick={() => setSquashDialog({ open: false, commitIndex: 0, message: '' })}
             >
-              取消
+              {t('common.cancel')}
             </Button>
             <Button onClick={handleSquash} disabled={!squashDialog.message.trim()}>
               <Combine className="size-4 mr-2" />

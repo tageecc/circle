@@ -13,7 +13,8 @@ import { RecentFilesService } from '../services/recent-files.service'
 import { BugReportService } from '../services/bug-report.service'
 import { MessageSnapshotService } from '../services/message-snapshot.service'
 import { MemoryService } from '../services/memory.service'
-import { getConfigService } from '../index'
+import { getConfigService, rebuildApplicationMenu } from '../index'
+import { mainI18n, syncMainI18nFromConfig } from '../i18n'
 import { getDb } from '../database/db'
 import { sendToRenderer } from '../utils/ipc'
 import * as fontList from 'font-list'
@@ -81,9 +82,9 @@ export function registerIpcHandlers() {
       // 特殊错误消息处理
       let errorMessage = error instanceof Error ? error.message : 'Unknown error'
       if (error instanceof Error && error.message.includes('tool_call_id')) {
-        errorMessage = '对话状态异常，建议创建新会话继续'
+        errorMessage = 'Chat state error, please create a new session'
       } else if (error instanceof Error && error.name === 'AbortError') {
-        errorMessage = '对话已停止'
+        errorMessage = 'Chat stopped by user'
       }
       
       event.reply('chat:stream:error', errorMessage)
@@ -224,6 +225,10 @@ export function registerIpcHandlers() {
   ipcMain.handle('config:set', async (_, config) => {
     try {
       configService.setConfig(config)
+      if (config && typeof config === 'object' && 'language' in config && config.language !== undefined) {
+        await syncMainI18nFromConfig(configService)
+        rebuildApplicationMenu()
+      }
     } catch (error) {
       console.error('Failed to set config:', error)
       throw error
@@ -665,8 +670,8 @@ export function registerIpcHandlers() {
       const { dialog } = await import('electron')
       const result = await dialog.showOpenDialog({
         properties: ['openDirectory'],
-        title: '选择项目文件夹',
-        buttonLabel: '选择项目'
+        title: mainI18n.t('dialog.select_project_folder.title'),
+        buttonLabel: mainI18n.t('dialog.select_project_folder.confirm')
       })
 
       const projectPath = result.canceled ? null : result.filePaths[0]
@@ -784,7 +789,7 @@ export function registerIpcHandlers() {
       console.error('Failed to open project in new window:', error)
       return {
         success: false,
-        error: error instanceof Error ? error.message : '未知错误'
+        error: error instanceof Error ? error.message : mainI18n.t('errors.unknown_error')
       }
     }
   })
@@ -1546,10 +1551,10 @@ export function registerIpcHandlers() {
       if (!window) throw new Error('No active window')
 
       const result = await dialog.showOpenDialog(window, {
-        title: '选择项目文件夹',
-        message: '请选择一个文件夹来创建您的项目',
+        title: mainI18n.t('dialog.create_project_folder.title'),
+        message: mainI18n.t('dialog.create_project_folder.message'),
         properties: ['openDirectory', 'createDirectory'],
-        buttonLabel: '选择此文件夹'
+        buttonLabel: mainI18n.t('dialog.create_project_folder.confirm')
       })
 
       if (result.canceled || result.filePaths.length === 0) {

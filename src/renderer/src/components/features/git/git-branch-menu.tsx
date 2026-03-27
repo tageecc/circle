@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   DropdownMenuContent,
   DropdownMenuItem,
@@ -107,6 +108,7 @@ export const GitBranchMenu = forwardRef<GitBranchMenuRef, GitBranchMenuProps>(
     },
     ref
   ) {
+    const { t } = useTranslation()
     const [branches, setBranches] = useState<GitBranchData[]>([])
     const [tags, setTags] = useState<GitTagData[]>([])
     const [recentBranches, setRecentBranches] = useState<string[]>([])
@@ -118,7 +120,7 @@ export const GitBranchMenu = forwardRef<GitBranchMenuRef, GitBranchMenuProps>(
       tags: false
     })
 
-    const currentBranchDisplay = currentBranch || '当前分支'
+    const currentBranchDisplay = currentBranch || t('git.current_branch')
     const isLoadingRef = useRef(false)
     const searchInputRef = useRef<HTMLInputElement>(null)
 
@@ -224,7 +226,7 @@ export const GitBranchMenu = forwardRef<GitBranchMenuRef, GitBranchMenuProps>(
           await loadBranches()
           onRefresh()
         } catch (e: any) {
-          toast.error('删除远程分支失败', { description: e.message })
+          toast.error(t('git.delete_remote_branch_failed'), { description: e.message })
         }
         return
       }
@@ -252,7 +254,7 @@ export const GitBranchMenu = forwardRef<GitBranchMenuRef, GitBranchMenuProps>(
             await loadBranches()
             onRefresh()
           } catch (e: any) {
-            toast.error('恢复失败', { description: e.message })
+            toast.error(t('git.restore_failed'), { description: e.message })
           }
         }
 
@@ -265,7 +267,7 @@ export const GitBranchMenu = forwardRef<GitBranchMenuRef, GitBranchMenuProps>(
             await loadBranches()
             onRefresh()
           } catch (e: any) {
-            toast.error('删除远程分支失败', { description: e.message })
+            toast.error(t('git.delete_remote_branch_failed'), { description: e.message })
           }
         }
 
@@ -306,7 +308,7 @@ export const GitBranchMenu = forwardRef<GitBranchMenuRef, GitBranchMenuProps>(
           onRefresh()
           showSuccessToast()
         } catch (e: any) {
-          toast.error('删除失败', { description: e.message })
+          toast.error(t('git.delete_failed'), { description: e.message })
         }
         return
       }
@@ -384,13 +386,13 @@ export const GitBranchMenu = forwardRef<GitBranchMenuRef, GitBranchMenuProps>(
         await loadBranches()
         onRefresh()
       } catch (error: any) {
-        toast.error('重命名失败', { description: error.message })
+        toast.error(t('git.rename_failed'), { description: error.message })
       }
     }
 
     const handleMerge = async (branchName: string) => {
       if (!currentBranch) {
-        toast.error('无法合并', { description: '当前没有分支（仓库还没有提交）' })
+        toast.error(t('git.merge_no_branch'), { description: t('git.merge_no_branch_desc') })
         return
       }
       try {
@@ -399,17 +401,17 @@ export const GitBranchMenu = forwardRef<GitBranchMenuRef, GitBranchMenuProps>(
           toast.success(`已合并 ${branchName} 到 ${currentBranch}`)
           onRefresh()
         } else {
-          toast.warning('合并产生冲突', { description: result.message })
+          toast.warning(t('git.merge_conflict'), { description: result.message })
           onRefresh()
         }
       } catch (error: any) {
-        toast.error('合并失败', { description: error.message })
+        toast.error(t('git.merge_failed'), { description: error.message })
       }
     }
 
     const handleRebase = async (ontoBranch: string) => {
       if (!currentBranch) {
-        toast.error('无法变基', { description: '当前没有分支（仓库还没有提交）' })
+        toast.error(t('git.rebase_failed'), { description: t('git.rebase_no_branch_desc') })
         return
       }
       try {
@@ -435,7 +437,7 @@ export const GitBranchMenu = forwardRef<GitBranchMenuRef, GitBranchMenuProps>(
         setCreateTagDialog({ open: false, name: '', message: '' })
         await loadBranches()
       } catch (error: any) {
-        toast.error('创建标签失败', { description: error.message })
+        toast.error(t('git.create_tag_failed'), { description: error.message })
       }
     }
 
@@ -606,7 +608,7 @@ export const GitBranchMenu = forwardRef<GitBranchMenuRef, GitBranchMenuProps>(
                         await loadBranches()
                         onRefresh()
                       } catch (e: any) {
-                        toast.error('取消上游分支失败', { description: e.message })
+                        toast.error(t('git.unset_upstream_failed'), { description: e.message })
                       }
                     }}
                   >
@@ -663,7 +665,7 @@ export const GitBranchMenu = forwardRef<GitBranchMenuRef, GitBranchMenuProps>(
           toast.success(`已切换到标签 ${tag.name}`)
           onRefresh()
         } catch (error: any) {
-          toast.error('切换失败', { description: error.message })
+          toast.error(t('git.switch_failed'), { description: error.message })
         }
       }
 
@@ -672,7 +674,7 @@ export const GitBranchMenu = forwardRef<GitBranchMenuRef, GitBranchMenuProps>(
           await window.api.git.pushTag(workspaceRoot, tag.name)
           toast.success(`已推送标签 ${tag.name}`)
         } catch (error: any) {
-          toast.error('推送失败', { description: error.message })
+          toast.error(t('git.push_failed'), { description: error.message })
         }
       }
 
@@ -682,7 +684,7 @@ export const GitBranchMenu = forwardRef<GitBranchMenuRef, GitBranchMenuProps>(
           toast.success(`已删除标签 ${tag.name}`)
           await loadBranches()
         } catch (error: any) {
-          toast.error('删除失败', { description: error.message })
+          toast.error(t('git.delete_failed'), { description: error.message })
         }
       }
 
@@ -691,7 +693,7 @@ export const GitBranchMenu = forwardRef<GitBranchMenuRef, GitBranchMenuProps>(
           await window.api.git.deleteRemoteTag(workspaceRoot, tag.name)
           toast.success(`已删除远程标签 ${tag.name}`)
         } catch (error: any) {
-          toast.error('删除远程标签失败', { description: error.message })
+          toast.error(t('git.delete_remote_tag_failed'), { description: error.message })
         }
       }
 
@@ -890,10 +892,10 @@ export const GitBranchMenu = forwardRef<GitBranchMenuRef, GitBranchMenuProps>(
             <DialogHeader>
               <DialogTitle>
                 {deleteDialog.isForceConfirm
-                  ? '强制删除分支'
+                  ? t('git.force_delete_branch')
                   : deleteDialog.isRemote
-                    ? '删除远程分支'
-                    : '删除分支'}
+                    ? t('git.delete_remote_branch')
+                    : t('git.delete_branch')}
               </DialogTitle>
               <DialogDescription>
                 {deleteDialog.isForceConfirm ? (
@@ -926,7 +928,7 @@ export const GitBranchMenu = forwardRef<GitBranchMenuRef, GitBranchMenuProps>(
                 取消
               </Button>
               <Button variant="destructive" onClick={handleDelete}>
-                {deleteDialog.isForceConfirm ? '强制删除' : '删除'}
+                {deleteDialog.isForceConfirm ? t('git.force_delete') : t('common.delete')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -965,7 +967,7 @@ export const GitBranchMenu = forwardRef<GitBranchMenuRef, GitBranchMenuProps>(
                   onChange={(e) =>
                     setRenameDialog((prev) => ({ ...prev, newName: e.target.value }))
                   }
-                  placeholder="新分支名称"
+                  placeholder={t('git.new_branch_name')}
                   onKeyDown={(e) => e.key === 'Enter' && handleRename()}
                   autoFocus
                 />

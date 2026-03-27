@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from '@/components/ui/sonner'
 import { refreshGitStatus } from './use-git-manager'
 import { useSettings } from '@/contexts/settings-context'
@@ -18,6 +19,7 @@ export function useProjectOperations({
   restoreEditorState,
   currentWorkspaceRoot
 }: UseProjectOperationsProps) {
+  const { t } = useTranslation()
   const { generalSettings, updateGeneralSettings } = useSettings()
 
   const [pendingProject, setPendingProject] = useState<{
@@ -39,17 +41,17 @@ export function useProjectOperations({
     try {
       const result = await window.api.project.openInNewWindow(projectPath)
       if (result.success) {
-        toast.success('已在新窗口打开项目')
+        toast.success(t('project.open_new_window_success'))
       } else {
-        toast.error('打开新窗口失败', {
+        toast.error(t('project.open_new_window_failed'), {
           description: result.error
         })
       }
     } catch (error) {
       console.error('Failed to open project in new window:', error)
-      toast.error('打开新窗口失败')
+      toast.error(t('project.open_new_window_failed'))
     }
-  }, [])
+  }, [t])
 
   // ✅ 提取公共逻辑：根据用户偏好决定如何打开项目
   const openProjectWithBehavior = useCallback(
@@ -117,8 +119,8 @@ export function useProjectOperations({
       if (!result.success) {
         if (result.notFound) {
           const projectName = path.split('/').pop() || path
-          toast.error(`项目 "${projectName}" 不存在`, {
-            description: '该目录可能已被删除或移动'
+          toast.error(t('project.recent_missing', { name: projectName }), {
+            description: t('project.recent_missing_desc')
           })
         }
         return
@@ -126,7 +128,7 @@ export function useProjectOperations({
 
       await openProjectWithBehavior(path, 'recent')
     },
-    [openRecentProject, openProjectWithBehavior]
+    [openRecentProject, openProjectWithBehavior, t]
   )
 
   const handleProjectCreated = useCallback(

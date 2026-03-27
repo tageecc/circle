@@ -28,8 +28,10 @@ import { WelcomeView } from '@/components/features/layout/welcome-view'
 import { LoadingScreen } from '@/components/features/layout/loading-screen'
 import { CloneRepositoryDialog } from '@/components/features/git/clone-repository-dialog'
 import { EditorProvider } from '@/contexts/editor-context'
+import { useTranslation } from 'react-i18next'
 
 export function IDEPage(): React.ReactElement {
+  const { t } = useTranslation()
   const { generalSettings } = useSettings()
 
   // Workspace UI Store - 布局和 UI 状态（精确订阅）
@@ -120,8 +122,8 @@ export function IDEPage(): React.ReactElement {
 
         if (result?.projectNotFound && result.notFoundPath) {
           const projectName = result.notFoundPath.split('/').pop() || result.notFoundPath
-          toast.error(`项目 "${projectName}" 不存在`, {
-            description: '该目录可能已被删除或移动',
+          toast.error(t('ide.project_missing_title', { name: projectName }), {
+            description: t('ide.project_missing_description'),
             duration: 5000
           })
         } else if (result?.currentProject) {
@@ -138,7 +140,7 @@ export function IDEPage(): React.ReactElement {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [t])
 
   // 监听应用退出时保存所有 dirty 文件
   useEffect(() => {
@@ -193,8 +195,8 @@ export function IDEPage(): React.ReactElement {
         refreshGitStatus(projectPath)
       } catch (error) {
         console.error('Failed to load project in new window:', error)
-        toast.error('项目加载失败', {
-          description: error instanceof Error ? error.message : '未知错误'
+        toast.error(t('ide.project_load_failed'), {
+          description: error instanceof Error ? error.message : t('errors.unknown_error')
         })
       }
     })
@@ -202,7 +204,7 @@ export function IDEPage(): React.ReactElement {
     return () => {
       unsubscribe()
     }
-  }, [setWorkspaceRoot, restoreEditorState])
+  }, [setWorkspaceRoot, restoreEditorState, t])
 
   // ⭐ 监听全屏状态变化（macOS 优化：动态调整红绿灯预留空间）
   useEffect(() => {
@@ -252,14 +254,14 @@ export function IDEPage(): React.ReactElement {
         const conflictTabId = `${filePath}:conflict`
         fileManager.closeFile(conflictTabId)
         refreshGitStatus()
-        toast.success('冲突已解决', { description: relativePath })
+        toast.success(t('ide.conflict_resolved'), { description: relativePath })
       } catch (error) {
-        toast.error('解决冲突失败', {
-          description: error instanceof Error ? error.message : '未知错误'
+        toast.error(t('ide.resolve_conflict_failed'), {
+          description: error instanceof Error ? error.message : t('errors.unknown_error')
         })
       }
     },
-    [workspaceRoot, fileManager]
+    [workspaceRoot, fileManager, t]
   )
 
   const handleCancelConflict = useCallback(() => {

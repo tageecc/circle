@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 import type { DiffAction } from './monaco-editor.types'
 import type { editor } from 'monaco-editor'
 import { usePendingEditsStore } from '@/stores/pending-edits.store'
+import { useTranslation } from 'react-i18next'
 
 interface EditorAreaProps {
   openFiles: FileTab[]
@@ -71,6 +72,7 @@ export const EditorArea = memo(function EditorArea({
   onRejectPendingDiff,
   onOpenFile
 }: EditorAreaProps) {
+  const { t } = useTranslation()
   // 跟踪是否有 tab 拖拽进入编辑器区域
   const [isTabDragging, setIsTabDragging] = useState(false)
 
@@ -370,7 +372,7 @@ export const EditorArea = memo(function EditorArea({
                         className="h-5 w-5 hover:bg-muted/60"
                         onClick={handlePrevDiff}
                         disabled={currentDiffIndex === 0}
-                        title="上一个更改"
+                        title={t('editor.prev_change')}
                       >
                         <ChevronUp className="size-3" />
                       </Button>
@@ -383,7 +385,7 @@ export const EditorArea = memo(function EditorArea({
                         className="h-5 w-5 hover:bg-muted/60"
                         onClick={handleNextDiff}
                         disabled={currentDiffIndex === diffActions.length - 1}
-                        title="下一个更改"
+                        title={t('editor.next_change')}
                       >
                         <ChevronDown className="size-3" />
                       </Button>
@@ -397,11 +399,11 @@ export const EditorArea = memo(function EditorArea({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-6 text-[11px] gap-1 px-2.5 border-[#e45649]/40 text-[#e45649]/90 hover:bg-[#e45649]/10 hover:border-[#e45649]/60 dark:border-[#e06c75]/40 dark:text-[#e06c75]/90 dark:hover:bg-[#e06c75]/10"
+                  className="h-6 text-[11px] gap-1 px-2.5 border-destructive/40 text-destructive/90 hover:bg-destructive/10 hover:border-destructive/60"
                   onClick={handleUndoAll}
-                  title="撤销当前文件的所有更改"
+                  title={t('editor.undo_all_in_file')}
                 >
-                  <span>Undo All</span>
+                  <span>{t('editor.undo_all')}</span>
                 </Button>
 
                 <Button
@@ -409,9 +411,9 @@ export const EditorArea = memo(function EditorArea({
                   size="sm"
                   className="h-6 text-[11px] gap-1 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white border-0 shadow-sm"
                   onClick={handleAcceptAll}
-                  title="接受当前文件的所有更改"
+                  title={t('editor.accept_all_in_file')}
                 >
-                  <span>Keep All</span>
+                  <span>{t('editor.keep_all')}</span>
                 </Button>
 
                 {/* 文件导航：只在有多个文件时显示 */}
@@ -425,7 +427,7 @@ export const EditorArea = memo(function EditorArea({
                         size="icon-sm"
                         className="h-6 w-6"
                         onClick={handlePrevFile}
-                        title="上一个文件"
+                        title={t('editor.prev_file')}
                       >
                         <ChevronLeft className="size-3.5" />
                       </Button>
@@ -437,7 +439,7 @@ export const EditorArea = memo(function EditorArea({
                         size="icon-sm"
                         className="h-6 w-6"
                         onClick={handleNextFile}
-                        title="下一个文件"
+                        title={t('editor.next_file')}
                       >
                         <ChevronRight className="size-3.5" />
                       </Button>
@@ -451,11 +453,11 @@ export const EditorArea = memo(function EditorArea({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-6 text-[11px] gap-1 px-2.5 border-[#e45649]/40 text-[#e45649]/90 hover:bg-[#e45649]/10 hover:border-[#e45649]/60 dark:border-[#e06c75]/40 dark:text-[#e06c75]/90 dark:hover:bg-[#e06c75]/10"
+                  className="h-6 text-[11px] gap-1 px-2.5 border-destructive/40 text-destructive/90 hover:bg-destructive/10 hover:border-destructive/60"
                   onClick={handleUndoAll}
-                  title="撤销当前文件的所有更改"
+                  title={t('editor.undo_all_in_file')}
                 >
-                  <span>Undo All</span>
+                  <span>{t('editor.undo_all')}</span>
                 </Button>
 
                 <Button
@@ -463,9 +465,9 @@ export const EditorArea = memo(function EditorArea({
                   size="sm"
                   className="h-6 text-[11px] gap-1 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white border-0 shadow-sm"
                   onClick={handleAcceptAll}
-                  title="接受当前文件的所有更改"
+                  title={t('editor.accept_all_in_file')}
                 >
-                  <span>Keep All</span>
+                  <span>{t('editor.keep_all')}</span>
                 </Button>
 
                 {/* 文件导航：只在有多个文件时显示 */}
@@ -479,7 +481,7 @@ export const EditorArea = memo(function EditorArea({
                         size="icon-sm"
                         className="h-5 w-5 hover:bg-muted/60"
                         onClick={handlePrevFile}
-                        title="上一个文件"
+                        title={t('editor.prev_file')}
                       >
                         <ChevronLeft className="size-3" />
                       </Button>
@@ -491,7 +493,7 @@ export const EditorArea = memo(function EditorArea({
                         size="icon-sm"
                         className="h-5 w-5 hover:bg-muted/60"
                         onClick={handleNextFile}
-                        title="下一个文件"
+                        title={t('editor.next_file')}
                       >
                         <ChevronRight className="size-3" />
                       </Button>
@@ -507,7 +509,7 @@ export const EditorArea = memo(function EditorArea({
                 className="h-6 text-[11px] gap-1 px-2.5"
                 onClick={handleNextFile}
               >
-                <span>Review next file</span>
+                <span>{t('editor.review_next_file')}</span>
                 <ChevronRight className="size-3" />
               </Button>
             )}

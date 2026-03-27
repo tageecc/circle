@@ -13,6 +13,7 @@ import type { MonacoCodeEditorProps, GitBlameLine } from './monaco-editor.types'
 import { MONACO_ACTIONS_MAP, parseMonacoKeybinding } from '@/lib/monaco-keybindings'
 import { registerInlineCompletionProvider } from '@/services/inline-completion-provider'
 import { eventBus } from '@/lib/event-bus'
+import { useTranslation } from 'react-i18next'
 
 // ⭐ 配置 Monaco 使用本地导入的实例 + Web Workers
 loader.config({
@@ -46,6 +47,7 @@ export function MonacoCodeEditor({
   onCursorPositionChange,
   onMount
 }: MonacoCodeEditorProps) {
+  const { t } = useTranslation()
   const { editorOptions: globalOptions, keymapSettings } = useSettings()
 
   // 生成一个稳定的匿名 ID，用于在未提供 path 时作为 Model 的标识
@@ -210,13 +212,13 @@ export function MonacoCodeEditor({
     const months = Math.floor(days / 30)
     const years = Math.floor(days / 365)
 
-    if (years > 0) return `${years} 年前`
-    if (months > 0) return `${months} 个月前`
-    if (days > 6) return `${Math.floor(days / 7)} 周前`
-    if (days > 0) return `${days} 天前`
-    if (hours > 0) return `${hours} 小时前`
-    if (minutes > 0) return `${minutes} 分钟前`
-    return '刚刚'
+    if (years > 0) return t('editor.git_blame.years_ago', { count: years })
+    if (months > 0) return t('editor.git_blame.months_ago', { count: months })
+    if (days > 6) return t('editor.git_blame.weeks_ago', { count: Math.floor(days / 7) })
+    if (days > 0) return t('editor.git_blame.days_ago', { count: days })
+    if (hours > 0) return t('editor.git_blame.hours_ago', { count: hours })
+    if (minutes > 0) return t('editor.git_blame.minutes_ago', { count: minutes })
+    return t('editor.git_blame.just_now')
   }
 
   useEffect(() => {

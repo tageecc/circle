@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useCallback } from 'react'
+import i18n from '@/i18n'
 import { ConfirmDialog } from './confirm-dialog'
 
 interface ConfirmOptions {
@@ -63,8 +64,8 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
           }}
           title={dialogState.options.title}
           description={dialogState.options.description}
-          confirmText={dialogState.options.confirmText || '确认'}
-          cancelText={dialogState.options.cancelText || '取消'}
+          confirmText={dialogState.options.confirmText || i18n.t('common.confirm')}
+          cancelText={dialogState.options.cancelText || i18n.t('common.cancel')}
           variant={dialogState.options.variant || 'default'}
           onConfirm={() => handleClose(true)}
         />

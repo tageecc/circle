@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -17,7 +18,7 @@ import { toast } from '@/components/ui/sonner'
 import { useEditor } from '@/contexts/editor-context'
 
 export function EditorStatusIndicator() {
-  // 从 Context 获取状态和 fileManager
+  const { t } = useTranslation()
   const { activeFile, cursorPosition, language, fileEncoding, lineEnding, fileManager } =
     useEditor()
 
@@ -26,7 +27,14 @@ export function EditorStatusIndicator() {
 
   const encodings = ['UTF-8', 'UTF-8 with BOM', 'UTF-16 LE', 'UTF-16 BE', 'GBK', 'GB2312']
   const lineEndings: Array<'LF' | 'CRLF' | 'CR'> = ['LF', 'CRLF', 'CR']
-  const lineEndingLabels = { LF: 'Unix/macOS', CRLF: 'Windows', CR: 'Classic Mac' }
+  const lineEndingLabels = useMemo(
+    () => ({
+      LF: t('editor_status.line_ending_unix'),
+      CRLF: t('editor_status.line_ending_windows'),
+      CR: t('editor_status.line_ending_classic_mac')
+    }),
+    [t]
+  )
 
   // 处理编码更改（VSCode 风格：区分预览和保存）
   const handleSetFileEncoding = useCallback(
@@ -37,31 +45,33 @@ export function EditorStatusIndicator() {
 
       try {
         if (action === 'reopen') {
-          // 用编码重新打开（预览，不保存）
           await fileManager.reopenFileWithEncoding(activeFile, encoding)
           toast.success(
             <div className="flex flex-col gap-1">
-              <div className="font-medium">已用 {encoding} 编码重新打开</div>
-              <div className="text-xs text-muted-foreground">如需转换，保存文件即可</div>
+              <div className="font-medium">
+                {t('editor_status.reopened_with_encoding', { encoding })}
+              </div>
+              <div className="text-xs text-muted-foreground">{t('editor_status.reopen_save_hint')}</div>
             </div>
           )
         } else if (action === 'save-as') {
-          // 设置保存时使用的编码（下次保存时才转换）
           fileManager.setFileSaveEncoding(activeFile, encoding)
           toast.success(
             <div className="flex flex-col gap-1">
-              <div className="font-medium">已设置保存编码为 {encoding}</div>
+              <div className="font-medium">
+                {t('editor_status.set_save_encoding_title', { encoding })}
+              </div>
               <div className="text-xs text-muted-foreground">
-                保存文件时将转换为 {encoding} 编码
+                {t('editor_status.save_will_use_encoding', { encoding })}
               </div>
             </div>
           )
         }
       } catch (error) {
-        toast.error(`无法用 ${encoding} 编码打开文件`)
+        toast.error(t('editor_status.open_encoding_failed', { encoding }))
       }
     },
-    [activeFile, fileEncoding, fileManager]
+    [activeFile, fileEncoding, fileManager, t]
   )
 
   // 处理行尾符更改（立即转换）
@@ -69,10 +79,10 @@ export function EditorStatusIndicator() {
     (ending: 'LF' | 'CRLF' | 'CR') => {
       if (activeFile) {
         fileManager.updateFileLineEnding(activeFile, ending)
-        toast.success(`行尾序列已转换为 ${ending}`)
+        toast.success(t('editor_status.line_ending_converted', { ending }))
       }
     },
-    [activeFile, fileManager]
+    [activeFile, fileManager, t]
   )
 
   // 在文件管理器中显示文件
@@ -82,11 +92,11 @@ export function EditorStatusIndicator() {
     try {
       await window.api.files.revealInFinder?.(activeFile)
     } catch (error) {
-      toast.error('无法打开文件管理器', {
-        description: error instanceof Error ? error.message : '未知错误'
+      toast.error(t('editor_status.reveal_in_finder_failed'), {
+        description: error instanceof Error ? error.message : t('errors.unknown_error')
       })
     }
-  }, [activeFile])
+  }, [activeFile, t])
 
   const languageDisplayName = useCallback((lang: string): string => {
     const map: Record<string, string> = {
@@ -178,7 +188,7 @@ export function EditorStatusIndicator() {
               variant="ghost"
               size="sm"
               className="h-6 gap-1 px-2 text-xs hover:bg-accent/50"
-              title="语言服务"
+              title={t('editor_status.language_service')}
             >
               <Circle className="size-2 fill-green-500 text-green-500" />
               <span className="text-muted-foreground">{languageDisplayName(language)}</span>
@@ -186,7 +196,9 @@ export function EditorStatusIndicator() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
             <div className="px-2 py-1.5">
-              <div className="text-xs font-semibold mb-2">运行中的语言服务</div>
+              <div className="text-xs font-semibold mb-2">
+                {t('editor_status.running_language_services')}
+              </div>
               <div className="space-y-1">
                 {(language === 'typescript' ||
                   language === 'typescriptreact' ||
@@ -250,14 +262,16 @@ export function EditorStatusIndicator() {
             variant="ghost"
             size="sm"
             className="h-6 px-2 text-xs hover:bg-accent/50"
-            title="更改文件编码"
+            title={t('editor_status.change_encoding')}
           >
             <span className="text-muted-foreground">{fileEncoding}</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           <div className="px-2 py-1.5">
-            <div className="text-xs font-semibold mb-1">更改文件编码</div>
+            <div className="text-xs font-semibold mb-1">
+              {t('editor_status.change_encoding_heading')}
+            </div>
           </div>
           <DropdownMenuSeparator />
 
@@ -265,8 +279,10 @@ export function EditorStatusIndicator() {
           <DropdownMenuSub>
             <DropdownMenuSubTrigger className="text-xs">
               <div className="flex flex-col items-start">
-                <span>用编码重新打开</span>
-                <span className="text-[10px] text-muted-foreground">纠正显示乱码</span>
+                <span>{t('editor_status.reopen_with_encoding')}</span>
+                <span className="text-[10px] text-muted-foreground">
+                  {t('editor_status.reopen_with_encoding_hint')}
+                </span>
               </div>
             </DropdownMenuSubTrigger>
             <DropdownMenuPortal>
@@ -294,8 +310,10 @@ export function EditorStatusIndicator() {
           <DropdownMenuSub>
             <DropdownMenuSubTrigger className="text-xs">
               <div className="flex flex-col items-start">
-                <span>保存为编码</span>
-                <span className="text-[10px] text-muted-foreground">下次保存时转换</span>
+                <span>{t('editor_status.save_with_encoding')}</span>
+                <span className="text-[10px] text-muted-foreground">
+                  {t('editor_status.save_with_encoding_hint')}
+                </span>
               </div>
             </DropdownMenuSubTrigger>
             <DropdownMenuPortal>
@@ -328,15 +346,17 @@ export function EditorStatusIndicator() {
             variant="ghost"
             size="sm"
             className="h-6 px-2 text-xs hover:bg-accent/50"
-            title="选择行尾序列（立即转换文件）"
+            title={t('editor_status.select_line_ending_tooltip')}
           >
             <span className="text-muted-foreground">{lineEnding}</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
           <div className="px-2 py-1.5">
-            <div className="text-xs font-semibold mb-1">选择行尾序列</div>
-            <div className="text-[10px] text-muted-foreground">立即转换文件内容</div>
+            <div className="text-xs font-semibold mb-1">{t('editor_status.select_line_ending')}</div>
+            <div className="text-[10px] text-muted-foreground">
+              {t('editor_status.line_ending_convert_now')}
+            </div>
           </div>
           <DropdownMenuSeparator />
           {lineEndings.map((ending) => (
@@ -363,7 +383,7 @@ export function EditorStatusIndicator() {
         variant="ghost"
         size="sm"
         className="h-6 px-2 text-xs font-mono hover:bg-accent/50"
-        title="转到行/列"
+        title={t('editor_status.goto_line_col')}
       >
         <span className="text-muted-foreground">
           Ln {cursorPosition.line}, Col {cursorPosition.column}
@@ -388,7 +408,7 @@ export function EditorStatusIndicator() {
                     <div className="font-medium text-sm truncate">{fileStats.fileName}</div>
                     {fileStats.isDirty && (
                       <div className="text-[10px] text-orange-600 dark:text-orange-400 mt-0.5">
-                        未保存的修改
+                        {t('editor_status.unsaved_modifications')}
                       </div>
                     )}
                   </div>
@@ -397,7 +417,7 @@ export function EditorStatusIndicator() {
                     size="sm"
                     className="h-6 w-6 p-0 shrink-0"
                     onClick={handleRevealInFinder}
-                    title="在文件管理器中显示"
+                    title={t('editor_status.show_in_file_manager')}
                   >
                     <FolderOpen className="size-3.5" />
                   </Button>
@@ -408,7 +428,7 @@ export function EditorStatusIndicator() {
                   <div className="flex items-center justify-between px-2 py-1 rounded hover:bg-accent/30 transition-colors">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <FileText className="size-3" />
-                      <span>文件大小</span>
+                      <span>{t('editor_status.stat_file_size')}</span>
                     </div>
                     <span className="font-mono text-xs font-medium">{fileStats.size}</span>
                   </div>
@@ -416,7 +436,7 @@ export function EditorStatusIndicator() {
                   <div className="flex items-center justify-between px-2 py-1 rounded hover:bg-accent/30 transition-colors">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Hash className="size-3" />
-                      <span>总行数</span>
+                      <span>{t('editor_status.stat_lines')}</span>
                     </div>
                     <span className="font-mono text-xs font-medium">
                       {fileStats.lines.toLocaleString()}
@@ -426,7 +446,7 @@ export function EditorStatusIndicator() {
                   <div className="flex items-center justify-between px-2 py-1 rounded hover:bg-accent/30 transition-colors">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Type className="size-3" />
-                      <span>字符数</span>
+                      <span>{t('editor_status.stat_chars')}</span>
                     </div>
                     <span className="font-mono text-xs font-medium">
                       {fileStats.chars.toLocaleString()}

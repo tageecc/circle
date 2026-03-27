@@ -11,12 +11,17 @@ import { updateMemoryTool } from '../tools/update-memory.tool'
 import { todoWriteTool } from '../tools/todo-write.tool'
 import { getSkillDetailsTool } from '../tools/get-skill-details.tool'
 import { MCPService } from '../services/mcp.service'
+import { mainI18n as i18n } from '../i18n'
 
-// 助手配置
+// 助手配置（name / description 随主进程语言变化）
 export const assistantConfig = {
   id: 'system-assistant',
-  name: 'AI Assistant',
-  description: 'AI 智能助手，提供代码编写、重构、调试等全方位支持',
+  get name() {
+    return i18n.t('assistant.name')
+  },
+  get description() {
+    return i18n.t('assistant.description')
+  },
   instructions: `## Collaboration Philosophy
 
 You are pair programming with the user as an expert coding partner.

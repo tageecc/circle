@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { usePendingEditsStore, EMPTY_EDITS } from '@/stores/pending-edits.store'
 import { PendingFileEdit } from '@/types/ide'
 import { toast } from '@/components/ui/sonner'
@@ -9,6 +10,7 @@ import { toast } from '@/components/ui/sonner'
  * - 自动持久化到 localStorage
  */
 export function usePendingEdits(workspaceRoot: string | null) {
+  const { t } = useTranslation()
   // 选择器只订阅当前项目的数据，避免其他项目更新触发重渲染
   const edits = usePendingEditsStore((state) =>
     workspaceRoot ? state.editsByProject[workspaceRoot] || EMPTY_EDITS : EMPTY_EDITS
@@ -42,11 +44,11 @@ export function usePendingEdits(workspaceRoot: string | null) {
         store.removeEdit(workspaceRoot, absolutePath)
       } catch (error) {
         console.error('Failed to accept edit:', error)
-        toast.error('操作失败')
+        toast.error(t('errors.operation_failed'))
         throw error
       }
     },
-    [workspaceRoot]
+    [workspaceRoot, t]
   )
 
   // 拒绝更改（Undo）
@@ -86,12 +88,12 @@ export function usePendingEdits(workspaceRoot: string | null) {
       } catch (error) {
         console.error('Failed to reject edit:', error)
         if (!options?.silent) {
-          toast.error('撤销失败')
+          toast.error(t('chat.pending_undo_failed'))
         }
         throw error
       }
     },
-    [workspaceRoot]
+    [workspaceRoot, t]
   )
 
   // 接受所有更改
@@ -113,11 +115,11 @@ export function usePendingEdits(workspaceRoot: string | null) {
         }
       } catch (error) {
         console.error('Failed to accept all edits:', error)
-        toast.error('操作失败')
+        toast.error(t('errors.operation_failed'))
         throw error
       }
     },
-    [workspaceRoot, edits]
+    [workspaceRoot, edits, t]
   )
 
   // 拒绝所有更改
@@ -159,17 +161,17 @@ export function usePendingEdits(workspaceRoot: string | null) {
         }
 
         if (!options?.silent) {
-          toast.info('已撤销所有修改')
+          toast.info(t('chat.pending_undo_all_done'))
         }
       } catch (error) {
         console.error('Failed to reject all edits:', error)
         if (!options?.silent) {
-          toast.error('操作失败')
+          toast.error(t('errors.operation_failed'))
         }
         throw error
       }
     },
-    [workspaceRoot, edits]
+    [workspaceRoot, edits, t]
   )
 
   // 清理项目的所有 edits

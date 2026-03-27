@@ -13,6 +13,7 @@ import { registerMonacoThemes } from '@/config/monaco-themes'
 import { defaultDiffEditorOptions } from '@/config/monaco-editor-options'
 import type { MonacoDiffEditorProps, DiffAction, ToolbarPosition } from './monaco-editor.types'
 import { defaultToolbarConfig } from './monaco-editor.types'
+import { useTranslation } from 'react-i18next'
 
 loader.config({ monaco })
 
@@ -37,6 +38,7 @@ export function MonacoDiffEditor({
   onCurrentDiffChange,
   onMount
 }: MonacoDiffEditorProps) {
+  const { t } = useTranslation()
   const { editorOptions: globalOptions } = useSettings()
 
   const mergedOptions = useMemo(
@@ -569,7 +571,7 @@ export function MonacoDiffEditor({
                   className="h-5 w-5 hover:bg-muted/60"
                   onClick={handlePrevDiff}
                   disabled={currentDiffIndex === 0}
-                  title="上一个更改"
+                  title={t('editor.prev_change')}
                 >
                   <ChevronUp className="size-3" />
                 </Button>
@@ -582,7 +584,7 @@ export function MonacoDiffEditor({
                   className="h-5 w-5 hover:bg-muted/60"
                   onClick={handleNextDiff}
                   disabled={currentDiffIndex === diffActions.length - 1}
-                  title="下一个更改"
+                  title={t('editor.next_change')}
                 >
                   <ChevronDown className="size-3" />
                 </Button>
@@ -598,9 +600,9 @@ export function MonacoDiffEditor({
             <Button
               variant="outline"
               size="sm"
-              className="h-6 text-[11px] gap-1 px-2.5 border-[#e45649]/40 text-[#e45649]/90 hover:bg-[#e45649]/10 hover:border-[#e45649]/60 dark:border-[#e06c75]/40 dark:text-[#e06c75]/90 dark:hover:bg-[#e06c75]/10"
+              className="h-6 text-[11px] gap-1 px-2.5 border-destructive/40 text-destructive/90 hover:bg-destructive/10 hover:border-destructive/60"
               onClick={handleReject}
-              title="撤销当前更改"
+              title={t('editor.undo_current_change')}
             >
               <X className="size-3" />
               <span>{toolbarConfig.rejectLabel}</span>
@@ -613,7 +615,7 @@ export function MonacoDiffEditor({
               size="sm"
               className="h-6 text-[11px] gap-1 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white border-0 shadow-sm"
               onClick={handleAccept}
-              title="接受当前更改"
+              title={t('editor.accept_current_change')}
             >
               <Check className="size-3" />
               <span>{toolbarConfig.acceptLabel}</span>
@@ -630,7 +632,7 @@ export function MonacoDiffEditor({
               size="sm"
               className="h-7 text-xs gap-1.5"
               onClick={handleUndoAll}
-              title="撤销所有更改"
+              title={t('editor.undo_all_changes')}
             >
               <span>{toolbarConfig.undoAllLabel}</span>
             </Button>
@@ -642,7 +644,7 @@ export function MonacoDiffEditor({
               size="sm"
               className="h-7 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
               onClick={handleAcceptAll}
-              title="接受所有更改"
+              title={t('editor.accept_all_changes')}
             >
               <span>{toolbarConfig.acceptAllLabel}</span>
             </Button>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import Editor, { loader } from '@monaco-editor/react'
 import type { editor } from 'monaco-editor'
 import * as monaco from 'monaco-editor'
@@ -375,6 +376,7 @@ export function GitMergeEditor({
   onSave,
   onCancel
 }: GitMergeEditorProps) {
+  const { t } = useTranslation()
   const { editorOptions: globalOptions } = useSettings()
 
   // 计算初始 regions（使用三方合并）
@@ -807,7 +809,7 @@ export function GitMergeEditor({
         const ignoreBtn = document.createElement('button')
         ignoreBtn.className = 'merge-action-btn merge-action-ignore'
         ignoreBtn.innerHTML = '×'
-        ignoreBtn.title = '忽略左侧更改'
+        ignoreBtn.title = t('git.merge_ignore_left')
         ignoreBtn.onclick = () => ignoreLeftRef.current(region)
         btnContainer.appendChild(ignoreBtn)
 
@@ -815,7 +817,8 @@ export function GitMergeEditor({
         const acceptBtn = document.createElement('button')
         acceptBtn.className = 'merge-action-btn merge-action-accept-left'
         acceptBtn.innerHTML = '»'
-        acceptBtn.title = applied === 'right' ? '追加左侧更改' : '应用左侧更改'
+        acceptBtn.title =
+          applied === 'right' ? t('git.merge_apply_left_append') : t('git.merge_apply_left')
         if (applied === 'right') acceptBtn.classList.add('append')
         acceptBtn.onclick = () => acceptLeftRef.current(region)
         btnContainer.appendChild(acceptBtn)
@@ -871,7 +874,8 @@ export function GitMergeEditor({
         const acceptBtn = document.createElement('button')
         acceptBtn.className = 'merge-action-btn merge-action-accept-right'
         acceptBtn.innerHTML = '«'
-        acceptBtn.title = applied === 'left' ? '追加右侧更改' : '应用右侧更改'
+        acceptBtn.title =
+          applied === 'left' ? t('git.merge_apply_right_append') : t('git.merge_apply_right')
         if (applied === 'left') acceptBtn.classList.add('append')
         acceptBtn.onclick = () => acceptRightRef.current(region)
         btnContainer.appendChild(acceptBtn)
@@ -880,7 +884,7 @@ export function GitMergeEditor({
         const ignoreBtn = document.createElement('button')
         ignoreBtn.className = 'merge-action-btn merge-action-ignore'
         ignoreBtn.innerHTML = '×'
-        ignoreBtn.title = '忽略右侧更改'
+        ignoreBtn.title = t('git.merge_ignore_right')
         ignoreBtn.onclick = () => ignoreRightRef.current(region)
         btnContainer.appendChild(ignoreBtn)
 
@@ -935,7 +939,7 @@ export function GitMergeEditor({
         svg.appendChild(path)
       }
     }
-  }, [])
+  }, [t])
 
   // 滚动同步（不依赖任何状态，使用稳定的函数引用）
   const handleScrollSync = useCallback(
@@ -1327,7 +1331,10 @@ export function GitMergeEditor({
       <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/30 shrink-0">
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground">
-            {totalDiffs - resolvedCount} of {totalDiffs} changes remaining
+            {t('git.merge_changes_remaining', {
+              remaining: totalDiffs - resolvedCount,
+              total: totalDiffs
+            })}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -1345,7 +1352,7 @@ export function GitMergeEditor({
             className="h-7"
           >
             <X className="w-4 h-4 mr-1" />
-            Cancel
+            {t('git.merge_cancel')}
           </Button>
           <Button
             variant="default"
@@ -1355,7 +1362,7 @@ export function GitMergeEditor({
             className="h-7"
           >
             <Check className="w-4 h-4 mr-1" />
-            Apply
+            {t('git.merge_apply')}
           </Button>
         </div>
       </div>
@@ -1366,15 +1373,13 @@ export function GitMergeEditor({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-yellow-500" />
-              放弃合并编辑？
+              {t('git.merge_discard_title')}
             </DialogTitle>
-            <DialogDescription>
-              你已经对合并结果进行了编辑。关闭后这些更改将会丢失，冲突文件将保持原状。
-            </DialogDescription>
+            <DialogDescription>{t('git.merge_discard_description')}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCancelConfirm(false)}>
-              继续编辑
+              {t('git.merge_continue_editing')}
             </Button>
             <Button
               variant="destructive"
@@ -1383,7 +1388,7 @@ export function GitMergeEditor({
                 onCancel?.()
               }}
             >
-              放弃更改
+              {t('git.merge_discard_changes')}
             </Button>
           </DialogFooter>
         </DialogContent>

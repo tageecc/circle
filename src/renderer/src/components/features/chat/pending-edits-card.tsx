@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { getFileIcon } from '@/lib/file-icons'
 import type { PendingFileEdit } from '@/types/ide'
+import { useTranslation } from 'react-i18next'
 
 interface PendingEditsCardProps {
   pendingEdits: PendingFileEdit[]
@@ -26,6 +27,7 @@ export function PendingEditsCard({
   onRejectFile,
   onOpenFile
 }: PendingEditsCardProps) {
+  const { t } = useTranslation()
   const [isExpanded, setIsExpanded] = useState(true)
 
   if (pendingEdits.length === 0) {
@@ -71,7 +73,7 @@ export function PendingEditsCard({
           className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-foreground/80 transition-colors"
         >
           {isExpanded ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
-          <span>{pendingEdits.length} Files</span>
+          <span>{t('chat.pending_files_count', { count: pendingEdits.length })}</span>
         </button>
 
         {/* 操作按钮 */}
@@ -82,7 +84,7 @@ export function PendingEditsCard({
             onClick={onRejectAll}
             className="h-auto px-0 py-0 text-sm font-normal text-muted-foreground hover:text-foreground hover:bg-transparent"
           >
-            Undo all
+            {t('chat.pending_undo_all')}
           </Button>
           <Button
             size="sm"
@@ -90,7 +92,7 @@ export function PendingEditsCard({
             onClick={onAcceptAll}
             className="h-auto px-0 py-0 text-sm font-normal text-muted-foreground hover:text-foreground hover:bg-transparent"
           >
-            Keep All
+            {t('chat.pending_keep_all')}
           </Button>
           <Button
             size="sm"
@@ -98,7 +100,7 @@ export function PendingEditsCard({
             onClick={() => onOpenFile?.(pendingEdits[0].absolutePath)}
             className="h-auto px-0 py-0 text-sm font-normal text-muted-foreground hover:text-foreground hover:bg-transparent"
           >
-            Review
+            {t('chat.pending_review')}
           </Button>
         </div>
       </div>
@@ -148,7 +150,7 @@ export function PendingEditsCard({
                       e.stopPropagation()
                       onRejectFile?.(edit.absolutePath)
                     }}
-                    title="拒绝此文件"
+                    title={t('chat.reject_file')}
                   >
                     <X className="size-4" />
                   </Button>
@@ -160,7 +162,7 @@ export function PendingEditsCard({
                       e.stopPropagation()
                       onAcceptFile?.(edit.absolutePath)
                     }}
-                    title="接受此文件"
+                    title={t('chat.accept_file')}
                   >
                     <Check className="size-4" />
                   </Button>

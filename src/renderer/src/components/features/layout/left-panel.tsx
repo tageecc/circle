@@ -1,4 +1,5 @@
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { FileTree } from './file-tree'
 import { SearchPanel } from '../search/search-panel'
 import { GitCommitPanel } from '../git/git-commit-panel'
@@ -23,17 +24,18 @@ interface LeftPanelProps {
   workspaceRoot: string
 }
 
-const TAB_TITLES: Record<string, string> = {
-  explorer: '资源管理器',
-  search: '搜索',
-  changes: '源代码管理',
-  history: 'Git 历史',
-  compare: '比较分支',
-  skills: 'Skills',
-  mcp: 'MCP'
+const ACTIVITY_BAR_TAB_KEYS: Record<string, string> = {
+  explorer: 'explorer',
+  search: 'search',
+  changes: 'git',
+  history: 'history',
+  compare: 'compare',
+  skills: 'skills',
+  mcp: 'mcp'
 }
 
 export const LeftPanel = memo(function LeftPanel({ workspaceRoot }: LeftPanelProps) {
+  const { t } = useTranslation()
   const confirm = useConfirm()
   const [isInitializing, setIsInitializing] = useState(false)
 
@@ -52,6 +54,11 @@ export const LeftPanel = memo(function LeftPanel({ workspaceRoot }: LeftPanelPro
   const setBranchCompare = useWorkspaceUIStore((state) => state.setBranchCompare)
   const refreshFileTree = useWorkspaceUIStore((state) => state.refreshFileTree)
   const openDialog = useWorkspaceUIStore((state) => state.openDialog)
+
+  const panelTitle = useMemo(() => {
+    const key = ACTIVITY_BAR_TAB_KEYS[activeLeftTab]
+    return key ? t(`activity_bar.${key}`) : ''
+  }, [activeLeftTab, t])
 
   // Hooks
   const fileManager = useFileManager(workspaceRoot)
@@ -84,12 +91,11 @@ export const LeftPanel = memo(function LeftPanel({ workspaceRoot }: LeftPanelPro
     try {
       setIsInitializing(true)
       await window.api.git.initRepository(workspaceRoot)
-      toast.success('Git 仓库初始化成功')
-      // 刷新 Git 状态
+      toast.success(t('git.repo_init_success'))
       await refreshGitStatus()
     } catch (error) {
       console.error('Failed to initialize git repository:', error)
-      toast.error('初始化 Git 仓库失败')
+      toast.error(t('git.repo_init_failed'))
     } finally {
       setIsInitializing(false)
     }
@@ -105,7 +111,7 @@ export const LeftPanel = memo(function LeftPanel({ workspaceRoot }: LeftPanelPro
         )}
       >
         <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-          {TAB_TITLES[activeLeftTab]}
+          {panelTitle}
         </span>
       </div>
 
@@ -208,10 +214,12 @@ export const LeftPanel = memo(function LeftPanel({ workspaceRoot }: LeftPanelPro
             ) : (
               <EmptyState
                 icon={GitBranch}
-                title="未初始化 Git 仓库"
-                description="当前项目还不是一个 Git 仓库。初始化 Git 仓库后，您可以使用版本控制功能来跟踪和管理代码变更。"
+                title={t('left_panel.empty_git_title')}
+                description={t('left_panel.empty_git_desc_changes')}
                 action={{
-                  label: isInitializing ? '初始化中...' : '初始化 Git 仓库',
+                  label: isInitializing
+                    ? t('left_panel.initializing')
+                    : t('left_panel.init_git_repo'),
                   onClick: handleInitGitRepo
                 }}
               />
@@ -233,10 +241,12 @@ export const LeftPanel = memo(function LeftPanel({ workspaceRoot }: LeftPanelPro
             ) : (
               <EmptyState
                 icon={GitBranch}
-                title="未初始化 Git 仓库"
-                description="当前项目还不是一个 Git 仓库。初始化 Git 仓库后，您可以查看提交历史和分支信息。"
+                title={t('left_panel.empty_git_title')}
+                description={t('left_panel.empty_git_desc_history')}
                 action={{
-                  label: isInitializing ? '初始化中...' : '初始化 Git 仓库',
+                  label: isInitializing
+                    ? t('left_panel.initializing')
+                    : t('left_panel.init_git_repo'),
                   onClick: handleInitGitRepo
                 }}
               />

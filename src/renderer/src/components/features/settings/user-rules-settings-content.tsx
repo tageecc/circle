@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Plus, Trash2, Edit2, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/sonner'
+import { useTranslation } from 'react-i18next'
 import {
   InputGroup,
   InputGroupAddon,
@@ -17,6 +18,7 @@ interface UserRule {
 }
 
 export function UserRulesSettingsContent() {
+  const { t } = useTranslation()
   const [rules, setRules] = useState<UserRule[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -30,7 +32,7 @@ export function UserRulesSettingsContent() {
       setRules(data)
     } catch (error) {
       console.error('Failed to load user rules:', error)
-      toast.error('加载规则失败')
+      toast.error(t('user_rules.load_failed'))
     } finally {
       setIsLoading(false)
     }
@@ -42,48 +44,48 @@ export function UserRulesSettingsContent() {
 
   const handleCreate = async () => {
     if (!content.trim()) {
-      toast.error('内容不能为空')
+      toast.error(t('user_rules.empty_content'))
       return
     }
 
     try {
       await window.api.userRule.create(content.trim())
-      toast.success('规则创建成功')
+      toast.success(t('user_rules.create_success'))
       setContent('')
       setIsCreating(false)
       await loadRules()
     } catch (error) {
       console.error('Failed to create user rule:', error)
-      toast.error('创建规则失败')
+      toast.error(t('user_rules.create_failed'))
     }
   }
 
   const handleUpdate = async (ruleId: string) => {
     if (!content.trim()) {
-      toast.error('内容不能为空')
+      toast.error(t('user_rules.empty_content'))
       return
     }
 
     try {
       await window.api.userRule.update(ruleId, content.trim())
-      toast.success('规则更新成功')
+      toast.success(t('user_rules.update_success'))
       setEditingId(null)
       setContent('')
       await loadRules()
     } catch (error) {
       console.error('Failed to update user rule:', error)
-      toast.error('更新规则失败')
+      toast.error(t('user_rules.update_failed'))
     }
   }
 
   const handleDelete = async (ruleId: string) => {
     try {
       await window.api.userRule.delete(ruleId)
-      toast.success('规则删除成功')
+      toast.success(t('user_rules.delete_success'))
       await loadRules()
     } catch (error) {
       console.error('Failed to delete user rule:', error)
-      toast.error('删除规则失败')
+      toast.error(t('user_rules.delete_failed'))
     }
   }
 
@@ -129,7 +131,7 @@ export function UserRulesSettingsContent() {
       {isCreating && (
         <InputGroup>
           <InputGroupTextarea
-            placeholder="例如：Always respond in 中文，使用 TypeScript 而不是 JavaScript..."
+            placeholder={t('user_rules.placeholder')}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             rows={3}
@@ -142,7 +144,7 @@ export function UserRulesSettingsContent() {
               variant="ghost"
               size="icon-xs"
               className="ml-auto"
-              aria-label="取消"
+              aria-label={t('common.cancel')}
             >
               <X />
             </InputGroupButton>
@@ -150,7 +152,7 @@ export function UserRulesSettingsContent() {
               onClick={handleCreate}
               variant="default"
               size="icon-xs"
-              aria-label="保存"
+              aria-label={t('common.save')}
             >
               <Check />
             </InputGroupButton>
@@ -185,7 +187,7 @@ export function UserRulesSettingsContent() {
                       variant="ghost"
                       size="icon-xs"
                       className="ml-auto"
-                      aria-label="取消"
+                      aria-label={t('common.cancel')}
                     >
                       <X />
                     </InputGroupButton>
@@ -193,7 +195,7 @@ export function UserRulesSettingsContent() {
                       onClick={() => handleUpdate(rule.id)}
                       variant="default"
                       size="icon-xs"
-                      aria-label="保存"
+                      aria-label={t('common.save')}
                     >
                       <Check />
                     </InputGroupButton>

@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { PendingFileEdit } from '@/types/ide'
 import { toast } from '@/components/ui/sonner'
+import i18n from '@/i18n'
 
 // 缓存空数组，避免每次返回新引用
 const EMPTY_EDITS: PendingFileEdit[] = []
@@ -34,8 +35,8 @@ export const usePendingEditsStore = create<PendingEditsState>()(
           // ✅ 检查文件大小（避免超出 localStorage 容量）
           const editSize = edit.oldContent.length + edit.newContent.length
           if (editSize > MAX_EDIT_SIZE) {
-            toast.warning('文件过大，无法撤销', {
-              description: `${edit.filePath} 超过 5MB，建议使用 Git 管理版本`
+            toast.warning(i18n.t('pending_edits.oversized_title'), {
+              description: i18n.t('pending_edits.oversized_description', { path: edit.filePath })
             })
             // 不保存到 pending edits，文件已经写入磁盘
             return state

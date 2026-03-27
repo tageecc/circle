@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { Database, RefreshCw, Trash2, Loader2, Check, FileSearch, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -22,6 +24,25 @@ interface IndexInfo {
   indexedAt: number
 }
 
+function formatIndexedTime(timestamp: number, t: TFunction, lng: string): string {
+  const date = new Date(timestamp)
+  const now = new Date()
+  const diff = now.getTime() - date.getTime()
+
+  if (diff < 60 * 1000) return t('git.time_just_now')
+  if (diff < 60 * 60 * 1000) {
+    return t('git.time_minutes_ago', { count: Math.floor(diff / (60 * 1000)) })
+  }
+  if (diff < 24 * 60 * 60 * 1000) {
+    return t('git.time_hours_ago', { count: Math.floor(diff / (60 * 60 * 1000)) })
+  }
+
+  return date.toLocaleDateString(lng === 'zh' ? 'zh-CN' : 'en-US', {
+    month: 'numeric',
+    day: 'numeric'
+  })
+}
+
 interface IndexResult {
   success: boolean
   projectPath?: string
@@ -41,6 +62,7 @@ export function CodebaseIndexStatus({
   autoIndex = true,
   mode = 'compact'
 }: CodebaseIndexStatusProps) {
+  const { t, i18n } = useTranslation()
   const [indexInfo, setIndexInfo] = useState<IndexInfo | null>(null)
   const [isIndexing, setIsIndexing] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -141,25 +163,35 @@ export function CodebaseIndexStatus({
             const changedCount = (result.newFiles || 0) + (result.modifiedFiles || 0)
 
             if (changedCount === 0 && (result.unchangedFiles || 0) > 0) {
-              toast.success(`索引已是最新！所有 ${result.totalFiles} 个文件均无变化`)
-            } else {
-              const parts: string[] = []
-              if (result.newFiles) parts.push(`新增 ${result.newFiles} 个`)
-              if (result.modifiedFiles) parts.push(`修改 ${result.modifiedFiles} 个`)
-              if (result.deletedFiles) parts.push(`删除 ${result.deletedFiles} 个`)
-
               toast.success(
-                `索引更新完成！${parts.join('，')}${
-                  result.unchangedFiles ? `，${result.unchangedFiles} 个未变化` : ''
-                }`
+                t('codebase_index.toast_fully_unchanged', { count: result.totalFiles })
               )
+            } else {
+              const sep = t('codebase_index.list_separator')
+              const parts: string[] = []
+              if (result.newFiles) parts.push(t('codebase_index.part_new', { count: result.newFiles }))
+              if (result.modifiedFiles) {
+                parts.push(t('codebase_index.part_modified', { count: result.modifiedFiles }))
+              }
+              if (result.deletedFiles) {
+                parts.push(t('codebase_index.part_deleted', { count: result.deletedFiles }))
+              }
+
+              let detail = parts.join(sep)
+              if (result.unchangedFiles) {
+                detail +=
+                  (parts.length ? sep : '') +
+                  t('codebase_index.part_unchanged', { count: result.unchangedFiles })
+              }
+
+              toast.success(t('codebase_index.toast_incremental', { detail }))
             }
           } else {
-            toast.success(`索引完成！已索引 ${result.totalFiles} 个文件`)
+            toast.success(t('codebase_index.toast_complete', { count: result.totalFiles }))
           }
         }
       } catch (error: any) {
-        toast.error('索引失败: ' + error.message)
+        toast.error(t('codebase_index.index_failed', { message: error.message }))
         console.error('Indexing failed:', error)
       } finally {
         isIndexingRef.current = false
@@ -168,7 +200,7 @@ export function CodebaseIndexStatus({
         setCurrentMessage('')
       }
     },
-    [projectPath]
+    [projectPath, t]
   )
 
   // ✅ 项目变化时重置状态和加载索引信息
@@ -226,11 +258,11 @@ export function CodebaseIndexStatus({
 
     try {
       await window.api.codebase.deleteIndex(projectPath)
-      toast.success('索引已删除')
+      toast.success(t('codebase_index.index_deleted'))
       setIndexInfo(null)
       hasAutoIndexedForProjectRef.current = false
     } catch (error: any) {
-      toast.error('删除索引失败: ' + error.message)
+      toast.error(t('codebase_index.delete_index_failed', { message: error.message }))
       console.error('Delete index failed:', error)
     }
   }
@@ -240,19 +272,6 @@ export function CodebaseIndexStatus({
     if (bytes < 1024) return bytes + ' B'
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
-  }
-
-  // 格式化时间
-  const formatTime = (timestamp: number) => {
-    const date = new Date(timestamp)
-    const now = new Date()
-    const diff = now.getTime() - date.getTime()
-
-    if (diff < 60 * 1000) return '刚刚'
-    if (diff < 60 * 60 * 1000) return Math.floor(diff / (60 * 1000)) + ' 分钟前'
-    if (diff < 24 * 60 * 60 * 1000) return Math.floor(diff / (60 * 60 * 1000)) + ' 小时前'
-
-    return date.toLocaleDateString('zh-CN')
   }
 
   if (!projectPath) {
@@ -268,17 +287,19 @@ export function CodebaseIndexStatus({
             {isIndexing ? (
               <>
                 <Loader2 className="size-3 animate-spin" />
-                <span>索引中 {Math.round(progress)}%</span>
+                <span>{t('codebase_index.indexing_percent', { percent: Math.round(progress) })}</span>
               </>
             ) : indexInfo ? (
               <>
                 <Database className="size-3" />
-                <span className="text-muted-foreground">{indexInfo.totalFiles} files</span>
+                <span className="text-muted-foreground">
+                  {t('codebase_index.files_count_short', { count: indexInfo.totalFiles })}
+                </span>
               </>
             ) : (
               <>
                 <FileSearch className="size-3" />
-                <span className="text-muted-foreground">未索引</span>
+                <span className="text-muted-foreground">{t('codebase_index.not_indexed')}</span>
               </>
             )}
             <ChevronDown className="size-3 opacity-50" />
@@ -287,7 +308,7 @@ export function CodebaseIndexStatus({
         <PopoverContent align="end" className="w-72">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h4 className="text-sm font-medium">代码库索引</h4>
+              <h4 className="text-sm font-medium">{t('codebase_index.title')}</h4>
               <div className="flex gap-1">
                 {!isIndexing && (
                   <>
@@ -296,7 +317,7 @@ export function CodebaseIndexStatus({
                       size="icon"
                       className="h-6 w-6"
                       onClick={() => handleIndex(false)}
-                      title="重新索引"
+                      title={t('codebase_index.reindex_tooltip')}
                     >
                       <RefreshCw className="size-3.5" />
                     </Button>
@@ -306,7 +327,7 @@ export function CodebaseIndexStatus({
                         size="icon"
                         className="h-6 w-6 text-destructive hover:text-destructive"
                         onClick={handleDeleteIndex}
-                        title="删除索引"
+                        title={t('codebase_index.delete_index_tooltip')}
                       >
                         <Trash2 className="size-3.5" />
                       </Button>
@@ -327,25 +348,27 @@ export function CodebaseIndexStatus({
             ) : indexInfo ? (
               <div className="space-y-2 text-xs">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">文件数量</span>
+                  <span className="text-muted-foreground">{t('codebase_index.file_count')}</span>
                   <span className="font-medium">{indexInfo.totalFiles}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">代码块数量</span>
+                  <span className="text-muted-foreground">{t('codebase_index.chunk_count')}</span>
                   <span className="font-medium">{indexInfo.totalChunks}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">总大小</span>
+                  <span className="text-muted-foreground">{t('codebase_index.total_size')}</span>
                   <span className="font-medium">{formatSize(indexInfo.totalSize)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">更新时间</span>
-                  <span className="font-medium">{formatTime(indexInfo.indexedAt)}</span>
+                  <span className="text-muted-foreground">{t('codebase_index.updated_at')}</span>
+                  <span className="font-medium">
+                    {formatIndexedTime(indexInfo.indexedAt, t, i18n.language)}
+                  </span>
                 </div>
               </div>
             ) : (
               <div className="py-4 text-center text-xs text-muted-foreground">
-                该项目尚未建立索引
+                {t('codebase_index.no_index_yet')}
               </div>
             )}
           </div>
@@ -360,14 +383,14 @@ export function CodebaseIndexStatus({
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-2">
           <Database className="size-5" />
-          <h3 className="font-medium">代码库索引</h3>
+          <h3 className="font-medium">{t('codebase_index.title')}</h3>
         </div>
         <div className="flex gap-2">
           {!isIndexing && (
             <>
               <Button variant="outline" size="sm" onClick={() => handleIndex(false)}>
                 <RefreshCw className="size-4 mr-1" />
-                重新索引
+                {t('codebase_index.reindex')}
               </Button>
               {indexInfo && (
                 <Button
@@ -377,7 +400,7 @@ export function CodebaseIndexStatus({
                   className="text-destructive hover:text-destructive"
                 >
                   <Trash2 className="size-4 mr-1" />
-                  删除索引
+                  {t('codebase_index.delete_index')}
                 </Button>
               )}
             </>
@@ -393,7 +416,7 @@ export function CodebaseIndexStatus({
         <div className="space-y-3">
           <Progress value={progress} />
           <div className="flex justify-between text-sm text-muted-foreground">
-            <span>索引中... {Math.round(progress)}%</span>
+            <span>{t('codebase_index.indexing_percent', { percent: Math.round(progress) })}</span>
             <span className="truncate max-w-xs">{currentMessage}</span>
           </div>
         </div>
@@ -401,25 +424,27 @@ export function CodebaseIndexStatus({
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
             <Check className="size-4" />
-            <span>索引已建立</span>
+            <span>{t('codebase_index.index_built')}</span>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <div className="text-xs text-muted-foreground">文件数量</div>
+              <div className="text-xs text-muted-foreground">{t('codebase_index.file_count')}</div>
               <div className="text-lg font-semibold">{indexInfo.totalFiles}</div>
             </div>
             <div className="space-y-1">
-              <div className="text-xs text-muted-foreground">代码块数量</div>
+              <div className="text-xs text-muted-foreground">{t('codebase_index.chunk_count')}</div>
               <div className="text-lg font-semibold">{indexInfo.totalChunks}</div>
             </div>
             <div className="space-y-1">
-              <div className="text-xs text-muted-foreground">总大小</div>
+              <div className="text-xs text-muted-foreground">{t('codebase_index.total_size')}</div>
               <div className="text-lg font-semibold">{formatSize(indexInfo.totalSize)}</div>
             </div>
             <div className="space-y-1">
-              <div className="text-xs text-muted-foreground">更新时间</div>
-              <div className="text-lg font-semibold">{formatTime(indexInfo.indexedAt)}</div>
+              <div className="text-xs text-muted-foreground">{t('codebase_index.updated_at')}</div>
+              <div className="text-lg font-semibold">
+                {formatIndexedTime(indexInfo.indexedAt, t, i18n.language)}
+              </div>
             </div>
           </div>
 
@@ -429,7 +454,7 @@ export function CodebaseIndexStatus({
             className="w-full"
             onClick={() => setShowDetails(!showDetails)}
           >
-            {showDetails ? '隐藏详情' : '显示详情'}
+            {showDetails ? t('codebase_index.hide_details') : t('codebase_index.show_details')}
             <ChevronDown
               className={cn('size-4 ml-1 transition-transform', showDetails && 'rotate-180')}
             />
@@ -438,11 +463,11 @@ export function CodebaseIndexStatus({
           {showDetails && (
             <div className="pt-3 border-t space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">项目名称</span>
+                <span className="text-muted-foreground">{t('codebase_index.project_name')}</span>
                 <span className="font-medium">{indexInfo.projectName}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">项目路径</span>
+                <span className="text-muted-foreground">{t('codebase_index.project_path')}</span>
                 <span className="font-mono text-xs truncate max-w-xs" title={indexInfo.projectPath}>
                   {indexInfo.projectPath}
                 </span>
@@ -453,10 +478,10 @@ export function CodebaseIndexStatus({
       ) : (
         <div className="py-8 text-center">
           <FileSearch className="size-12 mx-auto mb-3 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground mb-4">该项目尚未建立索引</p>
+          <p className="text-sm text-muted-foreground mb-4">{t('codebase_index.no_index_yet')}</p>
           <Button onClick={() => handleIndex(false)}>
             <Database className="size-4 mr-2" />
-            开始索引
+            {t('codebase_index.start_index')}
           </Button>
         </div>
       )}

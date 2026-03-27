@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
+import { useTranslation } from 'react-i18next'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -197,6 +198,7 @@ export function GitCommitPanel({
   expanded: controlledExpanded,
   onExpandedChange
 }: GitCommitPanelProps) {
+  const { t } = useTranslation()
   const [message, setMessage] = useState('')
   const [committing, setCommitting] = useState(false)
   const [internalExpanded, setInternalExpanded] = useState(true)
@@ -355,10 +357,10 @@ export function GitCommitPanel({
     try {
       await window.api.git.discardFileChanges(workspaceRoot, file)
       onRefresh()
-      toast.success('已放弃更改')
+      toast.success(t('git.discard_changes_success'))
     } catch (error) {
-      toast.error('放弃更改失败', {
-        description: error instanceof Error ? error.message : '未知错误'
+      toast.error(t('git.discard_changes_failed'), {
+        description: error instanceof Error ? error.message : t('git.unknown_error')
       })
     }
   }
@@ -382,10 +384,10 @@ export function GitCommitPanel({
         await window.api.git.discardFileChanges(workspaceRoot, file)
       }
       onRefresh()
-      toast.success('已放弃所有更改')
+      toast.success(t('git.discard_all_success'))
     } catch (error) {
-      toast.error('放弃更改失败', {
-        description: error instanceof Error ? error.message : '未知错误'
+      toast.error(t('git.discard_changes_failed'), {
+        description: error instanceof Error ? error.message : t('git.unknown_error')
       })
     }
   }
@@ -438,10 +440,10 @@ export function GitCommitPanel({
     try {
       await window.api.git.abortMerge(workspaceRoot)
       onRefresh()
-      toast.success('已中止合并')
+      toast.success(t('git.abort_merge_success'))
     } catch (error) {
-      toast.error('中止合并失败', {
-        description: error instanceof Error ? error.message : '未知错误'
+      toast.error(t('git.abort_merge_failed'), {
+        description: error instanceof Error ? error.message : t('git.unknown_error')
       })
     }
   }
@@ -458,12 +460,12 @@ export function GitCommitPanel({
         await window.api.git.acceptAllTheirs(workspaceRoot, files)
       }
       onRefresh()
-      toast.success(isOurs ? '已接受所有本地更改' : '已接受所有远程更改', {
-        description: `已解决 ${conflictFiles.length} 个冲突文件`
+      toast.success(isOurs ? t('git.accept_local_success') : t('git.accept_remote_success'), {
+        description: t('git.conflicts_resolved', { count: conflictFiles.length })
       })
     } catch (error) {
-      toast.error(isOurs ? '接受本地更改失败' : '接受远程更改失败', {
-        description: error instanceof Error ? error.message : '未知错误'
+      toast.error(isOurs ? t('git.accept_local_failed') : t('git.accept_remote_failed'), {
+        description: error instanceof Error ? error.message : t('git.unknown_error')
       })
     }
   }
@@ -482,7 +484,7 @@ export function GitCommitPanel({
   // 添加远程仓库
   const handleAddRemote = async (name: string, url: string) => {
     await window.api.git.addRemote(workspaceRoot, name, url)
-    toast.success(`远程仓库 ${name} 添加成功`)
+    toast.success(t('git.add_remote_success', { name }))
     onRefresh()
   }
 
@@ -508,18 +510,18 @@ export function GitCommitPanel({
           await window.api.git.stageFiles(workspaceRoot, filesToCommit)
         }
         await window.api.git.amendCommit(workspaceRoot, message.trim())
-        toast.success('Amend 成功', {
+        toast.success(t('git.amend_success'), {
           description:
             filesToCommit.length > 0
-              ? `已修改上次提交，包含 ${filesToCommit.length} 个文件`
-              : '已修改上次提交消息'
+              ? t('git.amend_with_files', { count: filesToCommit.length })
+              : t('git.amend_message_only')
         })
       } else {
         // 普通提交
         await window.api.git.stageFiles(workspaceRoot, filesToCommit)
         await window.api.git.commit(workspaceRoot, message.trim())
-        toast.success('提交成功', {
-          description: `已提交 ${filesToCommit.length} 个文件`
+        toast.success(t('git.commit_success'), {
+          description: t('git.files_committed', { count: filesToCommit.length })
         })
       }
 
@@ -539,8 +541,8 @@ export function GitCommitPanel({
       }
       return true
     } catch (error) {
-      toast.error(isAmend ? 'Amend 失败' : '提交失败', {
-        description: error instanceof Error ? error.message : '未知错误'
+      toast.error(isAmend ? t('git.amend_failed') : t('git.commit_failed'), {
+        description: error instanceof Error ? error.message : t('git.unknown_error')
       })
       return false
     } finally {

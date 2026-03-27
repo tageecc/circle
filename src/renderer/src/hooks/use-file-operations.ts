@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from '@/components/ui/sonner'
 import { useFileStore, getTabId, getPathFromTabId } from '@/stores/file.store'
 import { getLanguageFromFileName, isImageFile } from '@/utils/file-helpers'
@@ -22,6 +23,7 @@ interface UseFileOperationsProps {
  * 状态管理由 useFileStore 负责
  */
 export function useFileOperations({ workspaceRoot }: UseFileOperationsProps) {
+  const { t } = useTranslation()
   // ✅ 从 Zustand Store 获取状态和操作
   const openFiles = useFileStore((state) => state.openFiles)
   const activeFile = useFileStore((state) => state.activeFile)
@@ -236,12 +238,12 @@ export function useFileOperations({ workspaceRoot }: UseFileOperationsProps) {
         }
       } catch (error) {
         console.error('Failed to open file:', error)
-        toast.error('无法打开文件', {
-          description: error instanceof Error ? error.message : '未知错误'
+        toast.error(t('editor.toast_open_failed'), {
+          description: error instanceof Error ? error.message : t('errors.unknown_error')
         })
       }
     },
-    [openFiles, workspaceRoot, addFile, updateFile, setActiveFile]
+    [openFiles, workspaceRoot, addFile, updateFile, setActiveFile, t]
   )
 
   /**
@@ -305,13 +307,13 @@ export function useFileOperations({ workspaceRoot }: UseFileOperationsProps) {
         onSuccess?.()
       } catch (error) {
         console.error('Failed to save file:', error)
-        toast.error('保存失败', {
-          description: error instanceof Error ? error.message : '未知错误'
+        toast.error(t('editor.toast_save_failed'), {
+          description: error instanceof Error ? error.message : t('errors.unknown_error')
         })
         setSavingFile(null)
       }
     },
-    [openFiles, setSavingFile, markFileAsSaved]
+    [openFiles, setSavingFile, markFileAsSaved, t]
   )
 
   /**

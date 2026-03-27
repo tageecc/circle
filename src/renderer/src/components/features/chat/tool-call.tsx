@@ -21,6 +21,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Progress } from '@/components/ui/progress'
 import { eventBus } from '@/lib/event-bus'
 import { getFileNameFromPath, getLanguageFromFileName } from '@/utils/file-helpers'
+import { useTranslation } from 'react-i18next'
 // cleanTerminalOutput 已在后端清理，前端不再需要
 
 /**
@@ -147,6 +148,7 @@ export function ToolCall({
   })
   
   const { terminalSettings } = useSettings()
+  const { t } = useTranslation()
 
   // 处理审批决策
   const handleApprovalDecision = (decision: 'approve' | 'reject' | 'skip') => {
@@ -257,7 +259,11 @@ export function ToolCall({
                 !isLoading && !hasError && 'text-foreground'
               )}
             >
-              {isLoading ? '正在加载技能' : hasError ? '加载失败' : '技能已加载'}
+              {isLoading
+                ? t('chat.skill_loading')
+                : hasError
+                  ? t('chat.skill_load_failed')
+                  : t('chat.skill_loaded')}
               <span className="text-muted-foreground ml-2">{skillName}</span>
             </span>
             {showProgress && (

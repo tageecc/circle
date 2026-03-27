@@ -7,11 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from '@/components/ui/sonner'
+import { useTranslation } from 'react-i18next'
 
 interface ProviderConfig {
   id: string
   name: string
-  description: string
+  descriptionKey: string
   placeholder: string
   docUrl: string
 }
@@ -20,48 +21,49 @@ const PROVIDERS: ProviderConfig[] = [
   {
     id: 'dashscope',
     name: 'Alibaba (DashScope)',
-    description: '阿里云百炼 API Key',
+    descriptionKey: 'api_providers.dashscope_desc',
     placeholder: 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
     docUrl: 'https://help.aliyun.com/zh/model-studio/getting-started/first-api-call'
   },
   {
     id: 'openai',
     name: 'OpenAI',
-    description: 'OpenAI API Key',
+    descriptionKey: 'api_providers.openai_desc',
     placeholder: 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
     docUrl: 'https://platform.openai.com/api-keys'
   },
   {
     id: 'anthropic',
     name: 'Anthropic',
-    description: 'Anthropic API Key',
+    descriptionKey: 'api_providers.anthropic_desc',
     placeholder: 'sk-ant-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
     docUrl: 'https://console.anthropic.com/settings/keys'
   },
   {
     id: 'google',
     name: 'Google',
-    description: 'Google AI Studio API Key',
+    descriptionKey: 'api_providers.google_desc',
     placeholder: 'AIzaSyxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
     docUrl: 'https://aistudio.google.com/app/apikey'
   },
   {
     id: 'deepseek',
     name: 'DeepSeek',
-    description: 'DeepSeek API Key',
+    descriptionKey: 'api_providers.deepseek_desc',
     placeholder: 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
     docUrl: 'https://platform.deepseek.com/api_keys'
   },
   {
     id: 'voyage',
     name: 'Voyage AI',
-    description: 'Voyage AI API Key (for code embeddings)',
+    descriptionKey: 'api_providers.voyageai_desc',
     placeholder: 'pa-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
     docUrl: 'https://dash.voyageai.com/api-keys'
   }
 ]
 
 export function ApiKeysSettings() {
+  const { t } = useTranslation()
   const [apiKeys, setApiKeys] = useState<Record<string, string>>({})
   const [visibleKeys, setVisibleKeys] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(true)
@@ -83,7 +85,7 @@ export function ApiKeysSettings() {
       setEmbeddingProvider(serviceSettings.embeddingProvider ?? 'openai-small')
     } catch (error) {
       console.error('Failed to load settings:', error)
-      toast.error('加载配置失败')
+      toast.error(t('ai_config.load_failed'))
     } finally {
       setLoading(false)
     }
@@ -102,7 +104,7 @@ export function ApiKeysSettings() {
       await loadSettings()
     } catch (error) {
       console.error('Failed to save API key:', error)
-      toast.error('保存失败')
+      toast.error(t('ai_config.save_failed'))
     } finally {
       setSaving(null)
     }
@@ -132,10 +134,10 @@ export function ApiKeysSettings() {
       await window.api.config.setServiceSettings({
         vectorSearchEnabled: checked
       })
-      toast.success(checked ? '向量搜索已启用' : '向量搜索已关闭')
+      toast.success(checked ? t('ai_config.vector_search_enabled') : t('ai_config.vector_search_disabled'))
     } catch (error) {
       console.error('Failed to save vector search setting:', error)
-      toast.error('保存失败')
+      toast.error(t('ai_config.save_failed'))
     }
   }
 
@@ -148,7 +150,7 @@ export function ApiKeysSettings() {
       toast.success('Embedding Provider 已更新')
     } catch (error) {
       console.error('Failed to save embedding provider:', error)
-      toast.error('保存失败')
+      toast.error(t('ai_config.save_failed'))
     }
   }
 
@@ -182,7 +184,7 @@ export function ApiKeysSettings() {
                         </span>
                       )}
                     </CardTitle>
-                    <CardDescription className="mt-1">{provider.description}</CardDescription>
+                    <CardDescription className="mt-1">{t(provider.descriptionKey)}</CardDescription>
                   </div>
                   <Button
                     variant="link"
@@ -229,7 +231,7 @@ export function ApiKeysSettings() {
                       disabled={isSaving}
                       size="sm"
                     >
-                      {isSaving ? '保存中...' : '保存'}
+                      {isSaving ? t('common.saving') : t('common.save')}
                     </Button>
                     {hasKey && (
                       <Button

@@ -4,6 +4,7 @@
  */
 
 import { useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from '@/components/ui/sonner'
 import { RevertFilesDialog } from '@/components/features/chat/revert-files-dialog'
 import { SubmitFromPreviousDialog } from '@/components/features/chat/submit-from-previous-dialog'
@@ -11,6 +12,7 @@ import { SubmitFromPreviousDialog } from '@/components/features/chat/submit-from
 type RevertAction = 'cancelled' | 'overwrite' | 'continue'
 
 export function useMessageRevert() {
+  const { t } = useTranslation()
   const [isReverting, setIsReverting] = useState(false)
 
   // Revert Dialog 状态
@@ -47,7 +49,7 @@ export function useMessageRevert() {
         const count = await fetchAffectedFilesCount(messageId)
 
         if (count === 0) {
-          toast.info('没有需要回退的文件')
+          toast.info(t('chat.toast_revert_no_files'))
           return
         }
 
@@ -56,10 +58,10 @@ export function useMessageRevert() {
         setShowRevertDialog(true)
       } catch (error) {
         console.error('[MessageRevert] Failed to handle revert:', error)
-        toast.error('操作失败')
+        toast.error(t('errors.operation_failed'))
       }
     },
-    [fetchAffectedFilesCount]
+    [fetchAffectedFilesCount, t]
   )
 
   /**
@@ -72,21 +74,21 @@ export function useMessageRevert() {
       const result = await window.api.message.revertFiles(revertMessageId)
 
       if (result.success) {
-        toast.success(`已回退 ${result.filesRestored} 个文件`)
+        toast.success(t('chat.toast_reverted_files', { count: result.filesRestored }))
       } else {
-        throw new Error('回退失败')
+        throw new Error(t('chat.revert_failed_generic'))
       }
 
       return result
     } catch (error) {
       console.error('[MessageRevert] Failed to execute revert:', error)
       const err = error instanceof Error ? error : new Error('Unknown error')
-      toast.error('回退失败: ' + err.message)
+      toast.error(t('chat.toast_revert_failed', { message: err.message }))
       throw err
     } finally {
       setIsReverting(false)
     }
-  }, [revertMessageId])
+  }, [revertMessageId, t])
 
   /**
    * 处理 Edit & Resubmit 功能
@@ -128,11 +130,11 @@ export function useMessageRevert() {
         })
       } catch (error) {
         console.error('[MessageRevert] Failed to handle edit and resubmit:', error)
-        toast.error('操作失败')
+        toast.error(t('errors.operation_failed'))
         return 'cancelled'
       }
     },
-    [fetchAffectedFilesCount]
+    [fetchAffectedFilesCount, t]
   )
 
   /**
@@ -146,19 +148,19 @@ export function useMessageRevert() {
           setIsReverting(true)
           await window.api.message.revertFiles(submitMessageId)
           setIsReverting(false)
-          toast.success(`已回退 ${submitFilesCount} 个文件`)
+          toast.success(t('chat.toast_reverted_files', { count: submitFilesCount }))
           submitResolver?.('overwrite')
         } else {
           submitResolver?.('continue')
         }
       } catch (error) {
         console.error('[MessageRevert] Failed to submit:', error)
-        toast.error('操作失败')
+        toast.error(t('errors.operation_failed'))
         setIsReverting(false)
         submitResolver?.('cancelled')
       }
     },
-    [submitMessageId, submitFilesCount, submitResolver]
+    [submitMessageId, submitFilesCount, submitResolver, t]
   )
 
   /**

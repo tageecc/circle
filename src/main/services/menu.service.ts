@@ -1,6 +1,7 @@
 import { Menu, MenuItemConstructorOptions, app } from 'electron'
 import { ConfigService } from './config.service'
 import { sendToRenderer } from '../utils/ipc'
+import { mainI18n as i18n } from '../i18n'
 
 export class MenuService {
   private menu: Menu | null = null
@@ -17,20 +18,20 @@ export class MenuService {
             {
               label: app.name,
               submenu: [
-                { role: 'about' as const, label: '关于 Circle' },
+                { role: 'about' as const, label: i18n.t('menu.about_circle') },
                 { type: 'separator' as const },
-                { role: 'hide' as const, label: '隐藏 Circle' },
-                { role: 'hideOthers' as const, label: '隐藏其他' },
-                { role: 'unhide' as const, label: '全部显示' },
+                { role: 'hide' as const, label: i18n.t('menu.hide_circle') },
+                { role: 'hideOthers' as const, label: i18n.t('menu.hide_others') },
+                { role: 'unhide' as const, label: i18n.t('menu.show_all') },
                 { type: 'separator' as const },
                 {
-                  label: '重启应用',
+                  label: i18n.t('menu.restart_app'),
                   click: () => {
                     app.relaunch()
                     app.quit()
                   }
                 },
-                { role: 'quit' as const, label: '退出 Circle' }
+                { role: 'quit' as const, label: i18n.t('menu.quit_circle') }
               ]
             }
           ]
@@ -38,37 +39,37 @@ export class MenuService {
 
       // 文件菜单
       {
-        label: '文件',
+        label: i18n.t('menu.file'),
         submenu: [
           {
-            label: '打开项目...',
+            label: i18n.t('menu.open_project'),
             accelerator: 'CmdOrCtrl+O',
             click: () => sendToRenderer('menu:open-project', {})
           },
           {
-            label: '最近打开',
+            label: i18n.t('menu.recent_projects'),
             submenu: this.buildRecentProjectsMenu()
           },
           { type: 'separator' },
           {
-            label: '保存',
+            label: i18n.t('menu.save'),
             accelerator: 'CmdOrCtrl+S',
             click: () => sendToRenderer('menu:save-file', {})
           },
           {
-            label: '全部保存',
+            label: i18n.t('menu.save_all'),
             accelerator: 'CmdOrCtrl+Alt+S',
             click: () => sendToRenderer('menu:save-all', {})
           },
           { type: 'separator' },
           {
-            label: '关闭项目',
+            label: i18n.t('menu.close_project'),
             accelerator: 'CmdOrCtrl+K CmdOrCtrl+F',
             click: () => sendToRenderer('menu:close-workspace', {})
           },
           { type: 'separator' },
           {
-            label: '设置',
+            label: i18n.t('menu.settings'),
             accelerator: 'CmdOrCtrl+,',
             click: () => sendToRenderer('menu:open-settings', {})
           },
@@ -76,14 +77,14 @@ export class MenuService {
             ? [
                 { type: 'separator' as const },
                 {
-                  label: '重启应用',
+                  label: i18n.t('menu.restart_app'),
                   click: () => {
                     app.relaunch()
                     app.quit()
                   }
                 },
                 { type: 'separator' as const },
-                { role: 'quit' as const, label: '退出' }
+                { role: 'quit' as const, label: i18n.t('menu.quit') }
               ]
             : [])
         ]
@@ -91,48 +92,48 @@ export class MenuService {
 
       // 编辑菜单
       {
-        label: '编辑',
+        label: i18n.t('menu.edit'),
         submenu: [
-          { role: 'undo', label: '撤销' },
-          { role: 'redo', label: '重做' },
+          { role: 'undo', label: i18n.t('menu.undo') },
+          { role: 'redo', label: i18n.t('menu.redo') },
           { type: 'separator' },
-          { role: 'cut', label: '剪切' },
-          { role: 'copy', label: '复制' },
-          { role: 'paste', label: '粘贴' },
-          { role: 'selectAll', label: '全选' }
+          { role: 'cut', label: i18n.t('menu.cut') },
+          { role: 'copy', label: i18n.t('menu.copy') },
+          { role: 'paste', label: i18n.t('menu.paste') },
+          { role: 'selectAll', label: i18n.t('menu.select_all') }
         ]
       },
 
       // 视图菜单
       {
-        label: '视图',
+        label: i18n.t('menu.view'),
         submenu: [
           {
-            label: '切换左侧边栏',
+            label: i18n.t('menu.toggle_left_sidebar'),
             accelerator: 'CmdOrCtrl+B',
             click: () => sendToRenderer('menu:toggle-sidebar', {})
           },
           {
-            label: '切换右侧边栏',
+            label: i18n.t('menu.toggle_right_sidebar'),
             accelerator: 'CmdOrCtrl+Alt+B',
             click: () => sendToRenderer('menu:toggle-chat', {})
           },
           {
-            label: '切换控制台',
+            label: i18n.t('menu.toggle_console'),
             accelerator: 'CmdOrCtrl+J',
             click: () => sendToRenderer('menu:toggle-terminal', {})
           },
           { type: 'separator' },
-          { role: 'togglefullscreen', label: '全屏' },
+          { role: 'togglefullscreen', label: i18n.t('menu.fullscreen') },
           { type: 'separator' },
-          { role: 'resetZoom', label: '实际大小' },
-          { role: 'zoomIn', label: '放大' },
-          { role: 'zoomOut', label: '缩小' },
+          { role: 'resetZoom', label: i18n.t('menu.actual_size') },
+          { role: 'zoomIn', label: i18n.t('menu.zoom_in') },
+          { role: 'zoomOut', label: i18n.t('menu.zoom_out') },
           ...(isDev
             ? [
                 { type: 'separator' as const },
-                { role: 'forceReload' as const, label: '重新加载' },
-                { role: 'toggleDevTools' as const, label: '开发者工具' }
+                { role: 'forceReload' as const, label: i18n.t('menu.reload') },
+                { role: 'toggleDevTools' as const, label: i18n.t('menu.dev_tools') }
               ]
             : [])
         ]
@@ -142,12 +143,12 @@ export class MenuService {
       ...(isMac
         ? [
             {
-              label: '窗口',
+              label: i18n.t('menu.window'),
               submenu: [
-                { role: 'minimize' as const, label: '最小化' },
-                { role: 'zoom' as const, label: '缩放' },
+                { role: 'minimize' as const, label: i18n.t('menu.minimize') },
+                { role: 'zoom' as const, label: i18n.t('menu.zoom_window') },
                 { type: 'separator' as const },
-                { role: 'front' as const, label: '前置所有窗口' }
+                { role: 'front' as const, label: i18n.t('menu.bring_all_to_front') }
               ]
             }
           ]
@@ -155,10 +156,10 @@ export class MenuService {
 
       // 帮助菜单
       {
-        label: '帮助',
+        label: i18n.t('menu.help'),
         submenu: [
           {
-            label: '报告问题...',
+            label: i18n.t('menu.report_issue'),
             click: () => sendToRenderer('menu:report-bug', {})
           }
         ]
@@ -176,7 +177,7 @@ export class MenuService {
     if (recentProjects.length === 0) {
       return [
         {
-          label: '无最近项目',
+          label: i18n.t('menu.no_recent_projects'),
           enabled: false
         }
       ]

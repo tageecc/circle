@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Plus, Trash2, Edit2, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/sonner'
+import { useTranslation } from 'react-i18next'
 import {
   InputGroup,
   InputGroupAddon,
@@ -17,6 +18,7 @@ interface Memory {
 }
 
 export function MemoriesSettingsContent() {
+  const { t } = useTranslation()
   const [memories, setMemories] = useState<Memory[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -30,7 +32,7 @@ export function MemoriesSettingsContent() {
       setMemories(data)
     } catch (error) {
       console.error('Failed to load memories:', error)
-      toast.error('加载记忆失败')
+      toast.error(t('memories.load_failed'))
     } finally {
       setIsLoading(false)
     }
@@ -42,48 +44,48 @@ export function MemoriesSettingsContent() {
 
   const handleCreate = async () => {
     if (!content.trim()) {
-      toast.error('内容不能为空')
+      toast.error(t('memories.empty_content'))
       return
     }
 
     try {
       await window.api.memory.create(content)
-      toast.success('记忆创建成功')
+      toast.success(t('memories.create_success'))
       setContent('')
       setIsCreating(false)
       await loadMemories()
     } catch (error) {
       console.error('Failed to create memory:', error)
-      toast.error('创建记忆失败')
+      toast.error(t('memories.create_failed'))
     }
   }
 
   const handleUpdate = async (id: string) => {
     if (!content.trim()) {
-      toast.error('内容不能为空')
+      toast.error(t('memories.empty_content'))
       return
     }
 
     try {
       await window.api.memory.update(id, content)
-      toast.success('记忆更新成功')
+      toast.success(t('memories.update_success'))
       setEditingId(null)
       setContent('')
       await loadMemories()
     } catch (error) {
       console.error('Failed to update memory:', error)
-      toast.error('更新记忆失败')
+      toast.error(t('memories.update_failed'))
     }
   }
 
   const handleDelete = async (id: string) => {
     try {
       await window.api.memory.delete(id)
-      toast.success('记忆删除成功')
+      toast.success(t('memories.delete_success'))
       await loadMemories()
     } catch (error) {
       console.error('Failed to delete memory:', error)
-      toast.error('删除记忆失败')
+      toast.error(t('memories.delete_failed'))
     }
   }
 
@@ -131,7 +133,7 @@ export function MemoriesSettingsContent() {
         {isCreating && (
           <InputGroup>
             <InputGroupTextarea
-              placeholder="例如：我喜欢使用 TypeScript 严格模式，函数式编程风格..."
+              placeholder={t('memories.placeholder')}
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows={3}
@@ -144,7 +146,7 @@ export function MemoriesSettingsContent() {
                 variant="ghost"
                 size="icon-xs"
                 className="ml-auto"
-                aria-label="取消"
+                aria-label={t('common.cancel')}
               >
                 <X />
               </InputGroupButton>
@@ -152,7 +154,7 @@ export function MemoriesSettingsContent() {
                 onClick={handleCreate}
                 variant="default"
                 size="icon-xs"
-                aria-label="保存"
+                aria-label={t('common.save')}
               >
                 <Check />
               </InputGroupButton>
@@ -186,7 +188,7 @@ export function MemoriesSettingsContent() {
                       variant="ghost"
                       size="icon-xs"
                       className="ml-auto"
-                      aria-label="取消"
+                      aria-label={t('common.cancel')}
                     >
                       <X />
                     </InputGroupButton>
@@ -194,7 +196,7 @@ export function MemoriesSettingsContent() {
                       onClick={() => handleUpdate(memory.id)}
                       variant="default"
                       size="icon-xs"
-                      aria-label="保存"
+                      aria-label={t('common.save')}
                     >
                       <Check />
                     </InputGroupButton>

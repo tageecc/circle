@@ -9,6 +9,8 @@ import {
   Check
 } from 'lucide-react'
 import { Toaster as Sonner, toast as sonnerToast, ExternalToast, ToasterProps } from 'sonner'
+import { useTranslation } from 'react-i18next'
+import i18n from '@/i18n'
 import { NotificationType } from '@/contexts/notification-context'
 import { cn } from '@/lib/utils'
 
@@ -29,6 +31,7 @@ type ToastOptions = ExternalToast & {
 
 // Copy button component for toast
 function ToastCopyButton({ text }: { text: string }) {
+  const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
   const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
@@ -68,7 +71,7 @@ function ToastCopyButton({ text }: { text: string }) {
         'h-6 w-6 rounded-md hover:bg-black/5 dark:hover:bg-white/5',
         'text-muted-foreground hover:text-foreground transition-colors'
       )}
-      title="复制"
+      title={t('common.copy')}
     >
       {copied ? (
         <Check className="size-3.5 text-green-500" />
@@ -84,7 +87,7 @@ function extractTextContent(message: ReactNode): string {
   if (typeof message === 'string') return message
   if (typeof message === 'number') return String(message)
   // 对于复杂的 ReactNode，返回一个简单描述
-  return '操作完成'
+  return i18n.t('toast.completed_fallback')
 }
 
 function createWrappedToast() {

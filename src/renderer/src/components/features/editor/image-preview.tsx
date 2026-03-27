@@ -3,6 +3,7 @@ import { getFileExtension } from '@/utils/file-helpers'
 import { cn } from '@/lib/utils'
 import { ZoomIn, ZoomOut, RotateCw, Maximize2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useTranslation } from 'react-i18next'
 
 interface ImagePreviewProps {
   path: string
@@ -10,6 +11,7 @@ interface ImagePreviewProps {
 }
 
 export function ImagePreview({ path, className }: ImagePreviewProps) {
+  const { t } = useTranslation()
   const [imageUrl, setImageUrl] = useState<string>('')
   const [zoom, setZoom] = useState(100)
   const [rotation, setRotation] = useState(0)
@@ -139,7 +141,7 @@ export function ImagePreview({ path, className }: ImagePreviewProps) {
             className="h-7 w-7 p-0"
             onClick={handleZoomOut}
             disabled={zoom <= 25}
-            title="缩小"
+            title={t('image_preview.zoom_out')}
           >
             <ZoomOut className="size-4" />
           </Button>
@@ -149,7 +151,7 @@ export function ImagePreview({ path, className }: ImagePreviewProps) {
             className="h-7 w-7 p-0"
             onClick={handleZoomIn}
             disabled={zoom >= 400}
-            title="放大"
+            title={t('image_preview.zoom_in')}
           >
             <ZoomIn className="size-4" />
           </Button>
@@ -158,7 +160,7 @@ export function ImagePreview({ path, className }: ImagePreviewProps) {
             size="sm"
             className="h-7 w-7 p-0"
             onClick={handleRotate}
-            title="旋转"
+            title={t('image_preview.rotate')}
           >
             <RotateCw className="size-4" />
           </Button>
@@ -167,7 +169,7 @@ export function ImagePreview({ path, className }: ImagePreviewProps) {
             size="sm"
             className="h-7 w-7 p-0"
             onClick={handleReset}
-            title="重置"
+            title={t('image_preview.reset')}
           >
             <Maximize2 className="size-4" />
           </Button>

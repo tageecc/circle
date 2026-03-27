@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { toast } from '@/components/ui/sonner'
 import { getFileNameFromPath } from '@/utils/file-helpers'
 import { refreshGitStatus } from './use-git-manager'
@@ -20,16 +21,20 @@ export function useFileTreeOperations({
   confirm,
   refreshFileTree
 }: FileTreeOperationsProps) {
+  const { t } = useTranslation()
+
   const createFile = async (parentPath: string, fileName: string) => {
     try {
       const filePath = `${parentPath}/${fileName}`
       await window.api.files.createFile(filePath, '')
-      toast.success('文件创建成功', { description: `已创建文件 ${fileName}` })
+      toast.success(t('file_tree.toast_file_created'), {
+        description: t('file_tree.toast_file_created_desc', { name: fileName })
+      })
       refreshFileTree() // ✅ 静默刷新，不显示 loading
       setTimeout(() => fileManager.openFile(filePath), 100)
     } catch (error) {
-      toast.error('文件创建失败', {
-        description: error instanceof Error ? error.message : '未知错误'
+      toast.error(t('errors.create_failed'), {
+        description: error instanceof Error ? error.message : t('errors.unknown_error')
       })
     }
   }
@@ -38,11 +43,13 @@ export function useFileTreeOperations({
     try {
       const folderPath = `${parentPath}/${folderName}`
       await window.api.files.createDirectory(folderPath)
-      toast.success('文件夹创建成功', { description: `已创建文件夹 ${folderName}` })
+      toast.success(t('file_tree.toast_folder_created'), {
+        description: t('file_tree.toast_folder_created_desc', { name: folderName })
+      })
       refreshFileTree() // ✅ 静默刷新，不显示 loading
     } catch (error) {
-      toast.error('文件夹创建失败', {
-        description: error instanceof Error ? error.message : '未知错误'
+      toast.error(t('errors.create_failed'), {
+        description: error instanceof Error ? error.message : t('errors.unknown_error')
       })
     }
   }
@@ -58,13 +65,16 @@ export function useFileTreeOperations({
         window.api.recentFiles.remove(workspaceRoot, oldPath).catch(() => {})
         window.api.recentFiles.add(workspaceRoot, newPath).catch(() => {})
       }
-      toast.success('重命名成功', {
-        description: `已将 ${getFileNameFromPath(oldPath)} 重命名为 ${newName}`
+      toast.success(t('file_tree.toast_rename_ok'), {
+        description: t('file_tree.toast_rename_ok_desc', {
+          oldName: getFileNameFromPath(oldPath),
+          newName
+        })
       })
       refreshFileTree() // ✅ 静默刷新，不显示 loading
     } catch (error) {
-      toast.error('重命名失败', {
-        description: error instanceof Error ? error.message : '未知错误'
+      toast.error(t('errors.rename_failed'), {
+        description: error instanceof Error ? error.message : t('errors.unknown_error')
       })
     }
   }
@@ -73,10 +83,10 @@ export function useFileTreeOperations({
     const name = getFileNameFromPath(path)
 
     const confirmed = await confirm({
-      title: '确认删除',
-      description: `确定要删除"${name}"吗？此操作不可撤销。`,
-      confirmText: '删除',
-      cancelText: '取消',
+      title: t('file_tree.confirm_delete_title'),
+      description: t('file_tree.confirm_delete_desc', { name }),
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
       variant: 'destructive'
     })
 
@@ -90,13 +100,15 @@ export function useFileTreeOperations({
           window.api.recentFiles.remove(workspaceRoot, path).catch(() => {})
         }
 
-        toast.success('删除成功', { description: `已删除 ${name}` })
+        toast.success(t('file_tree.toast_deleted'), {
+          description: t('file_tree.toast_deleted_desc', { name })
+        })
 
         // ✅ 静默刷新：不显示 loading，FileTree 会平滑更新
         refreshFileTree()
       } catch (error) {
-        toast.error('删除失败', {
-          description: error instanceof Error ? error.message : '未知错误'
+        toast.error(t('errors.delete_failed'), {
+          description: error instanceof Error ? error.message : t('errors.unknown_error')
         })
       }
     }
@@ -104,12 +116,16 @@ export function useFileTreeOperations({
 
   const copy = (path: string, setClipboard: (item: ClipboardItem) => void) => {
     setClipboard({ path, type: 'copy' })
-    toast.success('已复制', { description: `已复制 ${getFileNameFromPath(path)}` })
+    toast.success(t('file_tree.toast_copied'), {
+      description: t('file_tree.toast_copied_desc', { name: getFileNameFromPath(path) })
+    })
   }
 
   const cut = (path: string, setClipboard: (item: ClipboardItem) => void) => {
     setClipboard({ path, type: 'cut' })
-    toast.success('已剪切', { description: `已剪切 ${getFileNameFromPath(path)}` })
+    toast.success(t('file_tree.toast_cut'), {
+      description: t('file_tree.toast_cut_desc', { name: getFileNameFromPath(path) })
+    })
   }
 
   const paste = async (
@@ -126,7 +142,9 @@ export function useFileTreeOperations({
       if (clipboard.type === 'copy') {
         const content = await window.api.files.read(clipboard.path)
         await window.api.files.createFile(destPath, content)
-        toast.success('粘贴成功', { description: `已复制 ${sourceName}` })
+        toast.success(t('file_tree.toast_paste_ok'), {
+          description: t('file_tree.toast_paste_copied_desc', { name: sourceName })
+        })
       } else {
         await window.api.files.rename(clipboard.path, destPath)
         fileManager.updateFilePathAfterRename(clipboard.path, destPath, sourceName)
@@ -135,29 +153,31 @@ export function useFileTreeOperations({
           window.api.recentFiles.remove(workspaceRoot, clipboard.path).catch(() => {})
           window.api.recentFiles.add(workspaceRoot, destPath).catch(() => {})
         }
-        toast.success('粘贴成功', { description: `已移动 ${sourceName}` })
+        toast.success(t('file_tree.toast_paste_ok'), {
+          description: t('file_tree.toast_paste_moved_desc', { name: sourceName })
+        })
         clearClipboard()
       }
 
       refreshFileTree()
     } catch (error) {
-      toast.error('粘贴失败', {
-        description: error instanceof Error ? error.message : '未知错误'
+      toast.error(t('file_tree.toast_paste_failed'), {
+        description: error instanceof Error ? error.message : t('errors.unknown_error')
       })
     }
   }
 
   const copyPath = (path: string) => {
     navigator.clipboard.writeText(path)
-    toast.success('已复制路径', { description: path })
+    toast.success(t('file_tree.toast_path_copied'), { description: path })
   }
 
   const revealInFinder = async (path: string) => {
     try {
       await window.api.files.revealInFinder?.(path)
     } catch (error) {
-      toast.error('无法打开文件管理器', {
-        description: error instanceof Error ? error.message : '未知错误'
+      toast.error(t('file_tree.toast_reveal_failed'), {
+        description: error instanceof Error ? error.message : t('errors.unknown_error')
       })
     }
   }
@@ -166,9 +186,9 @@ export function useFileTreeOperations({
     if (!workspaceRoot) return
 
     const confirmed = await confirm({
-      title: '回滚文件',
-      description: '确定要回滚此文件的更改吗？所有未提交的更改将会丢失，此操作不可撤销。',
-      confirmText: '回滚',
+      title: t('file_tree.rollback_title'),
+      description: t('file_tree.rollback_desc'),
+      confirmText: t('file_tree.rollback_confirm'),
       cancelText: '取消',
       variant: 'destructive'
     })
@@ -176,7 +196,7 @@ export function useFileTreeOperations({
     if (confirmed) {
       try {
         await window.api.git.discardFileChanges(workspaceRoot, path)
-        toast.success('文件已回滚', { description: path })
+        toast.success(t('file_tree.toast_git_reverted'), { description: path })
         refreshFileTree()
         refreshGitStatus()
         // 如果文件已打开，重新加载
@@ -185,8 +205,8 @@ export function useFileTreeOperations({
           fileManager.updateContent(path, content)
         }
       } catch (error) {
-        toast.error('回滚失败', {
-          description: error instanceof Error ? error.message : '未知错误'
+        toast.error(t('file_tree.toast_git_revert_failed'), {
+          description: error instanceof Error ? error.message : t('errors.unknown_error')
         })
       }
     }
@@ -202,8 +222,8 @@ export function useFileTreeOperations({
 
       const exists = await window.api.files.exists(destPath)
       if (exists) {
-        toast.error('移动失败', {
-          description: `目标位置已存在同名文件: ${sourceName}`
+        toast.error(t('file_tree.toast_move_failed'), {
+          description: t('file_tree.toast_move_exists', { name: sourceName })
         })
         return
       }
@@ -218,8 +238,8 @@ export function useFileTreeOperations({
       refreshFileTree()
       refreshGitStatus()
     } catch (error) {
-      toast.error('移动失败', {
-        description: error instanceof Error ? error.message : '未知错误'
+      toast.error(t('file_tree.toast_move_failed'), {
+        description: error instanceof Error ? error.message : t('errors.unknown_error')
       })
     }
   }

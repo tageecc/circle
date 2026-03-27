@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Search, RefreshCw, Puzzle, FolderOpen, Trash2, AlertCircle, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,6 +19,7 @@ import { useFileStore, getTabId } from '@/stores/file.store'
 import type { SkillDefinition, FailedSkill } from '@/types/skills'
 
 export function SkillsInstalledPanel() {
+  const { t } = useTranslation()
   const workspaceRoot = useWorkspaceStore((state) => state.workspaceRoot)
   const { skillsSettings } = useSettings()
   const { openFiles, addFile, setActiveFile, activeFile } = useFileStore()
@@ -40,11 +42,11 @@ export function SkillsInstalledPanel() {
       setSkills(result?.skills || [])
       setFailedSkills(result?.failedSkills || [])
     } catch (error) {
-      toast.error('加载失败，请稍后重试')
+      toast.error(t('skills.load_failed_retry'))
     } finally {
       setLoading(false)
     }
-  }, [workspaceRoot])
+  }, [workspaceRoot, t])
 
   useEffect(() => {
     loadSkills()
@@ -54,9 +56,9 @@ export function SkillsInstalledPanel() {
     try {
       await window.api.skills.toggle(skillPath, enabled)
       setSkills((prev) => prev.map((s) => (s.skillPath === skillPath ? { ...s, enabled } : s)))
-      toast.success(enabled ? '已启用' : '已禁用')
+      toast.success(enabled ? t('skills.toggle_enabled_toast') : t('skills.toggle_disabled_toast'))
     } catch (error) {
-      toast.error('操作失败，请稍后重试')
+      toast.error(t('skills.operation_failed_retry'))
     }
   }
 
@@ -78,9 +80,9 @@ export function SkillsInstalledPanel() {
         removeFile(tabId)
       }
       
-      toast.success('已删除')
+      toast.success(t('skills.delete_success'))
     } catch (error) {
-      toast.error('删除失败，请稍后重试')
+      toast.error(t('skills.delete_failed_retry'))
     }
   }
 
@@ -110,16 +112,16 @@ export function SkillsInstalledPanel() {
           lineEnding: 'LF'
         })
       } catch (error) {
-        toast.error('打开失败，请稍后重试')
+        toast.error(t('skills.open_failed_retry'))
       }
     }
   }
 
   // 将失败的 skills 转换为特殊的卡片数据
-  const failedSkillsAsCards = failedSkills.map(fs => ({
+  const failedSkillsAsCards = failedSkills.map((fs) => ({
     metadata: {
       name: fs.skillPath.split('/').pop() || 'Unknown',
-      description: `解析失败: ${fs.error}`,
+      description: t('skills.parse_failed', { message: fs.error }),
       tags: fs.errorDetails ? ['error'] : []
     },
     instructions: '',
@@ -206,7 +208,7 @@ export function SkillsInstalledPanel() {
                     e.stopPropagation()
                     window.api.files.openPath(skill.skillPath).catch(console.error)
                   }}
-                  title="打开目录"
+                  title={t('skills.open_directory')}
                 >
                   <FolderOpen className="size-3" />
                 </Button>
@@ -222,7 +224,7 @@ export function SkillsInstalledPanel() {
                       size="icon"
                       className="h-6 w-6 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={(e) => e.stopPropagation()}
-                      title="删除"
+                      title={t('common.delete')}
                     >
                       <Trash2 className="size-3" />
                     </Button>
@@ -230,9 +232,9 @@ export function SkillsInstalledPanel() {
                   <PopoverContent className="w-64" align="end">
                     <div className="space-y-3">
                       <div>
-                        <h4 className="font-medium text-sm mb-1">确认删除</h4>
+                        <h4 className="font-medium text-sm mb-1">{t('skills.confirm_delete_title')}</h4>
                         <p className="text-xs text-muted-foreground">
-                          将永久删除技能文件夹，此操作无法撤销
+                          {t('skills.confirm_delete_description')}
                         </p>
                       </div>
                       <div className="flex gap-2 justify-end">
@@ -244,7 +246,7 @@ export function SkillsInstalledPanel() {
                             setDeletePopoverOpen(null)
                           }}
                         >
-                          取消
+                          {t('common.cancel')}
                         </Button>
                         <Button
                           size="sm"
@@ -254,7 +256,7 @@ export function SkillsInstalledPanel() {
                             handleDelete(skill.skillPath)
                           }}
                         >
-                          删除
+                          {t('common.delete')}
                         </Button>
                       </div>
                     </div>
@@ -282,7 +284,7 @@ export function SkillsInstalledPanel() {
               "text-xs line-clamp-2 mb-2",
               skill.isFailed ? "text-destructive/70" : "text-muted-foreground"
             )}>
-              {skill.metadata.description || '暂无描述'}
+              {skill.metadata.description || t('skills.no_description')}
             </p>
             
             {/* 错误详情 - 仅失败的 skill 显示 */}
@@ -305,7 +307,7 @@ export function SkillsInstalledPanel() {
                       window.api.shell.openExternal(skill.metadata.homepage!)
                     }}
                     className="flex items-center gap-1 hover:text-foreground transition-colors"
-                    title="在浏览器中打开"
+                    title={t('skills.open_in_browser')}
                   >
                     <ExternalLink className="size-3" />
                     <span>GitHub</span>
@@ -336,9 +338,14 @@ export function SkillsInstalledPanel() {
       <div className="px-3 py-2 border-b border-border/30">
         <div className="flex items-center justify-between mb-2">
           <span className="text-[10px] text-muted-foreground">
-            {skills.length + failedSkills.length} 个技能 · {skills.filter((s) => s.enabled).length} 个已启用
+            {t('skills.header_stats', {
+              total: skills.length + failedSkills.length,
+              enabled: skills.filter((s) => s.enabled).length
+            })}
             {failedSkills.length > 0 && (
-              <span className="text-destructive ml-1.5">· {failedSkills.length} 个有错误</span>
+              <span className="text-destructive ml-1.5">
+                {t('skills.header_errors', { count: failedSkills.length })}
+              </span>
             )}
           </span>
           <Button
@@ -347,7 +354,7 @@ export function SkillsInstalledPanel() {
             className="h-6 w-6 hover:bg-accent/50"
             onClick={loadSkills}
             disabled={loading}
-            title="刷新"
+            title={t('common.refresh')}
           >
             <RefreshCw className={cn('size-3.5', loading && 'animate-spin')} />
           </Button>
@@ -357,7 +364,7 @@ export function SkillsInstalledPanel() {
         <div className="relative">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
           <Input
-            placeholder="搜索技能..."
+            placeholder={t('skills.search_placeholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="h-7 pl-7 text-xs"
@@ -374,7 +381,9 @@ export function SkillsInstalledPanel() {
         ) : filteredSkills.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
             <Puzzle className="size-8 mb-2 opacity-50" />
-            <p className="text-xs">{searchQuery ? '未找到匹配的技能' : '暂无技能'}</p>
+            <p className="text-xs">
+              {searchQuery ? t('skills.empty_no_match') : t('skills.empty_none')}
+            </p>
           </div>
         ) : (
           <Accordion type="multiple" defaultValue={['project', 'user']} className="w-full">
@@ -382,7 +391,7 @@ export function SkillsInstalledPanel() {
             {allProjectSkills.length > 0 && (
               <AccordionItem value="project" className="border-none">
                 <AccordionTrigger className="px-3 py-2 hover:bg-accent/30 hover:no-underline text-xs font-medium uppercase tracking-wide">
-                  项目技能 ({allProjectSkills.length})
+                  {t('skills.accordion_project', { count: allProjectSkills.length })}
                 </AccordionTrigger>
                 <AccordionContent className="pb-0">
                   <div className="space-y-2 p-2">{allProjectSkills.map(renderSkillCard)}</div>
@@ -394,7 +403,7 @@ export function SkillsInstalledPanel() {
             {allUserSkills.length > 0 && (
               <AccordionItem value="user" className="border-none">
                 <AccordionTrigger className="px-3 py-2 hover:bg-accent/30 hover:no-underline text-xs font-medium uppercase tracking-wide">
-                  全局技能 ({allUserSkills.length})
+                  {t('skills.accordion_user', { count: allUserSkills.length })}
                 </AccordionTrigger>
                 <AccordionContent className="pb-0">
                   <div className="space-y-2 p-2">{allUserSkills.map(renderSkillCard)}</div>

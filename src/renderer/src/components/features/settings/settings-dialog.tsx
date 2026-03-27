@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import i18n from '@/i18n'
 import {
   Settings,
   Palette,
@@ -80,6 +81,8 @@ function FontSelector({
   onValueChange: (value: string) => void
   fonts: string[]
 }) {
+  const { t } = useTranslation()
+  
   // 内置字体（已打包到应用中，始终可用）
   const builtInFonts = ['JetBrains Mono', 'Source Code Pro']
 
@@ -110,12 +113,12 @@ function FontSelector({
   return (
     <Select value={value} onValueChange={onValueChange}>
       <SelectTrigger className="w-full">
-        <SelectValue placeholder="选择字体">{value}</SelectValue>
+        <SelectValue placeholder={t('settings.select_font')}>{value}</SelectValue>
       </SelectTrigger>
       <SelectContent>
         {popularFonts.length > 0 && (
           <SelectGroup>
-            <SelectLabel>推荐等宽字体</SelectLabel>
+            <SelectLabel>{t('settings.recommended_monospace_fonts')}</SelectLabel>
             {popularFonts.map((font) => (
               <SelectItem key={font} value={font}>
                 {font}
@@ -128,7 +131,7 @@ function FontSelector({
         )}
         {otherFonts.length > 0 && (
           <SelectGroup>
-            <SelectLabel>其他字体</SelectLabel>
+            <SelectLabel>{t('settings.other_fonts')}</SelectLabel>
             {otherFonts.map((font) => (
               <SelectItem key={font} value={font}>
                 {font}
@@ -254,18 +257,24 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
       await window.api.config.updateWindowTheme(actualTheme)
 
+      // Update i18n language if changed
+      if (localGeneralSettings.language !== settings.generalSettings.language) {
+        const i18nLang = localGeneralSettings.language === 'zh-CN' ? 'zh' : 'en'
+        await i18n.changeLanguage(i18nLang)
+      }
+
       // 更新 Context 状态（不保存，因为已经保存过了）
       await settings.reloadSettings()
 
       // 通知文件树刷新
       eventBus.emit('files-exclude-changed')
 
-      toast.success('设置已保存')
+      toast.success(t('settings.save_success'))
       // 保存成功后关闭弹窗
       onOpenChange(false)
     } catch (error) {
       console.error('Failed to save settings:', error)
-      toast.error('保存设置失败')
+      toast.error(t('settings.save_failed'))
     }
   }
 
@@ -317,11 +326,15 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         settings.updateAppearanceSettings(defaultAppearance),
         settings.updateGeneralSettings(defaultGeneral)
       ])
+
+      // Update i18n language to default (zh-CN)
+      await i18n.changeLanguage('zh')
+
       setResetPopoverOpen(false)
-      toast.success('设置已重置')
+      toast.success(t('settings.reset_success'))
     } catch (error) {
       console.error('Failed to reset settings:', error)
-      toast.error('重置设置失败')
+      toast.error(t('settings.reset_failed'))
     }
   }
 
@@ -414,7 +427,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             </SidebarContent>
           </Sidebar>
           <main className="flex h-[700px] flex-1 flex-col overflow-hidden">
-            <header className="flex h-16 shrink-0 items-center gap-2 border-b px-6">
+            <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border px-6">
               <Breadcrumb>
                 <BreadcrumbList>
                   <BreadcrumbItem className="hidden md:block">
@@ -430,7 +443,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               </Breadcrumb>
             </header>
             <div className="flex-1 overflow-y-auto p-6">{renderContent()}</div>
-            <div className="flex items-center justify-between border-t p-4">
+            <div className="flex items-center justify-between border-t border-border p-4">
               <Popover open={resetPopoverOpen} onOpenChange={setResetPopoverOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -444,9 +457,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 <PopoverContent className="w-80" side="top" align="start">
                   <div className="space-y-3">
                     <div className="space-y-2">
-                      <h4 className="font-medium text-sm">确认重置设置？</h4>
+                      <h4 className="font-medium text-sm">{t('settings.reset_to_default')}?</h4>
                       <p className="text-sm text-muted-foreground">
-                        此操作将重置所有设置为默认值，包括外观、编辑器、终端等所有配置。
+                        {t('settings.reset_confirmation')}
                       </p>
                     </div>
                     <div className="flex justify-end gap-2">
@@ -455,10 +468,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                         size="sm"
                         onClick={() => setResetPopoverOpen(false)}
                       >
-                        取消
+                        {t('common.cancel')}
                       </Button>
                       <Button variant="destructive" size="sm" onClick={resetSettings}>
-                        确认重置
+                        {t('common.confirm')}
                       </Button>
                     </div>
                   </div>
@@ -466,9 +479,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               </Popover>
               <div className="flex items-center gap-2">
                 <Button variant="outline" onClick={() => onOpenChange(false)}>
-                  取消
+                  {t('common.cancel')}
                 </Button>
-                <Button onClick={saveSettings}>保存设置</Button>
+                <Button onClick={saveSettings}>{t('common.save')}</Button>
               </div>
             </div>
           </main>
@@ -494,12 +507,13 @@ function GeneralSettingsContent({
   filesExclude: FilesExclude
   onFilesExcludeChange: (exclude: FilesExclude) => void
 }) {
+  const { t } = useTranslation()
   const [newPattern, setNewPattern] = useState('')
   const [newSkillDir, setNewSkillDir] = useState('')
 
   const languageOptions = [
-    { value: 'zh-CN', label: '简体中文' },
-    { value: 'en-US', label: 'English' }
+    { value: 'zh-CN', label: t('settings.language_zh') },
+    { value: 'en-US', label: t('settings.language_en') }
   ]
 
   const addPattern = () => {
@@ -534,14 +548,15 @@ function GeneralSettingsContent({
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <Label className="block mb-2">界面语言</Label>
+        <Label className="block mb-2">{t('settings.language')}</Label>
         <Select
           value={settings.language}
           onValueChange={(value) => onChange({ ...settings, language: value })}
         >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="选择语言">
-              {languageOptions.find((opt) => opt.value === settings.language)?.label || '简体中文'}
+            <SelectValue placeholder={t('common.select_language')}>
+              {languageOptions.find((opt) => opt.value === settings.language)?.label ||
+                t('settings.language_zh')}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
@@ -556,8 +571,8 @@ function GeneralSettingsContent({
 
       <div className="flex items-center justify-between">
         <div>
-          <Label className="block mb-1.5">自动保存</Label>
-          <p className="text-xs text-muted-foreground">自动保存文件更改</p>
+          <Label className="block mb-1.5">{t('settings.auto_save')}</Label>
+          <p className="text-xs text-muted-foreground">{t('settings.auto_save_desc')}</p>
         </div>
         <Switch
           checked={settings.autoSave}
@@ -567,9 +582,9 @@ function GeneralSettingsContent({
 
       <div className="flex items-center justify-between">
         <div>
-          <Label className="block mb-1.5">单击预览文件</Label>
+          <Label className="block mb-1.5">{t('settings.file_preview_single_click')}</Label>
           <p className="text-xs text-muted-foreground">
-            单击文件时以预览模式打开，双击永久打开（类似 VS Code）
+            {t('settings.file_preview_single_click_desc')}
           </p>
         </div>
         <Switch
@@ -581,7 +596,7 @@ function GeneralSettingsContent({
       </div>
 
       <div className="space-y-2">
-        <Label className="block mb-2">命令执行模式</Label>
+        <Label className="block mb-2">{t('settings.command_execution_mode')}</Label>
         <Select
           value={settings.autoRunMode}
           onValueChange={(value: 'ask' | 'auto-run' | 'whitelist') =>
@@ -595,33 +610,33 @@ function GeneralSettingsContent({
             <SelectItem value="ask">
               <div className="flex items-center gap-2">
                 <span className="font-medium">Ask Every Time</span>
-                <span className="text-xs text-muted-foreground">每次都询问（最安全）</span>
+                <span className="text-xs text-muted-foreground">{t('settings.auto_run_mode_ask_desc')}</span>
               </div>
             </SelectItem>
             <SelectItem value="auto-run">
               <div className="flex items-center gap-2">
                 <span className="font-medium">Auto-Run</span>
-                <span className="text-xs text-muted-foreground">自动运行所有命令（最快速）</span>
+                <span className="text-xs text-muted-foreground">{t('settings.auto_run_mode_auto_desc')}</span>
               </div>
             </SelectItem>
             <SelectItem value="whitelist">
               <div className="flex items-center gap-2">
                 <span className="font-medium">Whitelist</span>
-                <span className="text-xs text-muted-foreground">白名单自动运行（推荐）</span>
+                <span className="text-xs text-muted-foreground">{t('settings.auto_run_mode_whitelist_desc')}</span>
               </div>
             </SelectItem>
           </SelectContent>
         </Select>
         <p className="text-xs text-muted-foreground mt-1.5">
-          控制 AI 如何执行终端命令。Whitelist 模式下，白名单内的命令自动执行，其他命令需要确认。
+          {t('settings.command_execution_mode_desc')}
         </p>
       </div>
 
       {settings.autoRunMode === 'whitelist' && (
         <div className="space-y-3">
           <div>
-            <Label className="block mb-1.5">命令白名单</Label>
-            <p className="text-xs text-muted-foreground">白名单中的命令将自动执行，无需确认</p>
+            <Label className="block mb-1.5">{t('settings.command_whitelist')}</Label>
+            <p className="text-xs text-muted-foreground">{t('settings.command_whitelist_desc')}</p>
           </div>
           <div className="space-y-2">
             {settings.commandWhitelist.map((cmd) => (
@@ -648,7 +663,7 @@ function GeneralSettingsContent({
           </div>
           <div className="flex gap-2">
             <Input
-              placeholder="添加命令前缀（如 npm, git status）"
+              placeholder={t('settings.command_whitelist_placeholder')}
               value={newPattern}
               onChange={(e) => setNewPattern(e.target.value)}
               onKeyDown={(e) => {
@@ -685,12 +700,12 @@ function GeneralSettingsContent({
 
       <div className="space-y-3">
         <div>
-          <Label className="block mb-1.5">Files: Exclude</Label>
+          <Label className="block mb-1.5">{t('settings.files_exclude')}</Label>
           <p className="text-xs text-muted-foreground">
-            配置 glob 模式以在文件树中排除文件和文件夹
+            {t('settings.files_exclude_desc')}
           </p>
         </div>
-        <div className="rounded-md border divide-y">
+        <div className="rounded-md border border-border divide-y divide-border">
           {Object.keys(filesExclude)
             .filter((p) => filesExclude[p])
             .map((pattern) => (
@@ -711,7 +726,7 @@ function GeneralSettingsContent({
             ))}
           <div className="flex items-center px-3 py-2 gap-2">
             <Input
-              placeholder="添加模式，如 **/node_modules"
+              placeholder={t('settings.files_exclude_placeholder')}
               value={newPattern}
               onChange={(e) => setNewPattern(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && addPattern()}
@@ -733,7 +748,7 @@ function GeneralSettingsContent({
             配置扫描技能目录的名称（会在用户主目录和项目根目录下查找）
           </p>
         </div>
-        <div className="rounded-md border divide-y">
+        <div className="rounded-md border border-border divide-y divide-border">
           {skillsSettings.scanDirectories.map((dir) => (
             <div
               key={dir}
@@ -752,7 +767,7 @@ function GeneralSettingsContent({
           ))}
           <div className="flex items-center px-3 py-2 gap-2">
             <Input
-              placeholder="添加目录，如 .vscode"
+              placeholder={t('settings.skill_dirs_placeholder')}
               value={newSkillDir}
               onChange={(e) => setNewSkillDir(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && addSkillDir()}
@@ -778,10 +793,12 @@ function AppearanceSettingsContent({
   settings: AppearanceSettings
   onChange: (settings: AppearanceSettings) => void
 }) {
+  const { t } = useTranslation()
+  
   const themeOptions = [
-    { value: 'system', label: '跟随系统' },
-    { value: 'light', label: '浅色' },
-    { value: 'dark', label: '深色' }
+    { value: 'system', label: t('settings.theme_system') },
+    { value: 'light', label: t('settings.theme_light') },
+    { value: 'dark', label: t('settings.theme_dark') }
   ]
 
   const zoomOptions = [
@@ -796,7 +813,7 @@ function AppearanceSettingsContent({
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label className="block mb-2">主题</Label>
+        <Label className="block mb-2">{t('settings.theme')}</Label>
         <Select
           value={settings.theme}
           onValueChange={(value) =>
@@ -804,8 +821,8 @@ function AppearanceSettingsContent({
           }
         >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="选择主题">
-              {themeOptions.find((opt) => opt.value === settings.theme)?.label || '跟随系统'}
+            <SelectValue placeholder={t('settings.select_theme')}>
+              {themeOptions.find((opt) => opt.value === settings.theme)?.label || t('settings.theme_system')}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
@@ -829,9 +846,9 @@ function AppearanceSettingsContent({
           onValueChange={(value) => onChange({ ...settings, uiScale: parseFloat(value) })}
         >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="选择缩放比例">
+            <SelectValue placeholder={t('settings.select_zoom')}>
               {zoomOptions.find((opt) => opt.value === settings.uiScale.toString())?.label ||
-                '100%'}
+                t('settings.zoom_100')}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
@@ -859,17 +876,18 @@ function EditorSettingsContent({
   fontOptions: string[]
   currentTheme: 'light' | 'dark'
 }) {
+  const { t } = useTranslation()
   const editorRef = useRef<any>(null)
   const decorationsRef = useRef<string[]>([])
 
   // 假的 Git Blame 数据
   const mockBlameData = [
-    { line: 1, author: '张三', time: '2 天前', summary: '添加示例代码' },
-    { line: 2, author: '李四', time: '1 周前', summary: '更新导入语句' },
-    { line: 4, author: '王五', time: '3 天前', summary: '定义配置接口' },
-    { line: 8, author: '张三', time: '2 天前', summary: '添加默认配置' },
-    { line: 13, author: '赵六', time: '5 天前', summary: 'feat: 实现 Circle 类' },
-    { line: 16, author: '赵六', time: '5 天前', summary: 'feat: 添加 run 方法实现' }
+    { line: 1, author: 'Zhang San', time: '2 days ago', summary: 'Add sample code' },
+    { line: 2, author: 'Li Si', time: '1 week ago', summary: 'Update imports' },
+    { line: 4, author: 'Wang Wu', time: '3 days ago', summary: 'Define config interface' },
+    { line: 8, author: 'Zhang San', time: '2 days ago', summary: 'Add default config' },
+    { line: 13, author: 'Zhao Liu', time: '5 days ago', summary: 'feat: implement Circle class' },
+    { line: 16, author: 'Zhao Liu', time: '5 days ago', summary: 'feat: add run method' }
   ]
 
   // 当 gitBlame 开关变化时更新装饰器
@@ -910,7 +928,7 @@ function EditorSettingsContent({
       <div className="grid grid-cols-[400px_1fr] gap-4">
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="editor-font" className="block mb-2">字体</Label>
+            <Label htmlFor="editor-font" className="block mb-2">{t('settings.font')}</Label>
             <FontSelector
               value={(options.fontFamily as string) || (defaultEditorOptions.fontFamily as string)}
               onValueChange={(value) => onChange({ ...options, fontFamily: value })}
@@ -918,7 +936,7 @@ function EditorSettingsContent({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="editor-font-size" className="block mb-2">字体大小</Label>
+            <Label htmlFor="editor-font-size" className="block mb-2">{t('settings.font_size')}</Label>
             <Input
               id="editor-font-size"
               type="number"
@@ -936,7 +954,7 @@ function EditorSettingsContent({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="editor-line-height" className="block mb-2">行高倍数</Label>
+            <Label htmlFor="editor-line-height" className="block mb-2">{t('settings.line_height_multiplier')}</Label>
             <Input
               id="editor-line-height"
               type="number"
@@ -1040,10 +1058,12 @@ function TerminalSettingsContent({
   onChange: (settings: TerminalSettings) => void
   fontOptions: string[]
 }) {
+  const { t } = useTranslation()
+  
   const cursorStyleOptions = [
-    { value: 'block', label: '块状' },
-    { value: 'underline', label: '下划线' },
-    { value: 'bar', label: '竖线' }
+    { value: 'block', label: t('settings.cursor_style_block') },
+    { value: 'underline', label: t('settings.cursor_style_underline') },
+    { value: 'bar', label: t('settings.cursor_style_bar') }
   ]
 
   return (
@@ -1051,7 +1071,7 @@ function TerminalSettingsContent({
       <div className="grid grid-cols-[400px_1fr] gap-4">
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="terminal-font" className="block mb-1.5">字体</Label>
+            <Label htmlFor="terminal-font" className="block mb-1.5">{t('settings.font')}</Label>
             <FontSelector
               value={settings.fontFamily}
               onValueChange={(value) => onChange({ ...settings, fontFamily: value })}
@@ -1059,7 +1079,7 @@ function TerminalSettingsContent({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="terminal-font-size" className="block mb-1.5">字体大小</Label>
+            <Label htmlFor="terminal-font-size" className="block mb-1.5">{t('settings.font_size')}</Label>
             <Input
               id="terminal-font-size"
               type="number"
@@ -1070,7 +1090,7 @@ function TerminalSettingsContent({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="terminal-line-height" className="block mb-1.5">行高</Label>
+            <Label htmlFor="terminal-line-height" className="block mb-1.5">{t('settings.line_height')}</Label>
             <Input
               id="terminal-line-height"
               type="number"
@@ -1082,7 +1102,7 @@ function TerminalSettingsContent({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="cursor-style" className="block mb-1.5">光标样式</Label>
+            <Label htmlFor="cursor-style" className="block mb-1.5">{t('settings.cursor_style')}</Label>
             <Select
               value={settings.cursorStyle}
               onValueChange={(value) =>
@@ -1104,7 +1124,7 @@ function TerminalSettingsContent({
             </Select>
           </div>
           <div className="flex items-center justify-between">
-            <Label className="block">光标闪烁</Label>
+            <Label className="block">{t('settings.cursor_blink')}</Label>
             <Switch
               checked={settings.cursorBlink}
               onCheckedChange={(checked) => onChange({ ...settings, cursorBlink: checked })}

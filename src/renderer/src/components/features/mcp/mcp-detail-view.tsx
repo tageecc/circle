@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Loader2,
   Package,
@@ -40,6 +41,7 @@ interface MCPDetailViewProps {
 type TabType = 'readme' | 'tools' | 'scopes' | 'config'
 
 export function MCPDetailView({ serverId, usageCount }: MCPDetailViewProps) {
+  const { t, i18n } = useTranslation()
   const [detail, setDetail] = useState<MCPServerDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -94,7 +96,7 @@ export function MCPDetailView({ serverId, usageCount }: MCPDetailViewProps) {
         const server = servers.find((s: any) => s.id === serverId)
 
         if (!server) {
-          throw new Error('服务不存在')
+          throw new Error(t('mcp.service_not_exist'))
         }
 
         const cfg = server.configJson as { command?: string; url?: string }
@@ -111,8 +113,8 @@ export function MCPDetailView({ serverId, usageCount }: MCPDetailViewProps) {
         return {
           name: server.name,
           displayName: server.name,
-          description: `本地 MCP（${summary}）`,
-          readme: '暂无说明文档',
+          description: t('mcp.local_mcp_summary', { summary }),
+          readme: t('mcp.no_readme'),
           tools: serverTools.map((tool: any) => ({
             name: tool.name,
             description: tool.description,
@@ -129,11 +131,11 @@ export function MCPDetailView({ serverId, usageCount }: MCPDetailViewProps) {
       }
     } catch (err) {
       console.error('[MCPDetailView] 加载详情失败:', err)
-      setError(err instanceof Error ? err.message : '加载失败')
+      setError(err instanceof Error ? err.message : t('mcp.generic_load_failed'))
     } finally {
       setLoading(false)
     }
-  }, [serverId, getServerDetail])
+  }, [serverId, getServerDetail, t])
 
   // 加载连接状态和授权状态
   const loadServerStatus = useCallback(async () => {
@@ -223,9 +225,9 @@ export function MCPDetailView({ serverId, usageCount }: MCPDetailViewProps) {
 
       await loadInstalledServers()
       setNeedsAuth(false)
-      toast.success(`${detail.displayName} 卸载成功`)
+      toast.success(t('mcp.uninstall_success', { name: detail.displayName }))
     } catch (error) {
-      toast.error('卸载失败')
+      toast.error(t('mcp.uninstall_failed'))
     } finally {
       setInstalling(false)
     }
@@ -238,16 +240,20 @@ export function MCPDetailView({ serverId, usageCount }: MCPDetailViewProps) {
       const success = await window.api.mcp.startAuth(installedServerId)
 
       if (success) {
-        toast.success(`${detail.displayName} 授权成功`)
+        toast.success(t('mcp.auth_success', { name: detail.displayName }))
         setNeedsAuth(false)
         // 授权成功后自动连接
         await handleConnect()
       } else {
-        toast.error(`${detail.displayName} 授权失败`)
+        toast.error(t('mcp.auth_failed_name', { name: detail.displayName }))
       }
     } catch (error) {
       console.error('[MCP Detail] Auth failed:', error)
-      toast.error(`授权失败: ${error instanceof Error ? error.message : String(error)}`)
+      toast.error(
+        t('mcp.auth_failed_message', {
+          message: error instanceof Error ? error.message : String(error)
+        })
+      )
     }
   }
 
@@ -271,18 +277,22 @@ export function MCPDetailView({ serverId, usageCount }: MCPDetailViewProps) {
 
       if (result.success) {
         setConnectionStatus(installedServerId, 'connected')
-        toast.success('连接成功')
+        toast.success(t('mcp.connect_success'))
 
         clearDetailCache(`local:${serverId}`)
         await loadDetail()
       } else {
         setConnectionStatus(installedServerId, 'error')
-        toast.error('连接失败')
+        toast.error(t('mcp.connect_failed'))
       }
     } catch (error) {
       console.error('[MCP Detail] Connect failed:', error)
       setConnectionStatus(installedServerId, 'error')
-      toast.error(`连接失败: ${error instanceof Error ? error.message : String(error)}`)
+      toast.error(
+        t('mcp.connect_failed_message', {
+          message: error instanceof Error ? error.message : String(error)
+        })
+      )
     }
   }
 
@@ -295,11 +305,11 @@ export function MCPDetailView({ serverId, usageCount }: MCPDetailViewProps) {
     try {
       await window.api.mcp.disconnect(installedServerId)
       setConnectionStatus(installedServerId, 'disconnected')
-      toast.success('已断开连接')
+      toast.success(t('mcp.disconnect_success'))
     } catch (error) {
       console.error('[MCP Detail] Disconnect failed:', error)
       setConnectionStatus(installedServerId, 'error')
-      toast.error('断开连接失败')
+      toast.error(t('mcp.disconnect_failed'))
     }
   }
 
@@ -315,9 +325,9 @@ export function MCPDetailView({ serverId, usageCount }: MCPDetailViewProps) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-6">
         <Package className="size-12 mb-4 opacity-50" />
-        <p className="text-sm mb-4">{error || '加载失败'}</p>
+        <p className="text-sm mb-4">{error || t('mcp.generic_load_failed')}</p>
         <Button variant="outline" size="sm" onClick={loadDetail}>
-          重试
+          {t('common.retry')}
         </Button>
       </div>
     )
@@ -327,20 +337,20 @@ export function MCPDetailView({ serverId, usageCount }: MCPDetailViewProps) {
   const tabs = [
     {
       id: 'readme' as TabType,
-      label: '说明文档',
+      label: t('mcp.readme'),
       icon: FileText,
       show: !!detail.readme
     },
     {
       id: 'tools' as TabType,
-      label: '工具列表',
+      label: t('mcp.tools'),
       icon: Package,
       badge: detail.tools?.length,
       show: detail.tools && detail.tools.length > 0
     },
     {
       id: 'scopes' as TabType,
-      label: '权限范围',
+      label: t('mcp.permissions'),
       icon: Lock,
       show: detail.scopes && detail.scopes.length > 0
     }
@@ -369,14 +379,16 @@ export function MCPDetailView({ serverId, usageCount }: MCPDetailViewProps) {
             <div className="flex items-start justify-between gap-4 mb-2">
               <div className="flex-1 min-w-0">
                 <h1 className="text-2xl font-bold text-foreground mb-1.5">{detail.displayName}</h1>
-                <p className="text-sm text-muted-foreground">{detail.description || '暂无描述'}</p>
+                <p className="text-sm text-muted-foreground">
+                  {detail.description || t('mcp.no_description')}
+                </p>
               </div>
 
               {/* Actions: 编辑/卸载/授权/连接开关 */}
               <div className="shrink-0 flex items-center gap-2">
                 {isUninstalled ? (
                   <Badge variant="secondary" className="text-xs">
-                    已卸载
+                    {t('mcp.uninstalled')}
                   </Badge>
                 ) : installedServerId ? (
                   <>
@@ -386,10 +398,10 @@ export function MCPDetailView({ serverId, usageCount }: MCPDetailViewProps) {
                       size="sm"
                       onClick={handleEditServer}
                       className="opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                      title="编辑配置"
+                      title={t('mcp.edit_config')}
                     >
                       <Edit className="size-4 mr-1" />
-                      编辑
+                      {t('common.edit')}
                     </Button>
 
                     {/* 卸载按钮 - hover 时显示 */}
@@ -401,14 +413,14 @@ export function MCPDetailView({ serverId, usageCount }: MCPDetailViewProps) {
                       className="text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                     >
                       <Trash2 className="size-4 mr-1" />
-                      {installing ? '卸载中...' : '卸载'}
+                      {installing ? t('mcp.uninstalling') : t('mcp.uninstall')}
                     </Button>
 
                     {/* 需要授权 */}
                     {needsAuth ? (
                       <Button size="sm" variant="default" onClick={handleAuth}>
                         <Key className="size-4 mr-2" />
-                        授权
+                        {t('mcp.authorize')}
                       </Button>
                     ) : (
                       /* 连接开关 */
@@ -434,12 +446,12 @@ export function MCPDetailView({ serverId, usageCount }: MCPDetailViewProps) {
                           )}
                         >
                           {connectionStatus === 'connecting'
-                            ? '连接中...'
+                            ? t('mcp.connecting')
                             : connectionStatus === 'connected'
-                              ? '已启用'
+                              ? t('mcp.enabled')
                               : connectionStatus === 'error'
-                                ? '连接失败'
-                                : '已禁用'}
+                                ? t('mcp.connect_failed')
+                                : t('mcp.disabled')}
                         </span>
                       </div>
                     )}
@@ -452,27 +464,31 @@ export function MCPDetailView({ serverId, usageCount }: MCPDetailViewProps) {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4 text-xs text-muted-foreground">
                 {detail.creator && (
-                  <span className="flex items-center gap-1" title="创建者">
+                  <span className="flex items-center gap-1" title={t('mcp.creator')}>
                     <User className="size-3" />
                     {detail.creator}
                   </span>
                 )}
                 {detail.gmtModified && (
-                  <div className="flex items-center gap-1" title="最后更新时间">
+                  <div className="flex items-center gap-1" title={t('mcp.last_updated')}>
                     <Calendar className="size-3" />
-                    <span>{new Date(detail.gmtModified).toLocaleDateString('zh-CN')}</span>
+                    <span>
+                      {new Date(detail.gmtModified).toLocaleDateString(
+                        i18n.language?.startsWith('zh') ? 'zh-CN' : undefined
+                      )}
+                    </span>
                   </div>
                 )}
                 {usageCount !== undefined && (
-                  <div className="flex items-center gap-1" title="使用次数（近30天）">
+                  <div className="flex items-center gap-1" title={t('mcp.usage_count_last_30')}>
                     <TrendingUp className="size-3" />
                     <span>{usageCount.toLocaleString()}</span>
                   </div>
                 )}
                 {detail.tools && detail.tools.length > 0 && (
-                  <div className="flex items-center gap-1" title="工具数量">
+                  <div className="flex items-center gap-1" title={t('mcp.tool_count')}>
                     <Package className="size-3" />
-                    <span>{detail.tools.length} 个工具</span>
+                    <span>{t('mcp.tools_count', { count: detail.tools.length })}</span>
                   </div>
                 )}
               </div>
@@ -483,12 +499,12 @@ export function MCPDetailView({ serverId, usageCount }: MCPDetailViewProps) {
                   {needsAuth ? (
                     <Badge variant="secondary" className="text-[10px] h-5 gap-1">
                       <Key className="size-3" />
-                      需要授权
+                      {t('mcp.needs_auth_badge')}
                     </Badge>
                   ) : connectionStatus === 'error' ? (
                     <Badge variant="destructive" className="text-[10px] h-5 gap-1">
                       <XCircle className="size-3" />
-                      错误
+                      {t('mcp.error_badge')}
                     </Badge>
                   ) : null}
                 </div>
@@ -550,7 +566,9 @@ export function MCPDetailView({ serverId, usageCount }: MCPDetailViewProps) {
                     <h3 className="text-sm font-semibold text-foreground">{tool.name}</h3>
                     {tool.annotations && Object.keys(tool.annotations).length > 0 && (
                       <Badge variant="outline" className="text-[10px]">
-                        {Object.keys(tool.annotations).length} 注解
+                        {t('mcp.annotation_count', {
+                          count: Object.keys(tool.annotations).length
+                        })}
                       </Badge>
                     )}
                   </div>
@@ -560,7 +578,7 @@ export function MCPDetailView({ serverId, usageCount }: MCPDetailViewProps) {
                   {tool.inputSchema && (
                     <details className="text-xs">
                       <summary className="cursor-pointer text-muted-foreground hover:text-foreground font-medium">
-                        查看参数 Schema
+                        {t('mcp.view_input_schema')}
                       </summary>
                       <pre className="mt-2 p-3 rounded bg-muted text-[10px] overflow-x-auto border border-border/30">
                         {JSON.stringify(tool.inputSchema, null, 2)}
@@ -581,11 +599,13 @@ export function MCPDetailView({ serverId, usageCount }: MCPDetailViewProps) {
                     <div className="text-sm font-medium text-foreground mb-2">{scope.deptName}</div>
                   )}
                   {scope.deptNo && (
-                    <div className="text-xs text-muted-foreground">部门编号: {scope.deptNo}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {t('mcp.scope_dept_no', { no: scope.deptNo })}
+                    </div>
                   )}
                   {scope.deptNoPathList && scope.deptNoPathList.length > 0 && (
                     <div className="text-xs text-muted-foreground mt-1">
-                      路径: {scope.deptNoPathList.join(' > ')}
+                      {t('mcp.scope_path', { path: scope.deptNoPathList.join(' > ') })}
                     </div>
                   )}
                 </div>
@@ -599,12 +619,12 @@ export function MCPDetailView({ serverId, usageCount }: MCPDetailViewProps) {
       <Dialog open={openEditDialog} onOpenChange={setOpenEditDialog}>
         <DialogContent className="sm:max-w-[600px]" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
-            <DialogTitle>编辑 MCP 服务器</DialogTitle>
-            <DialogDescription>修改 MCP 服务器的配置信息</DialogDescription>
+            <DialogTitle>{t('mcp.edit_server_dialog_title')}</DialogTitle>
+            <DialogDescription>{t('mcp.edit_server_dialog_desc')}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="edit-server-config">配置 JSON</Label>
+              <Label htmlFor="edit-server-config">{t('mcp.config_json_label')}</Label>
               <Textarea
                 id="edit-server-config"
                 value={configJson}
@@ -625,9 +645,9 @@ export function MCPDetailView({ serverId, usageCount }: MCPDetailViewProps) {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={handleCloseDialog}>
-              取消
+              {t('common.cancel')}
             </Button>
-            <Button onClick={handleUpdateServer}>保存</Button>
+            <Button onClick={handleUpdateServer}>{t('common.save')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

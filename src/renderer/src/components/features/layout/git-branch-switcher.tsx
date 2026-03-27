@@ -11,6 +11,7 @@ import { useWorkspaceUIStore } from '@/stores/workspace-ui.store'
 import { useGitStore } from '@/stores/git.store'
 import { useGitActions } from '@/hooks/use-git-actions'
 import { cn } from '@/lib/utils'
+import { useTranslation } from 'react-i18next'
 
 interface GitBranchSwitcherProps {
   hasChanges?: boolean
@@ -23,6 +24,7 @@ export function GitBranchSwitcher({
   onGitStatusChange,
   onStartCompare
 }: GitBranchSwitcherProps) {
+  const { t } = useTranslation()
   // Store - 精确订阅
   const workspaceRoot = useWorkspaceStore((state) => state.workspaceRoot)
   const setActiveLeftTab = useWorkspaceUIStore((state) => state.setActiveLeftTab)
@@ -68,7 +70,7 @@ export function GitBranchSwitcher({
           >
             <GitBranch className="size-3.5" />
             <span className={cn("max-w-[120px] truncate", !currentBranch && "opacity-70")}>
-              {currentBranch || '无分支'}
+              {currentBranch || t('git.no_branch')}
             </span>
             <ChevronDown className="size-3.5 opacity-50" />
           </Button>

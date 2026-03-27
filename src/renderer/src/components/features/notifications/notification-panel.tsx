@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import {
   Bell,
   CheckCircle2,
@@ -44,39 +46,37 @@ const typeConfig: Record<
   }
 }
 
-function formatTime(timestamp: number): string {
+function formatTime(timestamp: number, t: TFunction, lng: string): string {
   const now = Date.now()
   const diff = now - timestamp
 
-  // 小于1分钟
   if (diff < 60000) {
-    return '刚刚'
+    return t('git.time_just_now')
   }
 
-  // 小于1小时
   if (diff < 3600000) {
     const minutes = Math.floor(diff / 60000)
-    return `${minutes}分钟前`
+    return t('git.time_minutes_ago', { count: minutes })
   }
 
-  // 小于24小时
   if (diff < 86400000) {
     const hours = Math.floor(diff / 3600000)
-    return `${hours}小时前`
+    return t('git.time_hours_ago', { count: hours })
   }
 
-  // 小于7天
   if (diff < 604800000) {
     const days = Math.floor(diff / 86400000)
-    return `${days}天前`
+    return t('git.time_days_ago', { count: days })
   }
 
-  // 超过7天显示日期
-  const date = new Date(timestamp)
-  return `${date.getMonth() + 1}/${date.getDate()}`
+  return new Date(timestamp).toLocaleDateString(lng === 'zh' ? 'zh-CN' : 'en-US', {
+    month: 'numeric',
+    day: 'numeric'
+  })
 }
 
 export function NotificationPanel() {
+  const { t, i18n } = useTranslation()
   const { notifications, unreadCount, markAsRead, markAllAsRead, removeNotification, clearAll } =
     useNotifications()
 
@@ -98,7 +98,7 @@ export function NotificationPanel() {
       setTimeout(() => setCopiedId(null), 2000)
     } catch (error) {
       console.error('Failed to copy:', error)
-      toast.error('复制失败')
+      toast.error(t('notifications.copy_failed'))
     }
   }
 
@@ -109,7 +109,7 @@ export function NotificationPanel() {
           variant="ghost"
           size="sm"
           className={cn('h-5 w-5 p-0 hover:bg-accent relative', open && 'bg-accent')}
-          title="通知中心"
+          title={t('notifications.panel_title')}
         >
           <Bell className="size-3.5" />
           {unreadCount > 0 && (
@@ -120,14 +120,13 @@ export function NotificationPanel() {
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" side="top" sideOffset={8} className="w-80 p-0 overflow-hidden">
-        {/* 头部 */}
         <div className="flex items-center justify-between border-b border-border/50 px-3 py-2">
           <div className="flex items-center gap-2">
             <Bell className="size-4 text-muted-foreground" />
-            <span className="text-sm font-medium">通知</span>
+            <span className="text-sm font-medium">{t('notifications.title')}</span>
             {unreadCount > 0 && (
               <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                {unreadCount} 条未读
+                {t('notifications.unread_count', { count: unreadCount })}
               </span>
             )}
           </div>
@@ -138,10 +137,10 @@ export function NotificationPanel() {
                 size="sm"
                 className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
                 onClick={markAllAsRead}
-                title="全部标为已读"
+                title={t('notifications.mark_all_read_tooltip')}
               >
                 <CheckCheck className="size-3.5 mr-1" />
-                全部已读
+                {t('notifications.all_read_short')}
               </Button>
             )}
             {notifications.length > 0 && (
@@ -150,7 +149,7 @@ export function NotificationPanel() {
                 size="sm"
                 className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
                 onClick={clearAll}
-                title="清空所有通知"
+                title={t('notifications.clear_all_tooltip')}
               >
                 <Trash2 className="size-3.5" />
               </Button>
@@ -158,12 +157,11 @@ export function NotificationPanel() {
           </div>
         </div>
 
-        {/* 通知列表 */}
         <ScrollArea className="h-[320px]">
           {notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Bell className="size-10 mb-3 opacity-20" />
-              <span className="text-sm">暂无通知</span>
+              <span className="text-sm">{t('notifications.no_notifications')}</span>
             </div>
           ) : (
             <div className="divide-y divide-border/30">
@@ -180,12 +178,10 @@ export function NotificationPanel() {
                     )}
                     onClick={() => markAsRead(notification.id)}
                   >
-                    {/* 未读指示器 */}
                     {!notification.read && (
                       <div className="absolute left-1 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-primary" />
                     )}
 
-                    {/* 图标 */}
                     <div
                       className={cn(
                         'flex h-7 w-7 shrink-0 items-center justify-center rounded-md',
@@ -195,7 +191,6 @@ export function NotificationPanel() {
                       <Icon className={cn('size-4', config.color)} />
                     </div>
 
-                    {/* 内容 */}
                     <div className="flex-1 min-w-0 space-y-0.5 pr-14">
                       <div className="flex items-start gap-2">
                         <p
@@ -214,14 +209,12 @@ export function NotificationPanel() {
                       )}
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] text-muted-foreground/70">
-                          {formatTime(notification.timestamp)}
+                          {formatTime(notification.timestamp, t, i18n.language)}
                         </span>
                       </div>
                     </div>
 
-                    {/* 操作按钮 */}
                     <div className="absolute right-1 top-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
-                      {/* 复制按钮 */}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -230,7 +223,7 @@ export function NotificationPanel() {
                           e.stopPropagation()
                           handleCopy(notification, notification.id)
                         }}
-                        title="复制内容"
+                        title={t('notifications.copy_tooltip')}
                       >
                         {copiedId === notification.id ? (
                           <Check className="size-3 text-green-500" />
@@ -239,7 +232,6 @@ export function NotificationPanel() {
                         )}
                       </Button>
 
-                      {/* 删除按钮 */}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -248,7 +240,7 @@ export function NotificationPanel() {
                           e.stopPropagation()
                           removeNotification(notification.id)
                         }}
-                        title="删除通知"
+                        title={t('notifications.delete_tooltip')}
                       >
                         <X className="size-3" />
                       </Button>
@@ -260,11 +252,10 @@ export function NotificationPanel() {
           )}
         </ScrollArea>
 
-        {/* 底部 */}
         {notifications.length > 0 && (
           <div className="border-t border-border/50 px-3 py-1.5">
             <span className="text-[10px] text-muted-foreground/60">
-              显示最近 {notifications.length} 条通知
+              {t('notifications.showing_recent', { count: notifications.length })}
             </span>
           </div>
         )}
