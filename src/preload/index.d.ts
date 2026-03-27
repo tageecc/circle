@@ -903,6 +903,59 @@ declare global {
         toggle: (skillPath: string, enabled: boolean) => Promise<{ success: boolean }>
         delete: (skillPath: string) => Promise<{ success: boolean }>
       }
+      modelConfig: {
+        getAll: () => Promise<Array<{
+          id: string
+          providerId: string
+          modelId: string
+          displayName: string | null
+          isDefault: boolean
+          createdAt: Date
+          updatedAt: Date
+        }>>
+        getByProvider: (providerId: string) => Promise<Array<{
+          id: string
+          providerId: string
+          modelId: string
+          displayName: string | null
+          isDefault: boolean
+          createdAt: Date
+          updatedAt: Date
+        }>>
+        getDefault: () => Promise<{
+          id: string
+          providerId: string
+          modelId: string
+          displayName: string | null
+          isDefault: boolean
+          createdAt: Date
+          updatedAt: Date
+        } | undefined>
+        add: (input: {
+          providerId: string
+          modelId: string
+          displayName?: string
+          isDefault?: boolean
+        }) => Promise<{
+          id: string
+          providerId: string
+          modelId: string
+          displayName: string | null
+          isDefault: boolean
+          createdAt: Date
+          updatedAt: Date
+        }>
+        update: (
+          id: string,
+          updates: {
+            displayName?: string
+            isDefault?: boolean
+          }
+        ) => Promise<{ success: boolean }>
+        setDefault: (id: string) => Promise<{ success: boolean }>
+        delete: (id: string) => Promise<{ success: boolean }>
+        exists: (providerId: string, modelId: string) => Promise<boolean>
+      }
       shell: {
         openExternal: (url: string) => Promise<void>
       }

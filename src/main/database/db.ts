@@ -10,7 +10,7 @@ import * as sqliteVec from 'sqlite-vec'
 /**
  * SQLite 数据库服务
  */
-class CircleDatabase {
+export class CircleDatabase {
   private static instance: CircleDatabase
   private sqlite: Database.Database
   private db: BetterSQLite3Database<typeof schema>

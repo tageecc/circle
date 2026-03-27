@@ -13,7 +13,7 @@ import {
   DropdownMenuLabel
 } from '@/components/ui/dropdown-menu'
 import { RichTextInput, type PastedImage, type Attachment } from '@/components/ui/rich-text-input'
-import { ArrowUp, Square, Settings } from 'lucide-react'
+import { ArrowUp, Square } from 'lucide-react'
 import { getProviderLogo } from '@/lib/provider-logos'
 import { cn } from '@/lib/utils'
 import { getProvider } from '@/constants/providers'
