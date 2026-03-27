@@ -25,7 +25,7 @@ export function createLanguageModel(modelId: string, configService: ConfigServic
       if (!apiKey) throw new Error('DashScope API Key 未配置，请在设置中配置')
       return createQwen({
         apiKey,
-        baseURL: process.env.DASHSCOPE_BASE_URL,
+        baseURL: process.env.DASHSCOPE_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1',
       })(model)
     }
 

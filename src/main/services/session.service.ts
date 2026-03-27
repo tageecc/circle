@@ -358,7 +358,7 @@ Title (3-5 words):`
       const { text } = await generateText({
         model: createQwen({
           apiKey: process.env.DASHSCOPE_API_KEY,
-          baseURL: process.env.DASHSCOPE_BASE_URL
+          baseURL: process.env.DASHSCOPE_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1'
         })('qwen-plus'),
         prompt: titlePrompt
       })
