@@ -5,6 +5,7 @@
   "main": "./out/main/index.js",
   "author": "Circle",
   "homepage": "https://circle.com",
+  "packageManager": "pnpm@10.29.2",
   "scripts": {
     "format": "prettier --write .",
     "format:check": "prettier --check .",
