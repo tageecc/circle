@@ -226,7 +226,7 @@ export function GitDiffEditor({
       const block = blocks[targetBlockIndex]
       const nextBlock = blocks[targetBlockIndex + 1]
 
-      let newLines = [...modifiedLines]
+      const newLines = [...modifiedLines]
 
       if (isModify && nextBlock) {
         // Modify: 用原始内容替换修改的内容
@@ -804,7 +804,9 @@ export function GitDiffEditor({
           }}
         >
           <div>{t('git.diff_revert_title')}</div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">{t('git.diff_revert_hint')}</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">
+            {t('git.diff_revert_hint')}
+          </div>
         </div>
       )}
     </div>

@@ -274,17 +274,20 @@ export class EmbeddingService {
       throw new Error('Alibaba DashScope API key not configured')
     }
 
-    const response = await fetch('https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model,
-        input: { texts: [text] }
-      })
-    })
+    const response = await fetch(
+      'https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model,
+          input: { texts: [text] }
+        })
+      }
+    )
 
     if (!response.ok) {
       const error = await response.text()
@@ -303,17 +306,20 @@ export class EmbeddingService {
       throw new Error('Alibaba DashScope API key not configured')
     }
 
-    const response = await fetch('https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model,
-        input: { texts }
-      })
-    })
+    const response = await fetch(
+      'https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model,
+          input: { texts }
+        })
+      }
+    )
 
     if (!response.ok) {
       const error = await response.text()

@@ -13,18 +13,18 @@ interface MessageQueueProps {
 
 /**
  * 消息队列组件
- * 
+ *
  * 显示待发送的消息队列，类似 Cursor 的设计
  */
 export function MessageQueue({ sessionId, onSendNow, className }: MessageQueueProps) {
   const { t } = useTranslation()
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [collapsed, setCollapsed] = useState(false)
-  
+
   // 订阅整个队列
   const allQueue = useMessageQueueStore((state) => state.queue)
   const removeFromQueue = useMessageQueueStore((state) => state.removeFromQueue)
-  
+
   // 使用 useMemo 过滤当前会话的队列
   const queue = useMemo(
     () => allQueue.filter((msg) => msg.sessionId === sessionId),
@@ -38,7 +38,7 @@ export function MessageQueue({ sessionId, onSendNow, className }: MessageQueuePr
 
   return (
     <div className={cn('space-y-2.5 mb-3', className)}>
-      <div 
+      <div
         className="flex items-center gap-1.5 px-0.5 cursor-pointer group"
         onClick={() => setCollapsed(!collapsed)}
       >

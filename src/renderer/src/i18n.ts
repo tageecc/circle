@@ -9,7 +9,7 @@ async function getInitialLanguage(): Promise<string> {
     if (config?.language) {
       return config.language === 'zh-CN' ? 'zh' : 'en'
     }
-    
+
     const systemLocale = await window.api.getSystemLocale()
     return systemLocale.startsWith('zh') ? 'zh' : 'en'
   } catch (error) {
@@ -20,9 +20,9 @@ async function getInitialLanguage(): Promise<string> {
 
 export async function initI18n() {
   const initialLanguage = await getInitialLanguage()
-  
+
   const Backend = (await import('i18next-electron-fs-backend')).default
-  
+
   await i18n
     // @ts-ignore - i18next-electron-fs-backend type definitions are incomplete
     .use(Backend)

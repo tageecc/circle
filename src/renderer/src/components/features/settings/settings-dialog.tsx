@@ -84,7 +84,7 @@ function FontSelector({
   fonts: string[]
 }) {
   const { t } = useTranslation()
-  
+
   // 内置字体（已打包到应用中，始终可用）
   const builtInFonts = ['JetBrains Mono', 'Source Code Pro']
 
@@ -615,19 +615,25 @@ function GeneralSettingsContent({
             <SelectItem value="ask">
               <div className="flex items-center gap-2">
                 <span className="font-medium">Ask Every Time</span>
-                <span className="text-xs text-muted-foreground">{t('settings.auto_run_mode_ask_desc')}</span>
+                <span className="text-xs text-muted-foreground">
+                  {t('settings.auto_run_mode_ask_desc')}
+                </span>
               </div>
             </SelectItem>
             <SelectItem value="auto-run">
               <div className="flex items-center gap-2">
                 <span className="font-medium">Auto-Run</span>
-                <span className="text-xs text-muted-foreground">{t('settings.auto_run_mode_auto_desc')}</span>
+                <span className="text-xs text-muted-foreground">
+                  {t('settings.auto_run_mode_auto_desc')}
+                </span>
               </div>
             </SelectItem>
             <SelectItem value="whitelist">
               <div className="flex items-center gap-2">
                 <span className="font-medium">Whitelist</span>
-                <span className="text-xs text-muted-foreground">{t('settings.auto_run_mode_whitelist_desc')}</span>
+                <span className="text-xs text-muted-foreground">
+                  {t('settings.auto_run_mode_whitelist_desc')}
+                </span>
               </div>
             </SelectItem>
           </SelectContent>
@@ -706,9 +712,7 @@ function GeneralSettingsContent({
       <div className="space-y-3">
         <div>
           <Label className="block mb-1.5">{t('settings.files_exclude')}</Label>
-          <p className="text-xs text-muted-foreground">
-            {t('settings.files_exclude_desc')}
-          </p>
+          <p className="text-xs text-muted-foreground">{t('settings.files_exclude_desc')}</p>
         </div>
         <div className="rounded-md border border-border divide-y divide-border">
           {Object.keys(filesExclude)
@@ -779,7 +783,12 @@ function GeneralSettingsContent({
               className="h-8 border-0 shadow-none focus-visible:ring-0 px-2 text-sm"
             />
             {newSkillDir.trim() && (
-              <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={addSkillDir}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 shrink-0"
+                onClick={addSkillDir}
+              >
                 <Plus className="h-4 w-4" />
               </Button>
             )}
@@ -799,7 +808,7 @@ function AppearanceSettingsContent({
   onChange: (settings: AppearanceSettings) => void
 }) {
   const { t } = useTranslation()
-  
+
   const themeOptions = [
     { value: 'system', label: t('settings.theme_system') },
     { value: 'light', label: t('settings.theme_light') },
@@ -827,7 +836,8 @@ function AppearanceSettingsContent({
         >
           <SelectTrigger className="w-full">
             <SelectValue placeholder={t('settings.select_theme')}>
-              {themeOptions.find((opt) => opt.value === settings.theme)?.label || t('settings.theme_system')}
+              {themeOptions.find((opt) => opt.value === settings.theme)?.label ||
+                t('settings.theme_system')}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
@@ -933,7 +943,9 @@ function EditorSettingsContent({
       <div className="grid grid-cols-[400px_1fr] gap-4">
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="editor-font" className="block mb-2">{t('settings.font')}</Label>
+            <Label htmlFor="editor-font" className="block mb-2">
+              {t('settings.font')}
+            </Label>
             <FontSelector
               value={(options.fontFamily as string) || (defaultEditorOptions.fontFamily as string)}
               onValueChange={(value) => onChange({ ...options, fontFamily: value })}
@@ -941,7 +953,9 @@ function EditorSettingsContent({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="editor-font-size" className="block mb-2">{t('settings.font_size')}</Label>
+            <Label htmlFor="editor-font-size" className="block mb-2">
+              {t('settings.font_size')}
+            </Label>
             <Input
               id="editor-font-size"
               type="number"
@@ -959,7 +973,9 @@ function EditorSettingsContent({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="editor-line-height" className="block mb-2">{t('settings.line_height_multiplier')}</Label>
+            <Label htmlFor="editor-line-height" className="block mb-2">
+              {t('settings.line_height_multiplier')}
+            </Label>
             <Input
               id="editor-line-height"
               type="number"
@@ -978,7 +994,9 @@ function EditorSettingsContent({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="tab-size" className="block mb-2">制表符大小</Label>
+            <Label htmlFor="tab-size" className="block mb-2">
+              制表符大小
+            </Label>
             <Input
               id="tab-size"
               type="number"
@@ -1064,7 +1082,7 @@ function TerminalSettingsContent({
   fontOptions: string[]
 }) {
   const { t } = useTranslation()
-  
+
   const cursorStyleOptions = [
     { value: 'block', label: t('settings.cursor_style_block') },
     { value: 'underline', label: t('settings.cursor_style_underline') },
@@ -1076,7 +1094,9 @@ function TerminalSettingsContent({
       <div className="grid grid-cols-[400px_1fr] gap-4">
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="terminal-font" className="block mb-1.5">{t('settings.font')}</Label>
+            <Label htmlFor="terminal-font" className="block mb-1.5">
+              {t('settings.font')}
+            </Label>
             <FontSelector
               value={settings.fontFamily}
               onValueChange={(value) => onChange({ ...settings, fontFamily: value })}
@@ -1084,7 +1104,9 @@ function TerminalSettingsContent({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="terminal-font-size" className="block mb-1.5">{t('settings.font_size')}</Label>
+            <Label htmlFor="terminal-font-size" className="block mb-1.5">
+              {t('settings.font_size')}
+            </Label>
             <Input
               id="terminal-font-size"
               type="number"
@@ -1095,7 +1117,9 @@ function TerminalSettingsContent({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="terminal-line-height" className="block mb-1.5">{t('settings.line_height')}</Label>
+            <Label htmlFor="terminal-line-height" className="block mb-1.5">
+              {t('settings.line_height')}
+            </Label>
             <Input
               id="terminal-line-height"
               type="number"
@@ -1107,7 +1131,9 @@ function TerminalSettingsContent({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="cursor-style" className="block mb-1.5">{t('settings.cursor_style')}</Label>
+            <Label htmlFor="cursor-style" className="block mb-1.5">
+              {t('settings.cursor_style')}
+            </Label>
             <Select
               value={settings.cursorStyle}
               onValueChange={(value) =>

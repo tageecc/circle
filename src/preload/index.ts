@@ -6,10 +6,10 @@ const i18nextBackend = require('i18next-electron-fs-backend')
 const api = {
   // i18next backend
   i18nextElectronBackend: i18nextBackend.preloadBindings(ipcRenderer, process),
-  
+
   // Get system locale
   getSystemLocale: () => ipcRenderer.invoke('system:getLocale'),
-  
+
   // Chat APIs
   chat: {
     send: (options: { sessionId?: string; message: string }) =>
@@ -23,7 +23,18 @@ const api = {
         images?: Array<{ id: string; dataUrl: string; name: string; size: number }>
       },
       onChunk: (chunk: {
-        type: 'text' | 'reasoning' | 'tool-call' | 'tool-result' | 'tool-output-stream' | 'error' | 'session-id' | 'message-start' | 'interrupt' | 'finish' | 'usage'
+        type:
+          | 'text'
+          | 'reasoning'
+          | 'tool-call'
+          | 'tool-result'
+          | 'tool-output-stream'
+          | 'error'
+          | 'session-id'
+          | 'message-start'
+          | 'interrupt'
+          | 'finish'
+          | 'usage'
         content?: string
         sessionId?: string
         messages?: Array<{
@@ -131,7 +142,7 @@ const api = {
       ipcRenderer.invoke('sessions:update', sessionId, updates),
     delete: (sessionId: string) => ipcRenderer.invoke('sessions:delete', sessionId),
     deleteMessagesAfter: (sessionId: string, messageId: number) =>
-      ipcRenderer.invoke('sessions:deleteMessagesAfter', sessionId, messageId),
+      ipcRenderer.invoke('sessions:deleteMessagesAfter', sessionId, messageId)
   },
 
   // Message Snapshot APIs
@@ -839,7 +850,6 @@ const api = {
     delete: (skillPath: string) => ipcRenderer.invoke('skills:delete', skillPath)
   },
 
-  // Model Config APIs
   modelConfig: {
     getAll: () => ipcRenderer.invoke('model-config:getAll'),
     getByProvider: (providerId: string) =>
@@ -851,13 +861,8 @@ const api = {
       displayName?: string
       isDefault?: boolean
     }) => ipcRenderer.invoke('model-config:add', input),
-    update: (
-      id: string,
-      updates: {
-        displayName?: string
-        isDefault?: boolean
-      }
-    ) => ipcRenderer.invoke('model-config:update', id, updates),
+    update: (id: string, displayName: string) =>
+      ipcRenderer.invoke('model-config:update', id, displayName),
     setDefault: (id: string) => ipcRenderer.invoke('model-config:setDefault', id),
     delete: (id: string) => ipcRenderer.invoke('model-config:delete', id),
     exists: (providerId: string, modelId: string) =>

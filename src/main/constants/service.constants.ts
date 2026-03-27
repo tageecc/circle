@@ -1,6 +1,6 @@
 /**
  * 主进程服务配置常量
- * 
+ *
  * 包含所有主进程服务的硬编码配置值
  * 注意：这些值应该尽可能从 ConfigService 读取
  */
@@ -12,19 +12,19 @@
 export const LANGUAGE_SERVICE = {
   /** 补全请求超时时间（毫秒） */
   COMPLETION_TIMEOUT: 500,
-  
+
   /** Hover 请求超时时间（毫秒） */
   HOVER_TIMEOUT: 1000,
-  
+
   /** Hover 缓存有效期（毫秒） */
   HOVER_CACHE_TTL: 5000,
-  
+
   /** 缓存清理间隔（毫秒） */
   CACHE_CLEANUP_INTERVAL: 10000,
-  
+
   /** 过期缓存清理阈值（毫秒） */
   CACHE_EXPIRY_THRESHOLD: 10000,
-  
+
   /** 文件内容更新防抖延迟（毫秒） */
   UPDATE_DEBOUNCE: 300
 } as const
@@ -36,16 +36,16 @@ export const LANGUAGE_SERVICE = {
 export const COMPLETION = {
   /** 补全请求超时时间（毫秒） */
   TIMEOUT: 5000,
-  
+
   /** 前缀上下文行数 */
   PREFIX_CONTEXT_LINES: 30,
-  
+
   /** 后缀上下文行数 */
   SUFFIX_CONTEXT_LINES: 10,
-  
+
   /** Temperature 参数（0-1，控制随机性） */
   TEMPERATURE: 0.2,
-  
+
   /** 最大重试次数 */
   MAX_RETRY_ATTEMPTS: 2
 } as const
@@ -57,13 +57,13 @@ export const COMPLETION = {
 export const CODEBASE_INDEX = {
   /** 最大文件大小（字节）- 1MB */
   MAX_FILE_SIZE: 1024 * 1024,
-  
+
   /** 分块最大大小（tokens） */
   CHUNK_MAX_SIZE: 512,
-  
+
   /** 分块重叠大小（tokens） */
   CHUNK_OVERLAP: 50,
-  
+
   /** 并发度配置 */
   CONCURRENCY: {
     /** 小项目（< 100 文件） */
@@ -102,7 +102,7 @@ export const OAUTH = {
 export const AI_MODEL = {
   /** 编辑文件时的 temperature（零随机性） */
   EDIT_FILE_TEMPERATURE: 0,
-  
+
   /** 聊天默认 temperature（从用户设置读取，此为后备值） */
   DEFAULT_TEMPERATURE: 0.7
 } as const
@@ -136,7 +136,7 @@ export const FILE_WATCHER = {
 export const GIT = {
   /** Git 操作超时时间（毫秒） */
   OPERATION_TIMEOUT: 30000,
-  
+
   /** Diff 最大行数 */
   MAX_DIFF_LINES: 10000
 } as const
@@ -148,10 +148,10 @@ export const GIT = {
 export const NETWORK = {
   /** HTTP 请求超时时间（毫秒） */
   REQUEST_TIMEOUT: 10000,
-  
+
   /** 重试次数 */
   MAX_RETRIES: 3,
-  
+
   /** 重试延迟（毫秒） */
   RETRY_DELAY: 1000
 } as const
@@ -163,7 +163,7 @@ export const NETWORK = {
 export const PERFORMANCE = {
   /** 大文件阈值（字节）- 1MB */
   LARGE_FILE_THRESHOLD: 1024 * 1024,
-  
+
   /** 语法高亮最大文件大小（字节）- 5MB */
   MAX_SYNTAX_HIGHLIGHT_SIZE: 5 * 1024 * 1024
 } as const

@@ -19,7 +19,10 @@ interface MCPState {
   loadInstalledServers: () => Promise<void>
   isInstalled: (serverCode: string) => boolean
   getServerId: (serverCode: string) => string | null
-  getServerDetail: (key: string, fetcher: () => Promise<MCPServerDetail>) => Promise<MCPServerDetail>
+  getServerDetail: (
+    key: string,
+    fetcher: () => Promise<MCPServerDetail>
+  ) => Promise<MCPServerDetail>
   clearDetailCache: (key: string) => void
   clearAllDetailCache: () => void
   setConnectionStatus: (serverId: string, status: ConnectionStatus) => void

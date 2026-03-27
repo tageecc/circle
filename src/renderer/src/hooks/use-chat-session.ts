@@ -130,7 +130,7 @@ export function useChatSession(workspaceRoot: string | null) {
 
     try {
       const sessionId = await window.api.sessions.create('assistant', workspaceRoot)
-      
+
       const newSession: Session = {
         id: sessionId,
         title: 'New Chat',

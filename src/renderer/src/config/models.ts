@@ -68,7 +68,12 @@ export const PROVIDER_MODELS: Record<string, ProviderConfig> = {
         name: 'GPT-4o',
         descriptionKey: 'models.descriptions.gpt_4o',
         contextWindow: '128K',
-        capabilityKeys: ['models.caps.vision', 'models.caps.audio', 'models.caps.code', 'models.caps.reasoning']
+        capabilityKeys: [
+          'models.caps.vision',
+          'models.caps.audio',
+          'models.caps.code',
+          'models.caps.reasoning'
+        ]
       },
       {
         id: 'gpt-4o-mini',
@@ -125,7 +130,11 @@ export const PROVIDER_MODELS: Record<string, ProviderConfig> = {
         name: 'Claude 3 Opus',
         descriptionKey: 'models.descriptions.claude_3_opus',
         contextWindow: '200K',
-        capabilityKeys: ['models.caps.complex_tasks', 'models.caps.creative', 'models.caps.analysis']
+        capabilityKeys: [
+          'models.caps.complex_tasks',
+          'models.caps.creative',
+          'models.caps.analysis'
+        ]
       }
     ]
   },
@@ -137,21 +146,33 @@ export const PROVIDER_MODELS: Record<string, ProviderConfig> = {
         name: 'Gemini 2.0 Flash',
         descriptionKey: 'models.descriptions.gemini_20_flash',
         contextWindow: '1M',
-        capabilityKeys: ['models.caps.ultra_long_context', 'models.caps.multimodal', 'models.caps.fast_response']
+        capabilityKeys: [
+          'models.caps.ultra_long_context',
+          'models.caps.multimodal',
+          'models.caps.fast_response'
+        ]
       },
       {
         id: 'gemini-1.5-pro',
         name: 'Gemini 1.5 Pro',
         descriptionKey: 'models.descriptions.gemini_15_pro',
         contextWindow: '2M',
-        capabilityKeys: ['models.caps.ultra_long_context', 'models.caps.multimodal', 'models.caps.reasoning']
+        capabilityKeys: [
+          'models.caps.ultra_long_context',
+          'models.caps.multimodal',
+          'models.caps.reasoning'
+        ]
       },
       {
         id: 'gemini-1.5-flash',
         name: 'Gemini 1.5 Flash',
         descriptionKey: 'models.descriptions.gemini_15_flash',
         contextWindow: '1M',
-        capabilityKeys: ['models.caps.long_context', 'models.caps.multimodal', 'models.caps.fast_response']
+        capabilityKeys: [
+          'models.caps.long_context',
+          'models.caps.multimodal',
+          'models.caps.fast_response'
+        ]
       }
     ]
   },

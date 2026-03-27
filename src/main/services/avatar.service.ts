@@ -42,7 +42,10 @@ export class AvatarService {
     const result = await dialog.showOpenDialog({
       title: i18n.t('dialog.select_avatar.title'),
       filters: [
-        { name: i18n.t('dialog.select_avatar.image_filter'), extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'] }
+        {
+          name: i18n.t('dialog.select_avatar.image_filter'),
+          extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']
+        }
       ],
       properties: ['openFile']
     })

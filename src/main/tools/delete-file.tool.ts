@@ -115,7 +115,7 @@ After deletion:
       } else {
         // 文件删除：备份内容，删除文件，添加到 pending edits
         const originalContent = await fs.readFile(absolutePath, 'utf-8')
-        
+
         // 计算被删除的行数
         const linesRemoved = originalContent.split('\n').length
 

@@ -1,9 +1,5 @@
 import { useCallback, useState, useMemo, useEffect, useRef } from 'react'
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton
-} from '@/components/ui/input-group'
+import { InputGroup, InputGroupAddon, InputGroupButton } from '@/components/ui/input-group'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel
 } from '@/components/ui/dropdown-menu'
+import { Button } from '@/components/ui/button'
 import { RichTextInput, type PastedImage, type Attachment } from '@/components/ui/rich-text-input'
 import { ArrowUp, Square } from 'lucide-react'
 import { getProviderLogo } from '@/lib/provider-logos'
@@ -28,8 +25,8 @@ import {
   ContextInputUsage,
   ContextOutputUsage,
   ContextReasoningUsage,
-  ContextTrigger,
-} from "@/components/ai-elements/context";
+  ContextTrigger
+} from '@/components/ai-elements/context'
 import type { LanguageModelUsage } from 'ai'
 import { useTranslation } from 'react-i18next'
 
@@ -92,24 +89,26 @@ export function ChatInput({
   const { t } = useTranslation()
   const inputGroupRef = useRef<HTMLDivElement>(null)
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null)
-  const [selectedProvider, setSelectedProvider] = useState(defaultProvider)
-  const [selectedModel, setSelectedModel] = useState(defaultModel)
+  const [selectedProvider, setSelectedProvider] = useState('')
+  const [selectedModel, setSelectedModel] = useState('')
   const [configuredModels, setConfiguredModels] = useState<ModelConfig[]>([])
   const [isLoadingModels, setIsLoadingModels] = useState(true)
-  
-  // Load configured models
+
   useEffect(() => {
     const loadModels = async () => {
       try {
         const models = await window.api.modelConfig.getAll()
         setConfiguredModels(models)
-        
-        // Set default model if available
-        const defaultModel = models.find(m => m.isDefault)
+
+        const defaultModel = models.find((m) => m.isDefault)
         if (defaultModel) {
           setSelectedProvider(defaultModel.providerId)
           setSelectedModel(defaultModel.modelId)
           onModelChange?.(defaultModel.providerId, defaultModel.modelId)
+        } else if (models.length > 0) {
+          setSelectedProvider(models[0].providerId)
+          setSelectedModel(models[0].modelId)
+          onModelChange?.(models[0].providerId, models[0].modelId)
         }
       } catch (error) {
         console.error('Failed to load models:', error)
@@ -119,11 +118,11 @@ export function ChatInput({
     }
     loadModels()
   }, [onModelChange])
-  
+
   // Group models by provider
   const modelsByProvider = useMemo(() => {
     const groups: Record<string, ModelConfig[]> = {}
-    configuredModels.forEach(model => {
+    configuredModels.forEach((model) => {
       if (!groups[model.providerId]) {
         groups[model.providerId] = []
       }
@@ -131,7 +130,7 @@ export function ChatInput({
     })
     return groups
   }, [configuredModels])
-  
+
   // 设置下拉菜单的挂载容器
   useEffect(() => {
     if (inputGroupRef.current) {
@@ -139,16 +138,19 @@ export function ChatInput({
     }
   }, [])
 
-  // Get display name for selected model
+  const hasConfiguredModels = configuredModels.length > 0
+  
   const selectedModelName = useMemo(() => {
+    if (!hasConfiguredModels) return t('no_model')
+    
     const configModel = configuredModels.find(
-      m => m.providerId === selectedProvider && m.modelId === selectedModel
+      (m) => m.providerId === selectedProvider && m.modelId === selectedModel
     )
     if (configModel?.displayName) return configModel.displayName
-    
+
     const modelInfo = getModelInfo(selectedModel)
     return modelInfo?.name || selectedModel
-  }, [selectedProvider, selectedModel, configuredModels])
+  }, [selectedProvider, selectedModel, configuredModels, hasConfiguredModels, t])
 
   const hasContent = value.trim() || pastedImages.length > 0 || attachments.length > 0
   const showStopButton = isSending && onStop && !hasContent
@@ -166,11 +168,15 @@ export function ChatInput({
     <div style={minHeight ? { minHeight } : undefined}>
       <InputGroup ref={inputGroupRef} className="[--radius:1.5rem]">
         <RichTextInput
-          placeholder={placeholder ?? t('chat.type_message')}
+          placeholder={
+            hasConfiguredModels
+              ? placeholder ?? t('chat.type_message')
+              : t('chat.configure_model_first')
+          }
           value={value}
           onChange={onChange}
           onSend={onSend}
-          disabled={disabled}
+          disabled={disabled || !hasConfiguredModels}
           onPastedImagesChange={onPastedImagesChange}
           onAttachmentsChange={onAttachmentsChange}
           autoFocus={autoFocus}
@@ -181,10 +187,13 @@ export function ChatInput({
             <DropdownMenuTrigger asChild>
               <InputGroupButton
                 variant="ghost"
-                disabled={disabled}
-                className="flex items-center gap-1.5"
+                disabled={disabled || isLoadingModels}
+                className={cn(
+                  'flex items-center gap-1.5',
+                  !hasConfiguredModels && 'text-muted-foreground'
+                )}
               >
-                {getProviderLogo(selectedProvider) && (
+                {hasConfiguredModels && getProviderLogo(selectedProvider) && (
                   <img
                     src={getProviderLogo(selectedProvider)!}
                     alt={selectedProvider}
@@ -205,20 +214,28 @@ export function ChatInput({
                   {t('chat.loading_models')}
                 </div>
               ) : configuredModels.length === 0 ? (
-                <div className="px-3 py-6 text-center">
-                  <p className="mb-2 text-sm text-muted-foreground">
+                <div className="px-4 py-6 text-center space-y-3">
+                  <p className="text-sm text-muted-foreground">
                     {t('chat.no_models_configured')}
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    {t('chat.go_to_settings_to_add')}
-                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const event = new CustomEvent('open-settings', { detail: { tab: 'models' } })
+                      window.dispatchEvent(event)
+                    }}
+                    className="mx-auto"
+                  >
+                    {t('chat.open_settings')}
+                  </Button>
                 </div>
               ) : (
                 <>
                   {Object.entries(modelsByProvider).map(([providerId, providerModels]) => {
                     const provider = getProvider(providerId)
                     if (!provider) return null
-                    
+
                     return (
                       <div key={providerId}>
                         <DropdownMenuLabel className="flex items-center gap-2 px-3 py-2">
@@ -229,17 +246,19 @@ export function ChatInput({
                               className="size-4 dark:invert opacity-70"
                             />
                           )}
-                          <span className="text-xs font-semibold text-foreground">{provider.name}</span>
+                          <span className="text-xs font-semibold text-foreground">
+                            {provider.name}
+                          </span>
                         </DropdownMenuLabel>
                         {providerModels.map((model) => {
                           const modelInfo = getModelInfo(model.modelId)
                           const displayName = model.displayName || modelInfo?.name || model.modelId
-                          const contextWindow = modelInfo?.contextWindow 
+                          const contextWindow = modelInfo?.contextWindow
                             ? modelInfo.contextWindow >= 1000000
                               ? `${(modelInfo.contextWindow / 1000000).toFixed(1)}M`
                               : `${Math.round(modelInfo.contextWindow / 1000)}K`
                             : null
-                          
+
                           return (
                             <DropdownMenuItem
                               key={model.id}
@@ -253,7 +272,9 @@ export function ChatInput({
                             >
                               <div className="flex w-full flex-col gap-1.5">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-sm font-medium text-foreground">{displayName}</span>
+                                  <span className="text-sm font-medium text-foreground">
+                                    {displayName}
+                                  </span>
                                   {contextWindow && (
                                     <span className="text-xs text-muted-foreground">
                                       {contextWindow}
@@ -262,7 +283,9 @@ export function ChatInput({
                                 </div>
                                 {modelInfo && (
                                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                    <span>${modelInfo.cost.input}/{modelInfo.cost.output} per 1M</span>
+                                    <span>
+                                      ${modelInfo.cost.input}/{modelInfo.cost.output} per 1M
+                                    </span>
                                     {modelInfo.reasoning && (
                                       <span className="rounded bg-primary/10 px-1.5 py-0.5 text-primary">
                                         Reasoning

@@ -47,10 +47,10 @@ export const useMessageQueueStore = create<MessageQueueState>((set, get) => ({
 
   dequeue: (sessionId) => {
     const state = get()
-    
+
     const sessionQueue = state.queue.filter((msg) => msg.sessionId === sessionId)
     if (sessionQueue.length === 0) return undefined
-    
+
     const targetMessage = sessionQueue[0]
     const remainingQueue = state.queue.filter((msg) => msg.id !== targetMessage.id)
 
@@ -65,9 +65,7 @@ export const useMessageQueueStore = create<MessageQueueState>((set, get) => ({
 
   clearQueue: (sessionId) =>
     set((state) => ({
-      queue: sessionId !== undefined 
-        ? state.queue.filter((msg) => msg.sessionId !== sessionId)
-        : []
+      queue: sessionId !== undefined ? state.queue.filter((msg) => msg.sessionId !== sessionId) : []
     })),
 
   getSessionQueue: (sessionId) => {

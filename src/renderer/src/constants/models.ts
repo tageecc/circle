@@ -623,37 +623,10 @@ export const MODELS_DATABASE: ModelInfo[] = [
   }
 ]
 
-// Models grouped by provider id
-export const MODELS_BY_PROVIDER = MODELS_DATABASE.reduce((acc, model) => {
-  if (!acc[model.provider]) {
-    acc[model.provider] = []
-  }
-  acc[model.provider].push(model)
-  return acc
-}, {} as Record<string, ModelInfo[]>)
-
-// Lookup model by id
 export function getModelInfo(modelId: string): ModelInfo | undefined {
-  return MODELS_DATABASE.find(m => m.id === modelId)
+  return MODELS_DATABASE.find((m) => m.id === modelId)
 }
 
-// List models for one provider
 export function getModelsByProvider(provider: string): ModelInfo[] {
-  return MODELS_BY_PROVIDER[provider] || []
-}
-
-// Fuzzy search across id, name, provider
-export function searchModels(query: string): ModelInfo[] {
-  const q = query.toLowerCase()
-  return MODELS_DATABASE.filter(
-    m =>
-      m.id.toLowerCase().includes(q) ||
-      m.name.toLowerCase().includes(q) ||
-      m.provider.toLowerCase().includes(q)
-  )
-}
-
-// Sorted provider ids present in the database
-export function getAllProviders(): string[] {
-  return Object.keys(MODELS_BY_PROVIDER).sort()
+  return MODELS_DATABASE.filter((m) => m.provider === provider)
 }

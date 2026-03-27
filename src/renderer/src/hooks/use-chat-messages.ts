@@ -85,7 +85,7 @@ export function useChatMessages(
                 })
               })
             }
-            
+
             // 只返回有更新的 session
             return updated.messages !== s.messages ? updated : s
           })
@@ -294,12 +294,14 @@ export function useChatMessages(
       // 暂时只传递 images，attachments 的非图片文件稍后实现
       const allImages = [
         ...pastedImages,
-        ...attachments.filter(att => att.isImage).map(att => ({
-          id: att.id,
-          dataUrl: att.data,
-          name: att.name,
-          size: att.size
-        }))
+        ...attachments
+          .filter((att) => att.isImage)
+          .map((att) => ({
+            id: att.id,
+            dataUrl: att.data,
+            name: att.name,
+            size: att.size
+          }))
       ]
 
       const { stop } = window.api.chat.stream(
@@ -310,28 +312,28 @@ export function useChatMessages(
           images: allImages.length > 0 ? allImages : undefined
         },
         (chunk: any) => {
-        // 处理 usage chunk
-        if (chunk.type === 'usage' && chunk.usage) {
-          setSessions((prev) =>
-            prev.map((s) => {
-              if (s.id !== sessionId) return s
+          // 处理 usage chunk
+          if (chunk.type === 'usage' && chunk.usage) {
+            setSessions((prev) =>
+              prev.map((s) => {
+                if (s.id !== sessionId) return s
 
-              return {
-                ...s,
-                metadata: {
-                  ...s.metadata,
-                  lastUsage: chunk.usage
+                return {
+                  ...s,
+                  metadata: {
+                    ...s.metadata,
+                    lastUsage: chunk.usage
+                  }
                 }
-              }
-            })
-          )
-          return
-        }
+              })
+            )
+            return
+          }
 
-        if (chunk.type === 'session-id') return
+          if (chunk.type === 'session-id') return
 
-        // 处理 message-start：直接使用后端传来的完整消息
-        if (chunk.type === 'message-start' && chunk.messages) {
+          // 处理 message-start：直接使用后端传来的完整消息
+          if (chunk.type === 'message-start' && chunk.messages) {
             const newMessages: Message[] = chunk.messages!.map((msg) => ({
               ...msg,
               timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date()
@@ -340,7 +342,7 @@ export function useChatMessages(
             // ✅ 提取 applied-file-edit 信息并添加到全局 pending edits store
             if (workspaceRoot) {
               const pendingEditsStore = usePendingEditsStore.getState()
-              
+
               newMessages.forEach((msg) => {
                 if (msg.role === 'tool' && Array.isArray(msg.content)) {
                   msg.content.forEach((part: any) => {
@@ -450,50 +452,51 @@ export function useChatMessages(
 
   const stopStreaming = () => {
     if (!streamStopRef.current) return
-    
+
     const stoppedSessionId = activeSessionId
     streamStopRef.current()
     streamStopRef.current = null
     setIsStreaming(false)
-    
+
     // 标记被停止 session 中所有 loading 工具为"已取消"
     if (!stoppedSessionId) return
-    
+
     setSessions((prev) =>
       prev.map((s) => {
         if (s.id !== stoppedSessionId) return s
-        
+
         return {
           ...s,
           messages: s.messages.map((msg) => {
             if (msg.role !== 'assistant') return msg
-            
+
             let updatedMsg = msg
             const parts = getContentParts(msg)
-            
+
             // 检查每个 tool-call 是否需要标记为已取消
             parts.forEach((p) => {
               if (p.type !== 'tool-call') return
-              
+
               const toolCallId = (p as ToolCallPart).toolCallId
-              
+
               // 跳过已有结果或已取消的工具
               if (getToolUIState(updatedMsg, toolCallId)?.isCancelled) return
-              
-              const hasResult = s.messages.some((m) =>
-                m.role === 'tool' &&
-                Array.isArray(m.content) &&
-                m.content.some(
-                  (resultPart: any) =>
-                    resultPart.type === 'tool-result' && resultPart.toolCallId === toolCallId
-                )
+
+              const hasResult = s.messages.some(
+                (m) =>
+                  m.role === 'tool' &&
+                  Array.isArray(m.content) &&
+                  m.content.some(
+                    (resultPart: any) =>
+                      resultPart.type === 'tool-result' && resultPart.toolCallId === toolCallId
+                  )
               )
-              
+
               if (!hasResult) {
                 updatedMsg = setToolUIState(updatedMsg, toolCallId, { isCancelled: true })
               }
             })
-            
+
             return updatedMsg
           })
         }

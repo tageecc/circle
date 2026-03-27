@@ -271,7 +271,7 @@ export class ChatService {
               toolName: string
               output: unknown
             }
-            
+
             const toolResultPart: ToolResultPart = {
               type: 'tool-result',
               toolCallId: part.toolCallId,
@@ -393,13 +393,17 @@ export class ChatService {
             await saveMessage()
 
             if (part.totalUsage) {
-              totalUsage.inputTokens = (totalUsage.inputTokens || 0) + (part.totalUsage.inputTokens || 0)
-              totalUsage.outputTokens = (totalUsage.outputTokens || 0) + (part.totalUsage.outputTokens || 0)
-              totalUsage.totalTokens = (totalUsage.totalTokens || 0) + (part.totalUsage.totalTokens || 0)
+              totalUsage.inputTokens =
+                (totalUsage.inputTokens || 0) + (part.totalUsage.inputTokens || 0)
+              totalUsage.outputTokens =
+                (totalUsage.outputTokens || 0) + (part.totalUsage.outputTokens || 0)
+              totalUsage.totalTokens =
+                (totalUsage.totalTokens || 0) + (part.totalUsage.totalTokens || 0)
               if (part.totalUsage.reasoningTokens) {
-                totalUsage.reasoningTokens = (totalUsage.reasoningTokens || 0) + part.totalUsage.reasoningTokens
+                totalUsage.reasoningTokens =
+                  (totalUsage.reasoningTokens || 0) + part.totalUsage.reasoningTokens
               }
-              
+
               await this.sessionService.updateSessionMetadata(sessionId, {
                 lastUsage: part.totalUsage,
                 totalUsage
@@ -587,8 +591,7 @@ export class ChatService {
       metadata?: MessageMetadata
     }>
   ): Promise<void> {
-    const pendingToolCalls: Array<{ messageId: number; toolCallId: string; toolName: string }> =
-      []
+    const pendingToolCalls: Array<{ messageId: number; toolCallId: string; toolName: string }> = []
 
     // 查找所有没有 result 的 tool-calls
     for (const msg of historyMessages) {

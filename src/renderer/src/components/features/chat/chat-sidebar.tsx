@@ -101,17 +101,17 @@ export function ChatSidebar({
           setSelectedModel(model)
           return
         }
-        
+
         console.error('Invalid modelId format:', defaultModelId)
       } catch (error) {
         console.error('Failed to load default model:', error)
       }
-      
+
       // Fallback 到默认值
       setSelectedProvider('Alibaba (China)')
       setSelectedModel('qwen-plus')
     }
-    
+
     loadDefaultModel()
   }, [])
 
@@ -133,17 +133,17 @@ export function ChatSidebar({
   useEffect(() => {
     // 如果正在流式响应或正在处理队列，跳过
     if (isStreaming || isProcessingQueue.current) return
-    
+
     const currentQueue = useMessageQueueStore.getState().getSessionQueue(currentSessionId)
     if (currentQueue.length === 0) return
 
     // 标记正在处理
     isProcessingQueue.current = true
-    
+
     // 延迟发送，确保 React 批量更新完成
     const timer = setTimeout(async () => {
       const nextMessage = useMessageQueueStore.getState().dequeue(currentSessionId)
-      
+
       if (nextMessage) {
         try {
           await sendMessage(
@@ -156,7 +156,7 @@ export function ChatSidebar({
           console.error('队列消息发送失败:', error)
         }
       }
-      
+
       isProcessingQueue.current = false
     }, 200)
 
@@ -234,9 +234,14 @@ export function ChatSidebar({
 
     // 立即发送到队列消息的目标 session
     const modelId = `${queuedMessage.provider}/${queuedMessage.model}`
-    await sendMessage(queuedMessage.content, modelId, queuedMessage.images, queuedMessage.attachments || [], queuedMessage.sessionId || undefined)
+    await sendMessage(
+      queuedMessage.content,
+      modelId,
+      queuedMessage.images,
+      queuedMessage.attachments || [],
+      queuedMessage.sessionId || undefined
+    )
   }
-
 
   return (
     <div className="flex h-full w-full flex-col border-l border-sidebar-border/50 bg-sidebar">
@@ -273,10 +278,7 @@ export function ChatSidebar({
 
       {/* Message Queue - 显示在输入框上方 */}
       <div className="border-t border-sidebar-border/50 px-3 pt-3">
-        <MessageQueue
-          sessionId={currentSessionId}
-          onSendNow={handleSendNow}
-        />
+        <MessageQueue sessionId={currentSessionId} onSendNow={handleSendNow} />
       </div>
 
       {/* Input Area */}

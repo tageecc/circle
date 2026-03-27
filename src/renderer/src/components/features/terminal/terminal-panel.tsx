@@ -306,7 +306,9 @@ export function TerminalPanel({
                   {t('terminal.rename')}
                 </ContextMenuItem>
                 <ContextMenuSeparator />
-                <ContextMenuItem onClick={() => closeTab(tab.id)}>{t('terminal.close')}</ContextMenuItem>
+                <ContextMenuItem onClick={() => closeTab(tab.id)}>
+                  {t('terminal.close')}
+                </ContextMenuItem>
                 <ContextMenuItem onClick={() => closeOtherTabs(tab.id)} disabled={tabs.length <= 1}>
                   {t('terminal.close_other')}
                 </ContextMenuItem>

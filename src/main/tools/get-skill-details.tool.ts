@@ -16,7 +16,8 @@ const inputSchema = z.object({
  * System prompt only lists skill metadata; this tool returns the body.
  */
 export const getSkillDetailsTool = tool({
-  description: 'Get the full instructions for a specific skill. Use when you need detailed guidance to complete a task that aligns with a skill\'s domain.',
+  description:
+    "Get the full instructions for a specific skill. Use when you need detailed guidance to complete a task that aligns with a skill's domain.",
 
   inputSchema,
 

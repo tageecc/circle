@@ -406,7 +406,8 @@ interface SpawnOptions {
 }
 
 async function spawnCommand(options: SpawnOptions): Promise<string> {
-  const { command, toolCallId, workspaceRoot, onOutput, onComplete, buildResult, abortSignal } = options
+  const { command, toolCallId, workspaceRoot, onOutput, onComplete, buildResult, abortSignal } =
+    options
 
   return new Promise((resolve) => {
     const shell = process.env.SHELL || DEFAULT_SHELL
@@ -429,12 +430,12 @@ async function spawnCommand(options: SpawnOptions): Promise<string> {
     const resolveOnce = (result: CommandResult) => {
       if (resolved) return
       resolved = true
-      
+
       if (killTimeout) {
         clearTimeout(killTimeout)
         killTimeout = null
       }
-      
+
       sendToRenderer('tool:output-complete', { toolCallId, exitCode: result.exitCode || 0 })
       resolve(JSON.stringify(result))
     }
@@ -445,13 +446,13 @@ async function spawnCommand(options: SpawnOptions): Promise<string> {
         if (!resolved) {
           console.log(`[run_terminal_cmd] ⏹️  Killing process for: ${command}`)
           proc.kill('SIGTERM') // 先尝试优雅停止
-          
+
           killTimeout = setTimeout(() => {
             if (!resolved) {
               proc.kill('SIGKILL') // 500ms 后强制停止
             }
           }, 500)
-          
+
           resolveOnce({
             success: false,
             command,

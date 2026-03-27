@@ -31,10 +31,10 @@ function convertToolCallToData(
     const resultPart = parts.find(
       (p: any) => p.type === 'tool-result' && p.toolCallId === toolCall.toolCallId
     ) as any
-    
+
     if (resultPart) {
       toolResult = resultPart.output?.value
-      
+
       // 推导 isError：检查 value 中的 isError 标记
       if (typeof toolResult === 'string') {
         try {
@@ -44,7 +44,7 @@ function convertToolCallToData(
           // 忽略解析错误
         }
       }
-      
+
       break
     }
   }
@@ -112,80 +112,87 @@ export function ChatMessages({
               {(() => {
                 const visibleMessages = currentSession.messages.filter((msg) => msg.role !== 'tool')
                 return visibleMessages.map((message, messageIndex) => {
-                const isLastMessage = messageIndex === visibleMessages.length - 1
+                  const isLastMessage = messageIndex === visibleMessages.length - 1
 
-                // 用户消息使用特殊组件处理（可编辑、可回退）
-                if (message.role === 'user') {
+                  // 用户消息使用特殊组件处理（可编辑、可回退）
+                  if (message.role === 'user') {
+                    return (
+                      <UserMessage
+                        key={message.id}
+                        message={message}
+                        sessionId={currentSession.id}
+                        onResubmit={onResubmitMessage}
+                      />
+                    )
+                  }
+
+                  // 助手消息
                   return (
-                    <UserMessage
+                    <Message
                       key={message.id}
-                      message={message}
-                      sessionId={currentSession.id}
-                      onResubmit={onResubmitMessage}
-                    />
-                  )
-                }
+                      from={message.role as 'user' | 'assistant' | 'system'}
+                    >
+                      <MessageContent>
+                        {getContentParts(message).map((part, partIndex) => {
+                          const isLatestPart =
+                            isLastMessage && partIndex === getContentParts(message).length - 1
+                          const isStreamingReasoning =
+                            message.metadata?.streamingStates?.reasoning?.isStreaming
 
-                // 助手消息
-                return (
-                  <Message key={message.id} from={message.role as 'user' | 'assistant' | 'system'}>
-                    <MessageContent>
-                      {getContentParts(message).map((part, partIndex) => {
-                        const isLatestPart =
-                          isLastMessage && partIndex === getContentParts(message).length - 1
-                        const isStreamingReasoning =
-                          message.metadata?.streamingStates?.reasoning?.isStreaming
+                          return (
+                            <div key={partIndex}>
+                              {part.type === 'reasoning' && (
+                                <Reasoning isStreaming={isStreamingReasoning}>
+                                  <ReasoningTrigger />
+                                  <ReasoningContent>{part.text}</ReasoningContent>
+                                </Reasoning>
+                              )}
 
-                        return (
-                          <div key={partIndex}>
-                            {part.type === 'reasoning' && (
-                              <Reasoning isStreaming={isStreamingReasoning}>
-                                <ReasoningTrigger />
-                                <ReasoningContent>{part.text}</ReasoningContent>
-                              </Reasoning>
-                            )}
+                              {part.type === 'tool-call' && (
+                                <ToolCall
+                                  tool={convertToolCallToData(
+                                    part,
+                                    message,
+                                    currentSession.messages
+                                  )}
+                                  onOpenFile={onOpenFile}
+                                  onApprovalDecision={onApprovalDecision}
+                                  isLatest={isLatestPart}
+                                />
+                              )}
 
-                            {part.type === 'tool-call' && (
-                              <ToolCall
-                                tool={convertToolCallToData(part, message, currentSession.messages)}
-                                onOpenFile={onOpenFile}
-                                onApprovalDecision={onApprovalDecision}
-                                isLatest={isLatestPart}
-                              />
-                            )}
+                              {part.type === 'text' && part.text && (
+                                <MessageResponse className="prose prose-sm dark:prose-invert max-w-none">
+                                  {part.text}
+                                </MessageResponse>
+                              )}
+                            </div>
+                          )
+                        })}
 
-                            {part.type === 'text' && part.text && (
-                              <MessageResponse className="prose prose-sm dark:prose-invert max-w-none">
-                                {part.text}
-                              </MessageResponse>
-                            )}
-                          </div>
-                        )
-                      })}
-
-                      {/* Planning Indicator */}
-                      {message.role === 'assistant' && isLastMessage && (
-                        <PlanningIndicator message={message} isSending={isSending} />
-                      )}
-
-                      {/* Pending File Edits Card - 只显示当前会话的修改 */}
-                      {message.role === 'assistant' &&
-                        isLastMessage &&
-                        !isSending &&
-                        sessionPendingEdits.length > 0 && (
-                          <PendingEditsCard
-                            pendingEdits={sessionPendingEdits}
-                            onAcceptAll={() => onAcceptAllFileEdits?.()}
-                            onRejectAll={() => onRejectAllFileEdits?.()}
-                            onAcceptFile={(absolutePath) => onAcceptFileEdit?.(absolutePath)}
-                            onRejectFile={(absolutePath) => onRejectFileEdit?.(absolutePath)}
-                            onOpenFile={(absolutePath) => onOpenFile?.(absolutePath)}
-                          />
+                        {/* Planning Indicator */}
+                        {message.role === 'assistant' && isLastMessage && (
+                          <PlanningIndicator message={message} isSending={isSending} />
                         )}
-                    </MessageContent>
-                  </Message>
-                )
-              })
+
+                        {/* Pending File Edits Card - 只显示当前会话的修改 */}
+                        {message.role === 'assistant' &&
+                          isLastMessage &&
+                          !isSending &&
+                          sessionPendingEdits.length > 0 && (
+                            <PendingEditsCard
+                              pendingEdits={sessionPendingEdits}
+                              onAcceptAll={() => onAcceptAllFileEdits?.()}
+                              onRejectAll={() => onRejectAllFileEdits?.()}
+                              onAcceptFile={(absolutePath) => onAcceptFileEdit?.(absolutePath)}
+                              onRejectFile={(absolutePath) => onRejectFileEdit?.(absolutePath)}
+                              onOpenFile={(absolutePath) => onOpenFile?.(absolutePath)}
+                            />
+                          )}
+                      </MessageContent>
+                    </Message>
+                  )
+                })
               })()}
             </div>
           )}
@@ -242,7 +249,7 @@ function EmptyState() {
  */
 function NoSessionState() {
   const { t } = useTranslation()
-  
+
   return (
     <div className="flex h-full items-center justify-center px-6 py-12">
       <div className="text-center space-y-6 max-w-xs">
@@ -255,7 +262,9 @@ function NoSessionState() {
         <div className="space-y-2">
           <h3 className="text-base font-semibold text-foreground">{t('chat.empty_title')}</h3>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            {t('chat.empty_description_prefix')} <span className="font-medium text-foreground">+</span> {t('chat.empty_description_suffix')}
+            {t('chat.empty_description_prefix')}{' '}
+            <span className="font-medium text-foreground">+</span>{' '}
+            {t('chat.empty_description_suffix')}
           </p>
         </div>
         <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground/60">

@@ -111,7 +111,9 @@ export function CommandConfirmCard({
         {/* 权限要求 */}
         {requiredPermissions && requiredPermissions.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
-            <span className="text-xs text-muted-foreground">{t('command_confirm.permissions_label')}</span>
+            <span className="text-xs text-muted-foreground">
+              {t('command_confirm.permissions_label')}
+            </span>
             {requiredPermissions.map((perm) => (
               <Badge key={perm} variant="outline" className="text-xs">
                 {perm}

@@ -1,6 +1,14 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Search, RefreshCw, Puzzle, FolderOpen, Trash2, AlertCircle, ExternalLink } from 'lucide-react'
+import {
+  Search,
+  RefreshCw,
+  Puzzle,
+  FolderOpen,
+  Trash2,
+  AlertCircle,
+  ExternalLink
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -67,19 +75,19 @@ export function SkillsInstalledPanel() {
       // 检查是否有相关文件正在编辑器中打开
       const skillMdPath = `${skillPath}/SKILL.md`
       const openedFile = openFiles.find((file) => file.path === skillMdPath)
-      
+
       await window.api.skills.delete(skillPath)
       setSkills((prev) => prev.filter((s) => s.skillPath !== skillPath))
       setFailedSkills((prev) => prev.filter((s) => s.skillPath !== skillPath))
       setDeletePopoverOpen(null)
-      
+
       // 如果文件正在打开，关闭它
       if (openedFile) {
         const { removeFile } = useFileStore.getState()
         const tabId = getTabId(openedFile)
         removeFile(tabId)
       }
-      
+
       toast.success(t('skills.delete_success'))
     } catch (error) {
       toast.error(t('skills.delete_failed_retry'))
@@ -89,10 +97,10 @@ export function SkillsInstalledPanel() {
   // 打开 SKILL.md 文件
   const handleCardClick = async (skill: SkillDefinition) => {
     const skillMdPath = `${skill.skillPath}/SKILL.md`
-    
+
     // 检查是否已经打开
     const existingFile = openFiles.find((file) => file.path === skillMdPath)
-    
+
     if (existingFile) {
       // 如果已经打开，直接激活该 tab
       const tabId = getTabId(existingFile)
@@ -131,11 +139,11 @@ export function SkillsInstalledPanel() {
     isFailed: true,
     errorDetails: fs.errorDetails
   }))
-  
+
   // 合并成功和失败的 skills，然后统一搜索
   type SkillCard = SkillDefinition & { isFailed?: boolean; errorDetails?: string }
   const allSkills: SkillCard[] = [...skills, ...failedSkillsAsCards]
-  
+
   const filteredSkills = allSkills.filter((skill) => {
     if (!searchQuery) return true
     const query = searchQuery.toLowerCase()
@@ -146,7 +154,7 @@ export function SkillsInstalledPanel() {
       (skill.isFailed && skill.errorDetails?.toLowerCase().includes(query))
     )
   })
-  
+
   // 按 scope 分组
   const allProjectSkills = filteredSkills.filter((s) => s.scope === 'project')
   const allUserSkills = filteredSkills.filter((s) => s.scope === 'user')
@@ -163,10 +171,10 @@ export function SkillsInstalledPanel() {
         key={skill.skillPath}
         className={cn(
           'group rounded-lg border transition-all',
-          skill.isFailed 
-            ? 'border-destructive/30 bg-destructive/5' 
-            : isActive 
-              ? 'border-primary bg-primary/5' 
+          skill.isFailed
+            ? 'border-destructive/30 bg-destructive/5'
+            : isActive
+              ? 'border-primary bg-primary/5'
               : 'border-border/50 hover:border-border'
         )}
       >
@@ -177,158 +185,170 @@ export function SkillsInstalledPanel() {
           )}
           onClick={() => handleCardClick(skill)}
         >
-        <div className="flex items-start gap-3">
-          {/* Icon */}
-          <div className={cn(
-            "shrink-0 w-10 h-10 rounded-md flex items-center justify-center",
-            skill.isFailed ? "bg-destructive/10" : "bg-muted"
-          )}>
-            {skill.isFailed ? (
-              <AlertCircle className="size-5 text-destructive" />
-            ) : (
-              <Puzzle className="size-5 text-muted-foreground" />
-            )}
-          </div>
-
-          {/* Info */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2 mb-1">
-              <h3 className="text-sm font-medium text-foreground truncate">
-                {skill.metadata.name}
-              </h3>
-
-              {/* 操作按钮 - 右侧对齐 */}
-              <div className="flex items-center gap-1 shrink-0">
-                {/* 打开文件夹按钮 */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 hover:bg-accent/50 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    window.api.files.openPath(skill.skillPath).catch(console.error)
-                  }}
-                  title={t('skills.open_directory')}
-                >
-                  <FolderOpen className="size-3" />
-                </Button>
-
-                {/* 删除按钮 - Popover 确认 */}
-                <Popover
-                  open={deletePopoverOpen === skill.skillPath}
-                  onOpenChange={(open) => setDeletePopoverOpen(open ? skill.skillPath : null)}
-                >
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => e.stopPropagation()}
-                      title={t('common.delete')}
-                    >
-                      <Trash2 className="size-3" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-64" align="end">
-                    <div className="space-y-3">
-                      <div>
-                        <h4 className="font-medium text-sm mb-1">{t('skills.confirm_delete_title')}</h4>
-                        <p className="text-xs text-muted-foreground">
-                          {t('skills.confirm_delete_description')}
-                        </p>
-                      </div>
-                      <div className="flex gap-2 justify-end">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setDeletePopoverOpen(null)
-                          }}
-                        >
-                          {t('common.cancel')}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDelete(skill.skillPath)
-                          }}
-                        >
-                          {t('common.delete')}
-                        </Button>
-                      </div>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-
-                {/* 开关 - 调小（失败的不显示） */}
-                {!skill.isFailed && (
-                  <div
-                    className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Switch
-                      checked={skill.enabled ?? true}
-                      onCheckedChange={(checked) => handleToggle(skill.skillPath, checked)}
-                      className="scale-75"
-                    />
-                  </div>
-                )}
-              </div>
+          <div className="flex items-start gap-3">
+            {/* Icon */}
+            <div
+              className={cn(
+                'shrink-0 w-10 h-10 rounded-md flex items-center justify-center',
+                skill.isFailed ? 'bg-destructive/10' : 'bg-muted'
+              )}
+            >
+              {skill.isFailed ? (
+                <AlertCircle className="size-5 text-destructive" />
+              ) : (
+                <Puzzle className="size-5 text-muted-foreground" />
+              )}
             </div>
 
-            {/* 描述 - 最多两行 */}
-            <p className={cn(
-              "text-xs line-clamp-2 mb-2",
-              skill.isFailed ? "text-destructive/70" : "text-muted-foreground"
-            )}>
-              {skill.metadata.description || t('skills.no_description')}
-            </p>
-            
-            {/* 错误详情 - 仅失败的 skill 显示 */}
-            {skill.isFailed && skill.errorDetails && (
-              <p className="text-[10px] text-muted-foreground line-clamp-1 mb-2" title={skill.errorDetails}>
-                {skill.errorDetails}
-              </p>
-            )}
+            {/* Info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <h3 className="text-sm font-medium text-foreground truncate">
+                  {skill.metadata.name}
+                </h3>
 
-            {/* 底部信息：GitHub 链接和标签 */}
-            {(skill.metadata.homepage || (skill.metadata.tags && skill.metadata.tags.length > 0)) && (
-              <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                {/* GitHub 链接 */}
-                {skill.metadata.homepage && (
-                  <a
-                    href="#"
+                {/* 操作按钮 - 右侧对齐 */}
+                <div className="flex items-center gap-1 shrink-0">
+                  {/* 打开文件夹按钮 */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 hover:bg-accent/50 opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={(e) => {
-                      e.preventDefault()
                       e.stopPropagation()
-                      window.api.shell.openExternal(skill.metadata.homepage!)
+                      window.api.files.openPath(skill.skillPath).catch(console.error)
                     }}
-                    className="flex items-center gap-1 hover:text-foreground transition-colors"
-                    title={t('skills.open_in_browser')}
+                    title={t('skills.open_directory')}
                   >
-                    <ExternalLink className="size-3" />
-                    <span>GitHub</span>
-                  </a>
-                )}
-                
-                {/* 标签 */}
-                {skill.metadata.tags && skill.metadata.tags.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    {skill.metadata.tags.slice(0, 3).map((tag) => (
-                      <span key={tag}>#{tag}</span>
-                    ))}
-                    {skill.metadata.tags.length > 3 && <span>+{skill.metadata.tags.length - 3}</span>}
-                  </div>
-                )}
+                    <FolderOpen className="size-3" />
+                  </Button>
+
+                  {/* 删除按钮 - Popover 确认 */}
+                  <Popover
+                    open={deletePopoverOpen === skill.skillPath}
+                    onOpenChange={(open) => setDeletePopoverOpen(open ? skill.skillPath : null)}
+                  >
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => e.stopPropagation()}
+                        title={t('common.delete')}
+                      >
+                        <Trash2 className="size-3" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64" align="end">
+                      <div className="space-y-3">
+                        <div>
+                          <h4 className="font-medium text-sm mb-1">
+                            {t('skills.confirm_delete_title')}
+                          </h4>
+                          <p className="text-xs text-muted-foreground">
+                            {t('skills.confirm_delete_description')}
+                          </p>
+                        </div>
+                        <div className="flex gap-2 justify-end">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setDeletePopoverOpen(null)
+                            }}
+                          >
+                            {t('common.cancel')}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDelete(skill.skillPath)
+                            }}
+                          >
+                            {t('common.delete')}
+                          </Button>
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+
+                  {/* 开关 - 调小（失败的不显示） */}
+                  {!skill.isFailed && (
+                    <div
+                      className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Switch
+                        checked={skill.enabled ?? true}
+                        onCheckedChange={(checked) => handleToggle(skill.skillPath, checked)}
+                        className="scale-75"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
+
+              {/* 描述 - 最多两行 */}
+              <p
+                className={cn(
+                  'text-xs line-clamp-2 mb-2',
+                  skill.isFailed ? 'text-destructive/70' : 'text-muted-foreground'
+                )}
+              >
+                {skill.metadata.description || t('skills.no_description')}
+              </p>
+
+              {/* 错误详情 - 仅失败的 skill 显示 */}
+              {skill.isFailed && skill.errorDetails && (
+                <p
+                  className="text-[10px] text-muted-foreground line-clamp-1 mb-2"
+                  title={skill.errorDetails}
+                >
+                  {skill.errorDetails}
+                </p>
+              )}
+
+              {/* 底部信息：GitHub 链接和标签 */}
+              {(skill.metadata.homepage ||
+                (skill.metadata.tags && skill.metadata.tags.length > 0)) && (
+                <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                  {/* GitHub 链接 */}
+                  {skill.metadata.homepage && (
+                    <a
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        window.api.shell.openExternal(skill.metadata.homepage!)
+                      }}
+                      className="flex items-center gap-1 hover:text-foreground transition-colors"
+                      title={t('skills.open_in_browser')}
+                    >
+                      <ExternalLink className="size-3" />
+                      <span>GitHub</span>
+                    </a>
+                  )}
+
+                  {/* 标签 */}
+                  {skill.metadata.tags && skill.metadata.tags.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      {skill.metadata.tags.slice(0, 3).map((tag) => (
+                        <span key={tag}>#{tag}</span>
+                      ))}
+                      {skill.metadata.tags.length > 3 && (
+                        <span>+{skill.metadata.tags.length - 3}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
     )
   }
 

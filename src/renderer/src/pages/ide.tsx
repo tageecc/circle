@@ -130,7 +130,6 @@ export function IDEPage(): React.ReactElement {
           refreshGitStatus()
           restoreEditorState(result.currentProject)
         }
-
       } catch (error) {
         console.error('Failed to initialize project:', error)
       }

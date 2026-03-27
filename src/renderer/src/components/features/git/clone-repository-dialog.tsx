@@ -119,7 +119,9 @@ export function CloneRepositoryDialog({ open, onClose, onSuccess }: CloneReposit
               disabled={loading}
               className={error && repoUrl ? 'border-destructive' : ''}
             />
-            <p className="text-xs text-muted-foreground">Supports HTTPS, SSH, and Git protocol URLs</p>
+            <p className="text-xs text-muted-foreground">
+              Supports HTTPS, SSH, and Git protocol URLs
+            </p>
           </div>
 
           {/* Target Directory */}

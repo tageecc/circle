@@ -115,9 +115,7 @@ export function GitAddRemoteDialog({ open, onClose, onConfirm }: GitAddRemoteDia
           </div>
 
           {error && (
-            <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-              {error}
-            </div>
+            <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
           )}
 
           <div className="rounded-lg bg-muted/50 p-3 space-y-2">

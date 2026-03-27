@@ -36,7 +36,10 @@ function Sidebar({
   return (
     <div
       data-slot="sidebar"
-      className={cn('flex h-full w-[--sidebar-width] flex-col border-r border-border bg-sidebar', className)}
+      className={cn(
+        'flex h-full w-[--sidebar-width] flex-col border-r border-border bg-sidebar',
+        className
+      )}
       style={
         {
           '--sidebar-width': '16rem'
@@ -98,8 +101,7 @@ const sidebarMenuButtonVariants = cva(
 )
 
 interface SidebarMenuButtonProps
-  extends React.ComponentProps<'button'>,
-    VariantProps<typeof sidebarMenuButtonVariants> {
+  extends React.ComponentProps<'button'>, VariantProps<typeof sidebarMenuButtonVariants> {
   asChild?: boolean
   isActive?: boolean
 }

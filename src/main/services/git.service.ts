@@ -253,7 +253,9 @@ export class GitService {
     branchName: string,
     force: boolean = false
   ): Promise<void> {
-    await execGit(projectPath, 'errors.git.ops.delete_branch', (git) => git.branch([force ? '-D' : '-d', branchName]))
+    await execGit(projectPath, 'errors.git.ops.delete_branch', (git) =>
+      git.branch([force ? '-D' : '-d', branchName])
+    )
   }
 
   /**
@@ -304,7 +306,9 @@ export class GitService {
    * 重命名分支
    */
   static async renameBranch(projectPath: string, oldName: string, newName: string): Promise<void> {
-    await execGit(projectPath, 'errors.git.ops.rename_branch', (git) => git.branch(['-m', oldName, newName]))
+    await execGit(projectPath, 'errors.git.ops.rename_branch', (git) =>
+      git.branch(['-m', oldName, newName])
+    )
   }
 
   /**
@@ -486,7 +490,9 @@ export class GitService {
    * 暂存文件
    */
   static async stageFiles(projectPath: string, files: string[]): Promise<void> {
-    await execGit(projectPath, 'errors.git.ops.stage_files', (git) => git.add(files.length === 0 ? ['-A'] : files))
+    await execGit(projectPath, 'errors.git.ops.stage_files', (git) =>
+      git.add(files.length === 0 ? ['-A'] : files)
+    )
   }
 
   /**
@@ -650,7 +656,9 @@ export class GitService {
    * 取消暂存文件
    */
   static async unstageFiles(projectPath: string, files: string[]): Promise<void> {
-    await execGit(projectPath, 'errors.git.ops.unstage', (git) => git.reset(['HEAD', '--', ...files]))
+    await execGit(projectPath, 'errors.git.ops.unstage', (git) =>
+      git.reset(['HEAD', '--', ...files])
+    )
   }
 
   /**
@@ -871,21 +879,27 @@ export class GitService {
    * 应用 stash（保留 stash）
    */
   static async stashApply(projectPath: string, index: number = 0): Promise<void> {
-    await execGit(projectPath, 'errors.git.ops.stash_apply', (git) => git.stash(['apply', `stash@{${index}}`]))
+    await execGit(projectPath, 'errors.git.ops.stash_apply', (git) =>
+      git.stash(['apply', `stash@{${index}}`])
+    )
   }
 
   /**
    * 弹出 stash（应用并删除）
    */
   static async stashPop(projectPath: string, index: number = 0): Promise<void> {
-    await execGit(projectPath, 'errors.git.ops.stash_pop', (git) => git.stash(['pop', `stash@{${index}}`]))
+    await execGit(projectPath, 'errors.git.ops.stash_pop', (git) =>
+      git.stash(['pop', `stash@{${index}}`])
+    )
   }
 
   /**
    * 删除 stash
    */
   static async stashDrop(projectPath: string, index: number): Promise<void> {
-    await execGit(projectPath, 'errors.git.ops.stash_drop', (git) => git.stash(['drop', `stash@{${index}}`]))
+    await execGit(projectPath, 'errors.git.ops.stash_drop', (git) =>
+      git.stash(['drop', `stash@{${index}}`])
+    )
   }
 
   /**
@@ -1183,7 +1197,9 @@ export class GitService {
     commitHash: string,
     mode: 'soft' | 'mixed' | 'hard' = 'mixed'
   ): Promise<void> {
-    await execGit(projectPath, 'errors.git.ops.reset', (git) => git.reset([`--${mode}`, commitHash]))
+    await execGit(projectPath, 'errors.git.ops.reset', (git) =>
+      git.reset([`--${mode}`, commitHash])
+    )
   }
 
   /**
@@ -1481,7 +1497,9 @@ export class GitService {
     tagName: string,
     remote: string = 'origin'
   ): Promise<void> {
-    await execGit(projectPath, 'errors.git.ops.delete_remote_tag', (git) => git.push([remote, '--delete', tagName]))
+    await execGit(projectPath, 'errors.git.ops.delete_remote_tag', (git) =>
+      git.push([remote, '--delete', tagName])
+    )
   }
 
   // ==================== Rebase ====================
@@ -1547,7 +1565,9 @@ export class GitService {
    * 修改远程仓库 URL
    */
   static async setRemoteUrl(projectPath: string, name: string, url: string): Promise<void> {
-    await execGit(projectPath, 'errors.git.ops.set_remote_url', (git) => git.raw(['remote', 'set-url', name, url]))
+    await execGit(projectPath, 'errors.git.ops.set_remote_url', (git) =>
+      git.raw(['remote', 'set-url', name, url])
+    )
   }
 
   // ==================== Cherry-pick ====================

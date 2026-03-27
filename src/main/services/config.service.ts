@@ -206,7 +206,9 @@ function parsePreferences(raw: unknown): AppConfig['preferences'] {
     autoSave: typeof o.autoSave === 'boolean' ? o.autoSave : defaultPreferences.autoSave,
     debugMode: typeof o.debugMode === 'boolean' ? o.debugMode : defaultPreferences.debugMode,
     sidebarCollapsed:
-      typeof o.sidebarCollapsed === 'boolean' ? o.sidebarCollapsed : defaultPreferences.sidebarCollapsed,
+      typeof o.sidebarCollapsed === 'boolean'
+        ? o.sidebarCollapsed
+        : defaultPreferences.sidebarCollapsed,
     autoRunMode,
     commandWhitelist,
     enableFilePreviewOnSingleClick:

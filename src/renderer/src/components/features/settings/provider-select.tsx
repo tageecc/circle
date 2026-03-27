@@ -117,7 +117,9 @@ export function ProviderSelect({ value, onChange, disabled }: ProviderSelectProp
                 <div className="flex flex-1 items-center justify-between">
                   <span>{provider.label}</span>
                   {provider.models > 0 && (
-                    <span className="text-xs text-muted-foreground">{t('provider_select.models_count', { count: provider.models })}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {t('provider_select.models_count', { count: provider.models })}
+                    </span>
                   )}
                 </div>
               </CommandItem>

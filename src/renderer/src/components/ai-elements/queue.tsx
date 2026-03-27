@@ -22,8 +22,9 @@ export const Queue = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLD
 Queue.displayName = 'Queue'
 
 // ============= Queue Section (Collapsible) =============
-interface QueueSectionProps
-  extends React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Root> {
+interface QueueSectionProps extends React.ComponentPropsWithoutRef<
+  typeof CollapsiblePrimitive.Root
+> {
   defaultOpen?: boolean
 }
 

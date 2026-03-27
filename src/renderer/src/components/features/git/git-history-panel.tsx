@@ -950,7 +950,11 @@ export function GitHistoryPanel({
                   {(
                     [
                       { mode: 'soft' as const, title: 'Soft', descKey: 'git.reset_mode_soft_desc' },
-                      { mode: 'mixed' as const, title: 'Mixed', descKey: 'git.reset_mode_mixed_desc' },
+                      {
+                        mode: 'mixed' as const,
+                        title: 'Mixed',
+                        descKey: 'git.reset_mode_mixed_desc'
+                      },
                       { mode: 'hard' as const, title: 'Hard', descKey: 'git.reset_mode_hard_desc' }
                     ] as const
                   ).map((opt) => (
@@ -1024,7 +1028,9 @@ export function GitHistoryPanel({
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">{t('git.squash_combined_message_label')}</label>
+              <label className="text-sm font-medium">
+                {t('git.squash_combined_message_label')}
+              </label>
               <Textarea
                 value={squashDialog.message}
                 onChange={(e) => setSquashDialog((prev) => ({ ...prev, message: e.target.value }))}

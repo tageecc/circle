@@ -37,21 +37,24 @@ export function useProjectOperations({
     [setWorkspaceRoot, restoreEditorState]
   )
 
-  const openProjectInNewWindow = useCallback(async (projectPath: string) => {
-    try {
-      const result = await window.api.project.openInNewWindow(projectPath)
-      if (result.success) {
-        toast.success(t('project.open_new_window_success'))
-      } else {
-        toast.error(t('project.open_new_window_failed'), {
-          description: result.error
-        })
+  const openProjectInNewWindow = useCallback(
+    async (projectPath: string) => {
+      try {
+        const result = await window.api.project.openInNewWindow(projectPath)
+        if (result.success) {
+          toast.success(t('project.open_new_window_success'))
+        } else {
+          toast.error(t('project.open_new_window_failed'), {
+            description: result.error
+          })
+        }
+      } catch (error) {
+        console.error('Failed to open project in new window:', error)
+        toast.error(t('project.open_new_window_failed'))
       }
-    } catch (error) {
-      console.error('Failed to open project in new window:', error)
-      toast.error(t('project.open_new_window_failed'))
-    }
-  }, [t])
+    },
+    [t]
+  )
 
   // ✅ 提取公共逻辑：根据用户偏好决定如何打开项目
   const openProjectWithBehavior = useCallback(

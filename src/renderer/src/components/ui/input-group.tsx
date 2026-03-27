@@ -10,14 +10,22 @@ const InputGroup = React.forwardRef<HTMLDivElement, React.ComponentProps<'div'>>
   ({ className, ...props }, ref) => {
     const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
       // 如果点击的是按钮或输入控件，不做处理
-      if ((e.target as HTMLElement).closest('button, [data-slot=input-group-control], [data-slot=rich-text-input]')) {
+      if (
+        (e.target as HTMLElement).closest(
+          'button, [data-slot=input-group-control], [data-slot=rich-text-input]'
+        )
+      ) {
         return
       }
-      
+
       // 点击空白区域时，聚焦输入控件或触发富文本编辑器点击
-      const input = e.currentTarget.querySelector('[data-slot=input-group-control]') as HTMLInputElement | HTMLTextAreaElement
-      const richTextInput = e.currentTarget.querySelector('[data-slot=rich-text-input]') as HTMLElement
-      
+      const input = e.currentTarget.querySelector('[data-slot=input-group-control]') as
+        | HTMLInputElement
+        | HTMLTextAreaElement
+      const richTextInput = e.currentTarget.querySelector(
+        '[data-slot=rich-text-input]'
+      ) as HTMLElement
+
       input?.focus()
       richTextInput?.click()
     }
@@ -111,7 +119,6 @@ function InputGroupButton({
   ...props
 }: Omit<React.ComponentProps<typeof Button>, 'size'> &
   VariantProps<typeof inputGroupButtonVariants>) {
-  
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     // 阻止事件冒泡，防止触发 InputGroup 的点击聚焦
     e.stopPropagation()

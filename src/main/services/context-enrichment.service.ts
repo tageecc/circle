@@ -140,19 +140,14 @@ Note: Prefer using absolute paths over relative paths as tool call args when pos
       const userRules = db.getUserRules()
 
       // 将规则转换为文本格式
-      const rulesText =
-        userRules.length > 0
-          ? userRules.map((rule) => rule.content).join('\n')
-          : ''
+      const rulesText = userRules.length > 0 ? userRules.map((rule) => rule.content).join('\n') : ''
 
       // 加载持久化的 Memories
       const memoryService = new MemoryService()
       const memories = await memoryService.getAllMemories()
 
       const memoriesText =
-        memories.length > 0
-          ? memories.map((m) => `- ${m.content} (ID: ${m.id})`).join('\n')
-          : ''
+        memories.length > 0 ? memories.map((m) => `- ${m.content} (ID: ${m.id})`).join('\n') : ''
 
       let rulesContent = `<rules>
 The rules section has a number of possible rules/memories/context that you should consider. In each subsection, we provide instructions about what information the subsection contains and how you should consider/follow the contents of the subsection.
@@ -184,9 +179,7 @@ ${memoriesText}
    * Skills block for system prompt (Progressive Disclosure).
    * Metadata only here; full instructions via get_skill_details.
    */
-  private async getSkillsSection(params: {
-    workspaceRoot: string | null
-  }): Promise<string | null> {
+  private async getSkillsSection(params: { workspaceRoot: string | null }): Promise<string | null> {
     try {
       const skillsService = SkillsService.getInstance()
       const allMetadata = await skillsService.getEnabledSkillsMetadata(

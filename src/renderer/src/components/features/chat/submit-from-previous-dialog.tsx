@@ -90,12 +90,7 @@ export function SubmitFromPreviousDialog({
           </Button>
           <Button variant="secondary" onClick={handleContinueWithoutReverting} className="text-sm">
             Continue without reverting
-            <svg
-              className="ml-1 size-3.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg className="ml-1 size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -106,18 +101,8 @@ export function SubmitFromPreviousDialog({
           </Button>
           <Button onClick={handleContinueAndRevert} className="text-sm">
             Continue and revert
-            <svg
-              className="ml-1 size-3.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
+            <svg className="ml-1 size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </Button>
         </DialogFooter>

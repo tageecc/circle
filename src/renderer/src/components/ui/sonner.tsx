@@ -37,15 +37,15 @@ function ToastCopyButton({ text }: { text: string }) {
 
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    
+
     try {
       await navigator.clipboard.writeText(text)
       setCopied(true)
-      
+
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current)
       }
-      
+
       timeoutRef.current = setTimeout(() => {
         setCopied(false)
       }, 2000)
@@ -74,11 +74,7 @@ function ToastCopyButton({ text }: { text: string }) {
       )}
       title={t('common.copy')}
     >
-      {copied ? (
-        <Check className="size-4 text-green-500" />
-      ) : (
-        <Copy className="size-4" />
-      )}
+      {copied ? <Check className="size-4 text-green-500" /> : <Copy className="size-4" />}
     </button>
   )
 }
@@ -110,10 +106,8 @@ function createWrappedToast() {
 
   wrappedToast.error = (message: ReactNode, options?: ToastOptions) => {
     const textContent = extractTextContent(message)
-    const fullText = options?.description
-      ? `${textContent}\n\n${options.description}`
-      : textContent
-    
+    const fullText = options?.description ? `${textContent}\n\n${options.description}` : textContent
+
     const result = sonnerToast.error(
       <div className="group/toast pr-10">
         <div>{message}</div>
@@ -137,10 +131,8 @@ function createWrappedToast() {
 
   wrappedToast.warning = (message: ReactNode, options?: ToastOptions) => {
     const textContent = extractTextContent(message)
-    const fullText = options?.description
-      ? `${textContent}\n\n${options.description}`
-      : textContent
-    
+    const fullText = options?.description ? `${textContent}\n\n${options.description}` : textContent
+
     const result = sonnerToast.warning(
       <div className="group/toast pr-10">
         <div>{message}</div>

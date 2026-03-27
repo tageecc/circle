@@ -5,7 +5,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
 import { toast } from '@/components/ui/sonner'
 import { useTranslation } from 'react-i18next'
 
@@ -136,7 +142,9 @@ export function ApiKeysSettings() {
       await window.api.config.setServiceSettings({
         vectorSearchEnabled: checked
       })
-      toast.success(checked ? t('ai_config.vector_search_enabled') : t('ai_config.vector_search_disabled'))
+      toast.success(
+        checked ? t('ai_config.vector_search_enabled') : t('ai_config.vector_search_disabled')
+      )
     } catch (error) {
       console.error('Failed to save vector search setting:', error)
       toast.error(t('ai_config.save_failed'))
@@ -267,7 +275,7 @@ export function ApiKeysSettings() {
 
       <div className="border-t pt-6">
         <h3 className="text-lg font-medium mb-4">向量语义搜索</h3>
-        
+
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -277,13 +285,10 @@ export function ApiKeysSettings() {
                   使用 AI Embeddings 实现代码语义搜索（理解含义，不仅匹配关键词）
                 </CardDescription>
               </div>
-              <Switch
-                checked={vectorSearchEnabled}
-                onCheckedChange={handleVectorSearchToggle}
-              />
+              <Switch checked={vectorSearchEnabled} onCheckedChange={handleVectorSearchToggle} />
             </div>
           </CardHeader>
-          
+
           {vectorSearchEnabled && (
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -296,25 +301,33 @@ export function ApiKeysSettings() {
                     <SelectItem value="openai-small">
                       <div className="flex flex-col items-start">
                         <span className="font-medium">OpenAI Small</span>
-                        <span className="text-xs text-muted-foreground">1536 维，$0.02/1M tokens（推荐）</span>
+                        <span className="text-xs text-muted-foreground">
+                          1536 维，$0.02/1M tokens（推荐）
+                        </span>
                       </div>
                     </SelectItem>
                     <SelectItem value="openai-large">
                       <div className="flex flex-col items-start">
                         <span className="font-medium">OpenAI Large</span>
-                        <span className="text-xs text-muted-foreground">3072 维，$0.13/1M tokens（更精确）</span>
+                        <span className="text-xs text-muted-foreground">
+                          3072 维，$0.13/1M tokens（更精确）
+                        </span>
                       </div>
                     </SelectItem>
                     <SelectItem value="voyage-code">
                       <div className="flex flex-col items-start">
                         <span className="font-medium">Voyage AI Code</span>
-                        <span className="text-xs text-muted-foreground">1536 维，$0.10/1M tokens（代码优化）</span>
+                        <span className="text-xs text-muted-foreground">
+                          1536 维，$0.10/1M tokens（代码优化）
+                        </span>
                       </div>
                     </SelectItem>
                     <SelectItem value="qwen-embed">
                       <div className="flex flex-col items-start">
                         <span className="font-medium">Qwen Embedding</span>
-                        <span className="text-xs text-muted-foreground">1024 维，¥0.7/1M tokens（中文友好）</span>
+                        <span className="text-xs text-muted-foreground">
+                          1024 维，¥0.7/1M tokens（中文友好）
+                        </span>
                       </div>
                     </SelectItem>
                   </SelectContent>

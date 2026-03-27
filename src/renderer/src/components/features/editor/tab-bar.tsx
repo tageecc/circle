@@ -257,7 +257,9 @@ export function TabBar({
                     {t('editor.close_tabs_to_right')}
                   </ContextMenuItem>
                   <ContextMenuSeparator />
-                  <ContextMenuItem onClick={onCloseAll}>{t('editor.close_all_tabs')}</ContextMenuItem>
+                  <ContextMenuItem onClick={onCloseAll}>
+                    {t('editor.close_all_tabs')}
+                  </ContextMenuItem>
                 </ContextMenuContent>
               </ContextMenu>
             )

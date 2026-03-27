@@ -78,7 +78,7 @@ export function registerIpcHandlers() {
       event.reply('chat:stream:end', finalSessionId)
     } catch (error) {
       console.error('Stream chat error:', error)
-      
+
       // 特殊错误消息处理
       let errorMessage = error instanceof Error ? error.message : 'Unknown error'
       if (error instanceof Error && error.message.includes('tool_call_id')) {
@@ -86,7 +86,7 @@ export function registerIpcHandlers() {
       } else if (error instanceof Error && error.name === 'AbortError') {
         errorMessage = 'Chat stopped by user'
       }
-      
+
       event.reply('chat:stream:error', errorMessage)
     } finally {
       if (streamId) {
@@ -101,7 +101,7 @@ export function registerIpcHandlers() {
     if (streamData) {
       console.log(`[IPC] ⏹️  Stopping stream: ${streamId}`)
       streamData.abortController.abort()
-      
+
       // 立即清理数据库中的 pending tool-calls
       await chatService.cleanupPendingTools(streamData.sessionId)
     }
@@ -191,7 +191,6 @@ export function registerIpcHandlers() {
     }
   })
 
-
   // Todo handlers
   ipcMain.handle('todo:get', async (_, sessionId: string) => {
     try {
@@ -225,7 +224,12 @@ export function registerIpcHandlers() {
   ipcMain.handle('config:set', async (_, config) => {
     try {
       configService.setConfig(config)
-      if (config && typeof config === 'object' && 'language' in config && config.language !== undefined) {
+      if (
+        config &&
+        typeof config === 'object' &&
+        'language' in config &&
+        config.language !== undefined
+      ) {
         await syncMainI18nFromConfig(configService)
         rebuildApplicationMenu()
       }

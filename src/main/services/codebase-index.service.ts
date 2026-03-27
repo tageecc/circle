@@ -133,14 +133,18 @@ export class CodebaseIndexService {
 
     const vectorEnabled = this.embeddingService.isEnabled()
     const db = this.db.getDb()
-    
+
     if (vectorEnabled) {
       if (!this.embeddingService.isConfigured()) {
-        throw new Error('Vector search enabled but embedding API not configured. Configure in Settings → API Keys')
+        throw new Error(
+          'Vector search enabled but embedding API not configured. Configure in Settings → API Keys'
+        )
       }
 
       const embeddingConfig = this.embeddingService.getConfig()!
-      console.log(`[CodebaseIndex] Vector search enabled: ${embeddingConfig.model} (${embeddingConfig.dimensions}d)`)
+      console.log(
+        `[CodebaseIndex] Vector search enabled: ${embeddingConfig.model} (${embeddingConfig.dimensions}d)`
+      )
 
       // Check dimension mismatch
       const existingVector = db
@@ -150,7 +154,10 @@ export class CodebaseIndexService {
         .limit(1)
         .get()
 
-      if (existingVector?.embedding && existingVector.embedding.length / 4 !== embeddingConfig.dimensions) {
+      if (
+        existingVector?.embedding &&
+        existingVector.embedding.length / 4 !== embeddingConfig.dimensions
+      ) {
         console.warn('[CodebaseIndex] Dimension mismatch, deleting old index...')
         await this.deleteProject(projectPath)
       }
@@ -451,8 +458,8 @@ export class CodebaseIndexService {
 
         processed++
         const progress = 10 + Math.floor((processed / total) * 80)
-        const message = this.embeddingService.isEnabled() 
-          ? `索引文件 (含向量化): ${processed}/${total}` 
+        const message = this.embeddingService.isEnabled()
+          ? `索引文件 (含向量化): ${processed}/${total}`
           : `索引文件: ${processed}/${total}`
         onProgress?.(progress, 100, message)
       } catch (error) {

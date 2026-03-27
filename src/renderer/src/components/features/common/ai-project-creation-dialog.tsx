@@ -112,8 +112,12 @@ export function AIProjectCreationDialog({
                 <div className="flex items-start gap-3">
                   <FolderOpen className="mt-0.5 size-4 shrink-0 text-primary" />
                   <div className="flex-1 space-y-1">
-                    <p className="text-sm font-medium text-primary">{t('project_creation.tip_title')}</p>
-                    <p className="text-xs text-muted-foreground">{t('project_creation.tip_body')}</p>
+                    <p className="text-sm font-medium text-primary">
+                      {t('project_creation.tip_title')}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t('project_creation.tip_body')}
+                    </p>
                   </div>
                 </div>
               </div>

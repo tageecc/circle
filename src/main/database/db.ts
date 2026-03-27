@@ -634,7 +634,6 @@ export class CircleDatabase {
     )
   }
 
-
   // ==================== 公共访问方法 ====================
 
   getDb(): BetterSQLite3Database<typeof schema> {

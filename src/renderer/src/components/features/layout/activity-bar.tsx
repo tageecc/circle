@@ -1,6 +1,15 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Files, Search, GitBranch, GitCompare, History, Unplug, Settings, Puzzle } from 'lucide-react'
+import {
+  Files,
+  Search,
+  GitBranch,
+  GitCompare,
+  History,
+  Unplug,
+  Settings,
+  Puzzle
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { LeftTabType } from '@/hooks/use-layout-manager'
 import { useWorkspaceUIStore } from '@/stores/workspace-ui.store'
@@ -37,7 +46,10 @@ export function ActivityBar({
   const visibleTabs = useMemo(() => {
     const tabs = showGitTab ? baseTabs : baseTabs.filter((t) => t.id !== 'changes')
     return showCompareTab
-      ? [...tabs, { id: 'compare' as LeftTabType, icon: GitCompare, label: t('activity_bar.compare') }]
+      ? [
+          ...tabs,
+          { id: 'compare' as LeftTabType, icon: GitCompare, label: t('activity_bar.compare') }
+        ]
       : tabs
   }, [showGitTab, showCompareTab, baseTabs, t])
 

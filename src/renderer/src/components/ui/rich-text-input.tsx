@@ -1,5 +1,18 @@
-import { forwardRef, useRef, useEffect, useImperativeHandle, useCallback, type HTMLAttributes } from 'react'
-import { useEditor, EditorContent, ReactNodeViewRenderer, NodeViewWrapper, type NodeViewProps } from '@tiptap/react'
+import {
+  forwardRef,
+  useRef,
+  useEffect,
+  useImperativeHandle,
+  useCallback,
+  type HTMLAttributes
+} from 'react'
+import {
+  useEditor,
+  EditorContent,
+  ReactNodeViewRenderer,
+  NodeViewWrapper,
+  type NodeViewProps
+} from '@tiptap/react'
 import { Node, mergeAttributes } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
@@ -74,16 +87,14 @@ function AttachmentNodeView({ node, deleteNode }: NodeViewProps) {
           </AttachmentHoverCardTrigger>
           <AttachmentHoverCardContent>
             {mediaCategory === 'image' && attachment.url && (
-              <img
-                alt={label}
-                src={attachment.url}
-                className="max-w-xs max-h-96 rounded"
-              />
+              <img alt={label} src={attachment.url} className="max-w-xs max-h-96 rounded" />
             )}
             <div className="mt-2">
               <div className="font-medium text-sm">{label}</div>
               {attachment.mediaType && (
-                <div className="text-xs text-muted-foreground font-mono">{attachment.mediaType}</div>
+                <div className="text-xs text-muted-foreground font-mono">
+                  {attachment.mediaType}
+                </div>
               )}
             </div>
           </AttachmentHoverCardContent>
@@ -187,14 +198,14 @@ const RichTextInput = forwardRef<HTMLDivElement, RichTextInputProps>(
     const onAttachmentsChangeRef = useRef(onAttachmentsChange)
     const onSendRef = useRef(onSend)
     const editorRef = useRef<ReturnType<typeof useEditor>>(null)
-    
+
     useEffect(() => {
       onChangeRef.current = onChange
       onPastedImagesChangeRef.current = onPastedImagesChange
       onAttachmentsChangeRef.current = onAttachmentsChange
       onSendRef.current = onSend
     }, [onChange, onPastedImagesChange, onAttachmentsChange, onSend])
-    
+
     useImperativeHandle(ref, () => editorDivRef.current!)
 
     // 从 editor 提取附件
@@ -264,15 +275,15 @@ const RichTextInput = forwardRef<HTMLDivElement, RichTextInputProps>(
         editable: !disabled,
         onUpdate: ({ editor }) => {
           onChangeRef.current(editor.getText())
-          
+
           const attachments = extractAttachments(editor.state.doc)
           onAttachmentsChangeRef.current?.(attachments)
-          
+
           // 向后兼容：提取图片给 onPastedImagesChange
           onPastedImagesChangeRef.current(
             attachments
-              .filter(att => att.isImage)
-              .map(att => ({ id: att.id, dataUrl: att.data, name: att.name, size: att.size }))
+              .filter((att) => att.isImage)
+              .map((att) => ({ id: att.id, dataUrl: att.data, name: att.name, size: att.size }))
           )
         },
         editorProps: {
@@ -298,7 +309,7 @@ const RichTextInput = forwardRef<HTMLDivElement, RichTextInputProps>(
           },
           handlePaste: (_view, event) => {
             const files = Array.from(event.clipboardData?.items || [])
-              .map(item => item.getAsFile())
+              .map((item) => item.getAsFile())
               .filter((file): file is File => file !== null)
 
             if (files.length > 0) {
@@ -306,14 +317,14 @@ const RichTextInput = forwardRef<HTMLDivElement, RichTextInputProps>(
               files.forEach(handleFile)
               return true
             }
-            
+
             return false
           }
         }
       },
       [placeholder, disabled]
     )
-    
+
     // 保存 editor 引用
     useEffect(() => {
       editorRef.current = editor
@@ -322,19 +333,19 @@ const RichTextInput = forwardRef<HTMLDivElement, RichTextInputProps>(
     // 同步外部 value 变化
     useEffect(() => {
       if (!editor) return
-      
+
       const currentText = editor.getText()
-      
+
       // 清空
       if (!value && currentText) {
         editor.commands.clearContent()
         return
       }
-      
+
       // 同步内容（处理换行）
       if (value && currentText !== value) {
         // 将 \n 转换为 TipTap 段落结构
-        const content = value.split('\n').map(line => {
+        const content = value.split('\n').map((line) => {
           if (!line) {
             return { type: 'paragraph' }
           }
@@ -343,11 +354,11 @@ const RichTextInput = forwardRef<HTMLDivElement, RichTextInputProps>(
             content: [{ type: 'text', text: line }]
           }
         })
-        
+
         editor.commands.setContent(content)
       }
     }, [editor, value])
-    
+
     // 自动聚焦
     useEffect(() => {
       if (editor && autoFocus) {
@@ -363,22 +374,25 @@ const RichTextInput = forwardRef<HTMLDivElement, RichTextInputProps>(
     }
 
     // 处理拖放
-    const handleDrop = useCallback((e: React.DragEvent) => {
-      e.preventDefault()
-      if (!disabled) {
-        Array.from(e.dataTransfer.files).forEach(handleFile)
-      }
-    }, [disabled, handleFile])
+    const handleDrop = useCallback(
+      (e: React.DragEvent) => {
+        e.preventDefault()
+        if (!disabled) {
+          Array.from(e.dataTransfer.files).forEach(handleFile)
+        }
+      },
+      [disabled, handleFile]
+    )
 
     const handleDragOver = useCallback((e: React.DragEvent) => {
       e.preventDefault()
     }, [])
 
     return (
-      <div 
-        ref={editorDivRef} 
+      <div
+        ref={editorDivRef}
         data-slot="rich-text-input"
-        className={cn('flex-1 w-full cursor-text', className)} 
+        className={cn('flex-1 w-full cursor-text', className)}
         style={style}
         onClick={handleContainerClick}
         onDrop={handleDrop}

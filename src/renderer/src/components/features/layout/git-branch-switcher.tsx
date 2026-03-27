@@ -28,11 +28,11 @@ export function GitBranchSwitcher({
   // Store - 精确订阅
   const workspaceRoot = useWorkspaceStore((state) => state.workspaceRoot)
   const setActiveLeftTab = useWorkspaceUIStore((state) => state.setActiveLeftTab)
-  
+
   // 从全局 Git Store 读取状态
   const isGitRepo = useGitStore((state) => state.isGitRepo)
   const currentBranch = useGitStore((state) => state.currentBranch)
-  
+
   const [showNewBranchDialog, setShowNewBranchDialog] = useState(false)
   const [showStashDialog, setShowStashDialog] = useState(false)
   const branchMenuRef = useRef<GitBranchMenuRef>(null)
@@ -69,7 +69,7 @@ export function GitBranchSwitcher({
             className="h-7 gap-1.5 px-2 text-xs font-normal hover:bg-accent"
           >
             <GitBranch className="size-3.5" />
-            <span className={cn("max-w-[120px] truncate", !currentBranch && "opacity-70")}>
+            <span className={cn('max-w-[120px] truncate', !currentBranch && 'opacity-70')}>
               {currentBranch || t('git.no_branch')}
             </span>
             <ChevronDown className="size-3.5 opacity-50" />

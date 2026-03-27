@@ -57,9 +57,7 @@ export const useChatStore = create<ChatState>((set) => ({
       const newSessions = state.sessions.filter((s) => s.id !== sessionId)
       const newOpenIds = state.openSessionIds.filter((id) => id !== sessionId)
       const newCurrentId =
-        state.currentSessionId === sessionId
-          ? (newOpenIds[0] || null)
-          : state.currentSessionId
+        state.currentSessionId === sessionId ? newOpenIds[0] || null : state.currentSessionId
       return {
         sessions: newSessions,
         openSessionIds: newOpenIds,
@@ -88,10 +86,8 @@ export const useChatStore = create<ChatState>((set) => ({
   closeSessionTab: (sessionId) =>
     set((state) => {
       const newOpenIds = state.openSessionIds.filter((id) => id !== sessionId)
-      const newCurrentId = 
-        state.currentSessionId === sessionId 
-          ? (newOpenIds[0] || null) 
-          : state.currentSessionId
+      const newCurrentId =
+        state.currentSessionId === sessionId ? newOpenIds[0] || null : state.currentSessionId
       return {
         openSessionIds: newOpenIds,
         currentSessionId: newCurrentId
@@ -128,8 +124,8 @@ export const useChatStore = create<ChatState>((set) => ({
               ...s,
               ...(updates.messages && { messages: updates.messages }),
               ...(updates.title && { title: updates.title }),
-              ...(updates.metadata && { 
-                metadata: { ...s.metadata, ...updates.metadata } 
+              ...(updates.metadata && {
+                metadata: { ...s.metadata, ...updates.metadata }
               })
             }
           : s

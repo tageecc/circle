@@ -22,7 +22,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { PROVIDERS, getProvider } from '@/constants/providers'
-import { MODELS_DATABASE, getModelsByProvider, type ModelInfo } from '@/constants/models'
+import { getModelsByProvider, getModelInfo } from '@/constants/models'
 import { cn } from '@/lib/utils'
 
 interface ModelConfig {
@@ -60,26 +60,22 @@ export function ModelsSettingsContent() {
     loadModels()
   }, [])
 
-  // Get available models for selected provider
   const availableModels = useMemo(() => {
-    if (!selectedProvider) return []
-    const providerModels = getModelsByProvider(selectedProvider)
-    return providerModels
+    return selectedProvider ? getModelsByProvider(selectedProvider) : []
   }, [selectedProvider])
 
-  // Filtered providers by search query
   const filteredProviders = useMemo(() => {
     if (!searchQuery) return PROVIDERS
     const q = searchQuery.toLowerCase()
     return PROVIDERS.filter(
-      p => p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q)
+      (p) => p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q)
     )
   }, [searchQuery])
 
   // Group models by provider
   const modelsByProvider = useMemo(() => {
     const groups: Record<string, ModelConfig[]> = {}
-    models.forEach(model => {
+    models.forEach((model) => {
       if (!groups[model.providerId]) {
         groups[model.providerId] = []
       }
@@ -126,12 +122,12 @@ export function ModelsSettingsContent() {
     }
   }
 
-  // Reset add dialog
   const resetAddDialog = () => {
     setSelectedProvider('')
     setSelectedModelId('')
     setCustomModelId('')
     setDisplayName('')
+    setSearchQuery('')
   }
 
   // Handle delete model
@@ -158,17 +154,10 @@ export function ModelsSettingsContent() {
     }
   }
 
-  // Get model info
-  const getModelInfo = (modelId: string): ModelInfo | undefined => {
-    return MODELS_DATABASE.find(m => m.id === modelId)
-  }
-
-  // Format context window
   const formatContextWindow = (contextWindow: number): string => {
-    if (contextWindow >= 1000000) {
-      return `${(contextWindow / 1000000).toFixed(1)}M`
-    }
-    return `${Math.round(contextWindow / 1000)}K`
+    return contextWindow >= 1000000
+      ? `${(contextWindow / 1000000).toFixed(1)}M`
+      : `${Math.round(contextWindow / 1000)}K`
   }
 
   return (
@@ -187,9 +176,7 @@ export function ModelsSettingsContent() {
       {models.length === 0 ? (
         <div className="flex flex-1 items-center justify-center">
           <div className="text-center">
-            <p className="mb-4 text-sm text-muted-foreground">
-              {t('models_settings.no_models')}
-            </p>
+            <p className="mb-4 text-sm text-muted-foreground">{t('models_settings.no_models')}</p>
             <Button onClick={() => setIsAddDialogOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               {t('models_settings.add_first_model')}
@@ -217,7 +204,7 @@ export function ModelsSettingsContent() {
                 </div>
 
                 <div className="space-y-2">
-                  {providerModels.map(model => {
+                  {providerModels.map((model) => {
                     const modelInfo = getModelInfo(model.modelId)
                     return (
                       <div
@@ -301,7 +288,7 @@ export function ModelsSettingsContent() {
               <Input
                 placeholder={t('models_settings.search_provider')}
                 value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="mb-2"
               />
               <Select value={selectedProvider} onValueChange={setSelectedProvider}>
@@ -310,7 +297,7 @@ export function ModelsSettingsContent() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    {filteredProviders.map(provider => (
+                    {filteredProviders.map((provider) => (
                       <SelectItem key={provider.id} value={provider.id}>
                         {provider.name}
                       </SelectItem>
@@ -332,13 +319,13 @@ export function ModelsSettingsContent() {
                       </SelectTrigger>
                       <SelectContent className="max-h-[300px]">
                         <SelectGroup>
-                          {availableModels.map(model => (
+                          {availableModels.map((model) => (
                             <SelectItem key={model.id} value={model.id}>
                               <div className="flex flex-col items-start">
                                 <span className="font-mono text-sm">{model.id}</span>
                                 <span className="text-xs text-muted-foreground">
-                                  {formatContextWindow(model.contextWindow)} •{' '}
-                                  ${model.cost.input}/{model.cost.output}
+                                  {formatContextWindow(model.contextWindow)} • ${model.cost.input}/
+                                  {model.cost.output}
                                 </span>
                               </div>
                             </SelectItem>
@@ -354,7 +341,7 @@ export function ModelsSettingsContent() {
                 <Input
                   placeholder={t('models_settings.custom_model_id')}
                   value={customModelId}
-                  onChange={e => setCustomModelId(e.target.value)}
+                  onChange={(e) => setCustomModelId(e.target.value)}
                   disabled={!!selectedModelId}
                 />
               </div>
@@ -366,7 +353,7 @@ export function ModelsSettingsContent() {
               <Input
                 placeholder={t('models_settings.display_name_placeholder')}
                 value={displayName}
-                onChange={e => setDisplayName(e.target.value)}
+                onChange={(e) => setDisplayName(e.target.value)}
               />
             </div>
           </div>

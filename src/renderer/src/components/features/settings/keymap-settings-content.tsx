@@ -246,7 +246,9 @@ export function KeymapSettingsContent() {
                           className="flex items-center justify-between px-4 py-3 hover:bg-accent/50 group transition-colors"
                         >
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-sm font-medium">{t(commandLabelKey(cmd.id))}</span>
+                            <span className="text-sm font-medium">
+                              {t(commandLabelKey(cmd.id))}
+                            </span>
                             <span className="text-xs text-muted-foreground font-mono">
                               {cmd.id}
                             </span>
@@ -271,7 +273,9 @@ export function KeymapSettingsContent() {
                                   </React.Fragment>
                                 ))
                               ) : (
-                                <span className="text-xs italic">{t('keymaps.click_set_binding')}</span>
+                                <span className="text-xs italic">
+                                  {t('keymaps.click_set_binding')}
+                                </span>
                               )}
                               <KeyboardIcon className="h-3 w-3 ml-2 opacity-0 group-hover:opacity-50" />
                             </button>
@@ -304,11 +308,7 @@ export function KeymapSettingsContent() {
             <DialogTitle>{t('keymaps.dialog.shortcut_title')}</DialogTitle>
             <DialogDescription>
               {t('keymaps.dialog.shortcut_desc_prefix')}{' '}
-              <b>
-                {editingCommand
-                  ? t(commandLabelKey(editingCommand))
-                  : ''}
-              </b>{' '}
+              <b>{editingCommand ? t(commandLabelKey(editingCommand)) : ''}</b>{' '}
               {t('keymaps.dialog.shortcut_desc_suffix')}
               <br />
               {t('keymaps.dialog.shortcut_hint')}

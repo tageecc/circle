@@ -194,12 +194,12 @@ function createWindow(): void {
 function initializeFirstLaunch(): void {
   const db = getDb()
   const isFirstLaunch = !db.getConfig('app_initialized', false)
-  
+
   if (isFirstLaunch) {
     console.log('🎉 First launch detected, initializing default data...')
-    
+
     db.addUserRule('rule_default_zh', 'Always respond in 中文')
-    
+
     // 初始化默认的 files.exclude 规则
     const defaultFilesExclude = {
       '**/.git': true,
@@ -212,9 +212,9 @@ function initializeFirstLaunch(): void {
     for (const [pattern, enabled] of Object.entries(defaultFilesExclude)) {
       db.setFilesExclude(pattern, enabled)
     }
-    
+
     db.setConfig('app_initialized', true)
-    
+
     console.log('✅ First launch initialization completed')
   }
 }
@@ -344,11 +344,11 @@ app.on('will-quit', async (event) => {
   event.preventDefault()
 
   // ✅ 记录所有活跃的句柄
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   logWithTime(
     `🔍 [Quit] Active handles: ${(process as any)._getActiveHandles?.().length || 'unknown'}`
   )
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   logWithTime(
     `🔍 [Quit] Active requests: ${(process as any)._getActiveRequests?.().length || 'unknown'}`
   )

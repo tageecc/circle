@@ -129,23 +129,27 @@ declare global {
         setServiceSettings: (settings: any) => Promise<{ success: boolean }>
       }
       memory: {
-        getAll: () => Promise<Array<{
-          id: string
-          content: string
-          createdAt: Date
-          updatedAt: Date
-        }>>
+        getAll: () => Promise<
+          Array<{
+            id: string
+            content: string
+            createdAt: Date
+            updatedAt: Date
+          }>
+        >
         create: (content: string) => Promise<{ success: boolean; id: string }>
         update: (id: string, content: string) => Promise<{ success: boolean }>
         delete: (id: string) => Promise<{ success: boolean }>
       }
       userRule: {
-        getAll: () => Promise<Array<{
-          id: string
-          content: string
-          createdAt: number
-          updatedAt: number
-        }>>
+        getAll: () => Promise<
+          Array<{
+            id: string
+            content: string
+            createdAt: number
+            updatedAt: number
+          }>
+        >
         create: (content: string) => Promise<{ success: boolean; id: string }>
         update: (id: string, content: string) => Promise<{ success: boolean }>
         delete: (id: string) => Promise<{ success: boolean }>
@@ -904,33 +908,40 @@ declare global {
         delete: (skillPath: string) => Promise<{ success: boolean }>
       }
       modelConfig: {
-        getAll: () => Promise<Array<{
-          id: string
-          providerId: string
-          modelId: string
-          displayName: string | null
-          isDefault: boolean
-          createdAt: Date
-          updatedAt: Date
-        }>>
-        getByProvider: (providerId: string) => Promise<Array<{
-          id: string
-          providerId: string
-          modelId: string
-          displayName: string | null
-          isDefault: boolean
-          createdAt: Date
-          updatedAt: Date
-        }>>
-        getDefault: () => Promise<{
-          id: string
-          providerId: string
-          modelId: string
-          displayName: string | null
-          isDefault: boolean
-          createdAt: Date
-          updatedAt: Date
-        } | undefined>
+        getAll: () => Promise<
+          Array<{
+            id: string
+            providerId: string
+            modelId: string
+            displayName: string | null
+            isDefault: boolean
+            createdAt: Date
+            updatedAt: Date
+          }>
+        >
+        getByProvider: (providerId: string) => Promise<
+          Array<{
+            id: string
+            providerId: string
+            modelId: string
+            displayName: string | null
+            isDefault: boolean
+            createdAt: Date
+            updatedAt: Date
+          }>
+        >
+        getDefault: () => Promise<
+          | {
+              id: string
+              providerId: string
+              modelId: string
+              displayName: string | null
+              isDefault: boolean
+              createdAt: Date
+              updatedAt: Date
+            }
+          | undefined
+        >
         add: (input: {
           providerId: string
           modelId: string
@@ -945,13 +956,7 @@ declare global {
           createdAt: Date
           updatedAt: Date
         }>
-        update: (
-          id: string,
-          updates: {
-            displayName?: string
-            isDefault?: boolean
-          }
-        ) => Promise<{ success: boolean }>
+        update: (id: string, displayName: string) => Promise<{ success: boolean }>
         setDefault: (id: string) => Promise<{ success: boolean }>
         delete: (id: string) => Promise<{ success: boolean }>
         exists: (providerId: string, modelId: string) => Promise<boolean>

@@ -10,7 +10,13 @@ import matter from 'gray-matter'
 import { getDb } from '../database/db'
 import { skillPreferences } from '../database/schema'
 import { eq, inArray } from 'drizzle-orm'
-import type { SkillDefinition, SkillMetadata, SkillScope, SkillScanResult, FailedSkill } from '../types/skills'
+import type {
+  SkillDefinition,
+  SkillMetadata,
+  SkillScope,
+  SkillScanResult,
+  FailedSkill
+} from '../types/skills'
 import { ConfigService } from './config.service'
 import { DEFAULT_SKILL_SCAN_DIRECTORIES } from '../constants/skills.constants'
 
@@ -38,7 +44,10 @@ export class SkillsService {
     // 1. 用户级技能（全局）
     for (const dir of scanDirs) {
       const userDir = path.join(os.homedir(), dir, 'skills')
-      const { skills: userSkills, failedSkills: userFailedSkills } = await this.scanDir(userDir, 'user')
+      const { skills: userSkills, failedSkills: userFailedSkills } = await this.scanDir(
+        userDir,
+        'user'
+      )
       skills.push(...userSkills)
       failedSkills.push(...userFailedSkills)
     }
@@ -47,7 +56,10 @@ export class SkillsService {
     if (projectPath) {
       for (const dir of scanDirs) {
         const projectDir = path.join(projectPath, dir, 'skills')
-        const { skills: projectSkills, failedSkills: projectFailedSkills } = await this.scanDir(projectDir, 'project')
+        const { skills: projectSkills, failedSkills: projectFailedSkills } = await this.scanDir(
+          projectDir,
+          'project'
+        )
         skills.push(...projectSkills)
         failedSkills.push(...projectFailedSkills)
       }
@@ -55,8 +67,11 @@ export class SkillsService {
 
     // 去重：保留最后遇到的（即项目级优先）
     // 注意：成功和失败的 skills 需要一起去重，因为同名 skill 可能在不同 scope 有不同状态
-    const { deduplicatedSkills, deduplicatedFailedSkills } = this.deduplicateAll(skills, failedSkills)
-    
+    const { deduplicatedSkills, deduplicatedFailedSkills } = this.deduplicateAll(
+      skills,
+      failedSkills
+    )
+
     await this.loadEnabledStates(deduplicatedSkills)
     await this.cleanOrphans(deduplicatedSkills.map((s) => s.skillPath))
 
@@ -66,7 +81,10 @@ export class SkillsService {
     }
   }
 
-  private async scanDir(dirPath: string, scope: SkillScope): Promise<{ skills: SkillDefinition[], failedSkills: FailedSkill[] }> {
+  private async scanDir(
+    dirPath: string,
+    scope: SkillScope
+  ): Promise<{ skills: SkillDefinition[]; failedSkills: FailedSkill[] }> {
     const skills: SkillDefinition[] = []
     const failedSkills: FailedSkill[] = []
 
@@ -78,7 +96,7 @@ export class SkillsService {
 
         const skillPath = path.join(dirPath, entry.name)
         const result = await this.parseSkill(skillPath, scope)
-        
+
         if (result.success) {
           skills.push(result.skill)
         } else if (result.error) {
@@ -99,7 +117,9 @@ export class SkillsService {
   private async parseSkill(
     skillPath: string,
     scope: SkillScope
-  ): Promise<{ success: true; skill: SkillDefinition } | { success: false; error: FailedSkill | null }> {
+  ): Promise<
+    { success: true; skill: SkillDefinition } | { success: false; error: FailedSkill | null }
+  > {
     try {
       const skillMdPath = path.join(skillPath, 'SKILL.md')
       const content = await fs.readFile(skillMdPath, 'utf-8')
@@ -129,7 +149,7 @@ export class SkillsService {
       }
     } catch (error) {
       const errorCode = (error as NodeJS.ErrnoException).code
-      
+
       // SKILL.md 不存在是正常的（可能是其他文件夹），返回 null 表示跳过
       if (errorCode === 'ENOENT') {
         return { success: false, error: null }
@@ -138,9 +158,9 @@ export class SkillsService {
       // 其他错误（如 YAML 解析错误）记录为失败的 skill
       const errorMessage = error instanceof Error ? error.message : String(error)
       const errorName = error instanceof Error ? error.name : 'Error'
-      
+
       console.error(`[Skills] Failed to parse skill at ${skillPath}:`, error)
-      
+
       return {
         success: false,
         error: {
@@ -192,13 +212,10 @@ export class SkillsService {
     console.log(`[Skills] Toggle skill: ${skillPath} -> ${enabled}`)
     const db = getDb().getDb()
 
-    await db
-      .insert(skillPreferences)
-      .values({ skillPath, enabled })
-      .onConflictDoUpdate({
-        target: skillPreferences.skillPath,
-        set: { enabled }
-      })
+    await db.insert(skillPreferences).values({ skillPath, enabled }).onConflictDoUpdate({
+      target: skillPreferences.skillPath,
+      set: { enabled }
+    })
   }
 
   async deleteSkill(skillPath: string): Promise<void> {
@@ -215,13 +232,16 @@ export class SkillsService {
   ): { deduplicatedSkills: SkillDefinition[]; deduplicatedFailedSkills: FailedSkill[] } {
     // 按 skill 名称去重（从路径提取）
     // 规则：项目级优先于用户级，无论成功或失败
-    const seenNames = new Map<string, { type: 'success' | 'failed'; data: SkillDefinition | FailedSkill }>()
+    const seenNames = new Map<
+      string,
+      { type: 'success' | 'failed'; data: SkillDefinition | FailedSkill }
+    >()
 
     // 先处理用户级（全局）
-    for (const skill of skills.filter(s => s.scope === 'user')) {
+    for (const skill of skills.filter((s) => s.scope === 'user')) {
       seenNames.set(skill.metadata.name, { type: 'success', data: skill })
     }
-    for (const failedSkill of failedSkills.filter(s => s.scope === 'user')) {
+    for (const failedSkill of failedSkills.filter((s) => s.scope === 'user')) {
       const skillName = failedSkill.skillPath.split('/').pop() || failedSkill.skillPath
       if (!seenNames.has(skillName)) {
         seenNames.set(skillName, { type: 'failed', data: failedSkill })
@@ -229,10 +249,10 @@ export class SkillsService {
     }
 
     // 再处理项目级（覆盖用户级）
-    for (const skill of skills.filter(s => s.scope === 'project')) {
+    for (const skill of skills.filter((s) => s.scope === 'project')) {
       seenNames.set(skill.metadata.name, { type: 'success', data: skill })
     }
-    for (const failedSkill of failedSkills.filter(s => s.scope === 'project')) {
+    for (const failedSkill of failedSkills.filter((s) => s.scope === 'project')) {
       const skillName = failedSkill.skillPath.split('/').pop() || failedSkill.skillPath
       seenNames.set(skillName, { type: 'failed', data: failedSkill })
     }

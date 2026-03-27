@@ -40,7 +40,7 @@ function extractEditContent(result: any): { oldContent: string; newContent: stri
       return { oldContent: '', newContent: '' }
     }
   }
-  
+
   return {
     oldContent: result?.oldContent || '',
     newContent: result?.newContent || ''
@@ -137,16 +137,16 @@ export function ToolCall({
   // 计算初始展开状态（useState 惰性初始化）
   const [isExpanded, setIsExpanded] = useState(() => {
     if (isLatest) return true
-    
+
     // edit_file 工具：如果有 result（已完成），默认展开
     if (tool.name === 'edit_file' && tool.result) {
       const { oldContent, newContent } = extractEditContent(tool.result)
       return !!(oldContent || newContent)
     }
-    
+
     return false
   })
-  
+
   const { terminalSettings } = useSettings()
   const { t } = useTranslation()
 
@@ -176,7 +176,7 @@ export function ToolCall({
 
     // ✨ 使用本地状态实现平滑进度动画，最小展示 1200ms
     const [animationState, setAnimationState] = useState<'init' | 'loading' | 'complete' | 'done'>(
-      isHistoryMessage ? 'done' : 'init'  // ✅ 历史消息直接显示完成状态
+      isHistoryMessage ? 'done' : 'init' // ✅ 历史消息直接显示完成状态
     )
     const [progress, setProgress] = useState(isHistoryMessage ? 100 : 0)
     const animationStarted = useRef(false)
@@ -236,8 +236,8 @@ export function ToolCall({
           hasError
             ? 'border-destructive/50 bg-destructive/5'
             : isLoading
-            ? 'border-primary/20 bg-muted/30'
-            : 'border-border/50 bg-muted/20',
+              ? 'border-primary/20 bg-muted/30'
+              : 'border-border/50 bg-muted/20',
           className
         )}
       >
@@ -534,7 +534,11 @@ export function ToolCall({
                     <pre
                       className={cn(
                         'text-xs font-mono whitespace-pre-wrap overflow-x-auto max-h-[300px] overflow-y-auto',
-                        exitCode === 130 ? 'text-orange-500' : hasError ? 'text-destructive' : 'text-foreground/80'
+                        exitCode === 130
+                          ? 'text-orange-500'
+                          : hasError
+                            ? 'text-destructive'
+                            : 'text-foreground/80'
                       )}
                     >
                       {cleanedFinalOutput}
@@ -784,13 +788,14 @@ export function ToolCall({
     const filePath = tool.args?.file_path || tool.args?.target_file
     const fileName = getFileNameFromPath(filePath)
     const result = tool.result || {}
-    
+
     // 提取内容
     const { oldContent: oldString, newContent: newString } = extractEditContent(result)
     const hasCodeSnippet = !!(oldString || newString)
-    
+
     // 从 result.stats 获取准确的统计信息（后端已计算）
-    const stats = typeof result === 'object' && result.stats ? result.stats : { linesAdded: 0, linesRemoved: 0 }
+    const stats =
+      typeof result === 'object' && result.stats ? result.stats : { linesAdded: 0, linesRemoved: 0 }
 
     return (
       <div

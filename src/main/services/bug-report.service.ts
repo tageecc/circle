@@ -18,7 +18,10 @@ export class BugReportService {
     await fs.mkdir(dir, { recursive: true })
 
     const stamp = new Date().toISOString().replace(/[:.]/g, '-')
-    const safeTitle = title.trim().replace(/[^\w\u4e00-\u9fa5\-]+/g, '_').slice(0, 48)
+    const safeTitle = title
+      .trim()
+      .replace(/[^\w\u4e00-\u9fa5\-]+/g, '_')
+      .slice(0, 48)
     const filePath = path.join(dir, `${stamp}_${safeTitle}.md`)
 
     const body = `---

@@ -51,7 +51,9 @@ export function EditorStatusIndicator() {
               <div className="font-medium">
                 {t('editor_status.reopened_with_encoding', { encoding })}
               </div>
-              <div className="text-xs text-muted-foreground">{t('editor_status.reopen_save_hint')}</div>
+              <div className="text-xs text-muted-foreground">
+                {t('editor_status.reopen_save_hint')}
+              </div>
             </div>
           )
         } else if (action === 'save-as') {
@@ -353,7 +355,9 @@ export function EditorStatusIndicator() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
           <div className="px-2 py-1.5">
-            <div className="text-xs font-semibold mb-1">{t('editor_status.select_line_ending')}</div>
+            <div className="text-xs font-semibold mb-1">
+              {t('editor_status.select_line_ending')}
+            </div>
             <div className="text-[10px] text-muted-foreground">
               {t('editor_status.line_ending_convert_now')}
             </div>

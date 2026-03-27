@@ -163,13 +163,12 @@ export function CodebaseIndexStatus({
             const changedCount = (result.newFiles || 0) + (result.modifiedFiles || 0)
 
             if (changedCount === 0 && (result.unchangedFiles || 0) > 0) {
-              toast.success(
-                t('codebase_index.toast_fully_unchanged', { count: result.totalFiles })
-              )
+              toast.success(t('codebase_index.toast_fully_unchanged', { count: result.totalFiles }))
             } else {
               const sep = t('codebase_index.list_separator')
               const parts: string[] = []
-              if (result.newFiles) parts.push(t('codebase_index.part_new', { count: result.newFiles }))
+              if (result.newFiles)
+                parts.push(t('codebase_index.part_new', { count: result.newFiles }))
               if (result.modifiedFiles) {
                 parts.push(t('codebase_index.part_modified', { count: result.modifiedFiles }))
               }
@@ -287,7 +286,9 @@ export function CodebaseIndexStatus({
             {isIndexing ? (
               <>
                 <Loader2 className="size-3 animate-spin" />
-                <span>{t('codebase_index.indexing_percent', { percent: Math.round(progress) })}</span>
+                <span>
+                  {t('codebase_index.indexing_percent', { percent: Math.round(progress) })}
+                </span>
               </>
             ) : indexInfo ? (
               <>

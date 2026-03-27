@@ -872,15 +872,12 @@ export function GitCommitPanel({
                     <RefreshCw className="size-4 mr-2" />
                     Commit & Sync
                   </DropdownMenuItem>
-                  
+
                   {/* 分隔线 */}
                   <div className="my-1 h-px bg-border" />
-                  
+
                   {/* 独立的 Push/Pull 操作 - 随时可用 */}
-                  <DropdownMenuItem
-                    onClick={handlePushWithRemoteCheck}
-                    disabled={!status}
-                  >
+                  <DropdownMenuItem onClick={handlePushWithRemoteCheck} disabled={!status}>
                     <ArrowRight className="size-4 mr-2 -rotate-90" />
                     Push{status?.ahead ? ` (${status.ahead})` : ''}
                   </DropdownMenuItem>
