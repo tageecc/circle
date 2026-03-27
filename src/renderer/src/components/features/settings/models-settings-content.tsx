@@ -380,12 +380,18 @@ export function ModelsSettingsContent() {
                         align="start" 
                         className="w-[var(--radix-popover-trigger-width)] p-0"
                         onOpenAutoFocus={(e) => e.preventDefault()}
+                        onWheel={(e) => {
+                          e.stopPropagation()
+                        }}
                       >
                         <div 
                           className="max-h-[300px] overflow-y-auto p-2"
                           style={{ 
                             overscrollBehavior: 'contain',
                             WebkitOverflowScrolling: 'touch'
+                          }}
+                          onWheel={(e) => {
+                            e.stopPropagation()
                           }}
                         >
                           {availableModels.map((model) => (
