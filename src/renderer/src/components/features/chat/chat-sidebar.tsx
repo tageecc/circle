@@ -79,7 +79,6 @@ export function ChatSidebar({
     }
   }, [currentSession])
 
-
   // 消息处理
   const { isStreaming, sendMessage, stopStreaming, onApprovalDecision } = useChatMessages(
     currentSessionId,

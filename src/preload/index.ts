@@ -852,17 +852,9 @@ const api = {
 
   modelConfig: {
     getAll: () => ipcRenderer.invoke('model-config:getAll'),
-    getByProvider: (providerId: string) =>
-      ipcRenderer.invoke('model-config:getByProvider', providerId),
     getDefault: () => ipcRenderer.invoke('model-config:getDefault'),
-    add: (input: {
-      providerId: string
-      modelId: string
-      displayName?: string
-      isDefault?: boolean
-    }) => ipcRenderer.invoke('model-config:add', input),
-    update: (id: string, displayName: string) =>
-      ipcRenderer.invoke('model-config:update', id, displayName),
+    add: (input: { providerId: string; modelId: string; isDefault?: boolean }) =>
+      ipcRenderer.invoke('model-config:add', input),
     setDefault: (id: string) => ipcRenderer.invoke('model-config:setDefault', id),
     delete: (id: string) => ipcRenderer.invoke('model-config:delete', id),
     exists: (providerId: string, modelId: string) =>
@@ -870,7 +862,6 @@ const api = {
   },
   providerApiKey: {
     get: (providerId: string) => ipcRenderer.invoke('provider-api-key:get', providerId),
-    getAll: () => ipcRenderer.invoke('provider-api-key:getAll'),
     set: (input: { providerId: string; apiKey: string; baseURL?: string }) =>
       ipcRenderer.invoke('provider-api-key:set', input),
     delete: (providerId: string) => ipcRenderer.invoke('provider-api-key:delete', providerId)

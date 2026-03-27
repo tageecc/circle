@@ -30,7 +30,6 @@ interface ModelConfig {
   id: string
   providerId: string
   modelId: string
-  displayName: string | null
   isDefault: boolean
   createdAt: Date
   updatedAt: Date
@@ -229,7 +228,7 @@ export function ModelsSettingsContent() {
                         <div className="flex-1 space-y-1">
                           <div className="flex items-center gap-2">
                             <span className="font-mono text-sm font-medium">
-                              {model.displayName || model.modelId}
+                              {modelInfo?.name || model.modelId}
                             </span>
                             {model.isDefault && (
                               <Star className="h-3 w-3 fill-primary text-primary" />
@@ -246,11 +245,6 @@ export function ModelsSettingsContent() {
                                   Reasoning
                                 </span>
                               )}
-                            </div>
-                          )}
-                          {!modelInfo && model.displayName !== model.modelId && (
-                            <div className="font-mono text-xs text-muted-foreground">
-                              {model.modelId}
                             </div>
                           )}
                         </div>
@@ -373,17 +367,17 @@ export function ModelsSettingsContent() {
                       </div>
                     </PopoverTrigger>
                     {availableModels.length > 0 && (
-                      <PopoverContent 
-                        align="start" 
+                      <PopoverContent
+                        align="start"
                         className="w-[var(--radix-popover-trigger-width)] p-0"
                         onOpenAutoFocus={(e) => e.preventDefault()}
                         onWheel={(e) => {
                           e.stopPropagation()
                         }}
                       >
-                        <div 
+                        <div
                           className="max-h-[300px] overflow-y-auto p-2"
-                          style={{ 
+                          style={{
                             overscrollBehavior: 'contain',
                             WebkitOverflowScrolling: 'touch'
                           }}
@@ -404,8 +398,8 @@ export function ModelsSettingsContent() {
                             >
                               <span className="font-mono text-sm font-medium">{model.id}</span>
                               <span className="text-xs text-muted-foreground">
-                                {formatContextWindow(model.contextWindow)} • $
-                                {model.cost.input}/{model.cost.output}
+                                {formatContextWindow(model.contextWindow)} • ${model.cost.input}/
+                                {model.cost.output}
                               </span>
                             </button>
                           ))}

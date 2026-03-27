@@ -262,7 +262,7 @@ async function initializeBackend(): Promise<boolean> {
     // Register Model Config handlers
     console.log('🔄 Registering Model Config handlers...')
     registerModelConfigHandlers()
-  registerProviderApiKeyHandlers()
+    registerProviderApiKeyHandlers()
     console.log('✅ Model Config handlers registered')
 
     console.log('✅ Backend initialized successfully')

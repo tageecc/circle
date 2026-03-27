@@ -10,10 +10,6 @@ export function registerModelConfigHandlers() {
     return await modelConfigService.getAllModels()
   })
 
-  ipcMain.handle('model-config:getByProvider', async (_, providerId: string) => {
-    return await modelConfigService.getModelsByProvider(providerId)
-  })
-
   ipcMain.handle('model-config:getDefault', async () => {
     return await modelConfigService.getDefaultModel()
   })
@@ -25,18 +21,12 @@ export function registerModelConfigHandlers() {
       input: {
         providerId: string
         modelId: string
-        displayName?: string
         isDefault?: boolean
       }
     ) => {
       return await modelConfigService.addModel(input)
     }
   )
-
-  ipcMain.handle('model-config:update', async (_, id: string, displayName: string) => {
-    await modelConfigService.updateModel(id, displayName)
-    return { success: true }
-  })
 
   ipcMain.handle('model-config:setDefault', async (_, id: string) => {
     await modelConfigService.setDefault(id)

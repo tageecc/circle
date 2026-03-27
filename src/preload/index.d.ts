@@ -913,18 +913,6 @@ declare global {
             id: string
             providerId: string
             modelId: string
-            displayName: string | null
-            isDefault: boolean
-            createdAt: Date
-            updatedAt: Date
-          }>
-        >
-        getByProvider: (providerId: string) => Promise<
-          Array<{
-            id: string
-            providerId: string
-            modelId: string
-            displayName: string | null
             isDefault: boolean
             createdAt: Date
             updatedAt: Date
@@ -935,52 +923,36 @@ declare global {
               id: string
               providerId: string
               modelId: string
-              displayName: string | null
               isDefault: boolean
               createdAt: Date
               updatedAt: Date
             }
           | undefined
         >
-        add: (input: {
-          providerId: string
-          modelId: string
-          displayName?: string
-          isDefault?: boolean
-        }) => Promise<{
+        add: (input: { providerId: string; modelId: string; isDefault?: boolean }) => Promise<{
           id: string
           providerId: string
           modelId: string
-          displayName: string | null
           isDefault: boolean
           createdAt: Date
           updatedAt: Date
         }>
-        update: (id: string, displayName: string) => Promise<{ success: boolean }>
         setDefault: (id: string) => Promise<{ success: boolean }>
         delete: (id: string) => Promise<{ success: boolean }>
         exists: (providerId: string, modelId: string) => Promise<boolean>
       }
       providerApiKey: {
-        get: (providerId: string) => Promise<{
-          providerId: string
-          apiKey: string
-          baseURL: string | null
-          createdAt: Date
-          updatedAt: Date
-        } | undefined>
-        getAll: () => Promise<Array<{
-          providerId: string
-          apiKey: string
-          baseURL: string | null
-          createdAt: Date
-          updatedAt: Date
-        }>>
-        set: (input: {
-          providerId: string
-          apiKey: string
-          baseURL?: string
-        }) => Promise<{
+        get: (providerId: string) => Promise<
+          | {
+              providerId: string
+              apiKey: string
+              baseURL: string | null
+              createdAt: Date
+              updatedAt: Date
+            }
+          | undefined
+        >
+        set: (input: { providerId: string; apiKey: string; baseURL?: string }) => Promise<{
           providerId: string
           apiKey: string
           baseURL: string | null

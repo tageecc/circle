@@ -35,7 +35,6 @@ interface ModelConfig {
   id: string
   providerId: string
   modelId: string
-  displayName: string | null
   isDefault: boolean
   createdAt: Date
   updatedAt: Date
@@ -136,18 +135,12 @@ export function ChatInput({
   }, [])
 
   const hasConfiguredModels = configuredModels.length > 0
-  
+
   const selectedModelName = useMemo(() => {
     if (!hasConfiguredModels) return t('chat.no_model')
-    
-    const configModel = configuredModels.find(
-      (m) => m.providerId === selectedProvider && m.modelId === selectedModel
-    )
-    if (configModel?.displayName) return configModel.displayName
-
     const modelInfo = getModelInfo(selectedModel)
     return modelInfo?.name || selectedModel
-  }, [selectedProvider, selectedModel, configuredModels, hasConfiguredModels, t])
+  }, [selectedModel, hasConfiguredModels, t])
 
   const hasContent = value.trim() || pastedImages.length > 0 || attachments.length > 0
   const showStopButton = isSending && onStop && !hasContent
@@ -167,7 +160,7 @@ export function ChatInput({
         <RichTextInput
           placeholder={
             hasConfiguredModels
-              ? placeholder ?? t('chat.type_message')
+              ? (placeholder ?? t('chat.type_message'))
               : t('chat.configure_model_first')
           }
           value={value}
@@ -212,9 +205,7 @@ export function ChatInput({
                 </div>
               ) : configuredModels.length === 0 ? (
                 <div className="px-4 py-6 text-center space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    {t('chat.no_models_configured')}
-                  </p>
+                  <p className="text-sm text-muted-foreground">{t('chat.no_models_configured')}</p>
                   <Button
                     size="sm"
                     variant="outline"
@@ -248,12 +239,14 @@ export function ChatInput({
                         </DropdownMenuLabel>
                         {providerModels.map((model) => {
                           const modelInfo = getModelInfo(model.modelId)
-                          const displayName = model.displayName || modelInfo?.name || model.modelId
+                          const modelName = modelInfo?.name || model.modelId
                           const contextWindow = modelInfo?.contextWindow
                             ? modelInfo.contextWindow >= 1000000
                               ? `${(modelInfo.contextWindow / 1000000).toFixed(1)}M`
                               : `${Math.round(modelInfo.contextWindow / 1000)}K`
                             : null
+                          const isSelected =
+                            selectedProvider === model.providerId && selectedModel === model.modelId
 
                           return (
                             <DropdownMenuItem
@@ -261,15 +254,13 @@ export function ChatInput({
                               onSelect={() => handleModelChange(model.providerId, model.modelId)}
                               className={cn(
                                 'cursor-pointer px-3 py-3 focus:bg-accent/50',
-                                selectedProvider === model.providerId &&
-                                  selectedModel === model.modelId &&
-                                  'bg-accent/30'
+                                isSelected && 'bg-accent/30'
                               )}
                             >
                               <div className="flex w-full flex-col gap-1.5">
                                 <div className="flex items-center justify-between">
                                   <span className="text-sm font-medium text-foreground">
-                                    {displayName}
+                                    {modelName}
                                   </span>
                                   {contextWindow && (
                                     <span className="text-xs text-muted-foreground">

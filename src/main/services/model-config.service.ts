@@ -11,11 +11,6 @@ export class ModelConfigService {
     return db.select().from(modelConfigs).all()
   }
 
-  async getModelsByProvider(providerId: string): Promise<ModelConfig[]> {
-    const db = this.db.getDb()
-    return db.select().from(modelConfigs).where(eq(modelConfigs.providerId, providerId)).all()
-  }
-
   async getDefaultModel(): Promise<ModelConfig | undefined> {
     const db = this.db.getDb()
     return db.select().from(modelConfigs).where(eq(modelConfigs.isDefault, true)).get()
@@ -24,7 +19,6 @@ export class ModelConfigService {
   async addModel(input: {
     providerId: string
     modelId: string
-    displayName?: string
     isDefault?: boolean
   }): Promise<ModelConfig> {
     const db = this.db.getDb()
@@ -41,7 +35,6 @@ export class ModelConfigService {
       id: nanoid(),
       providerId: input.providerId,
       modelId: input.modelId,
-      displayName: input.displayName || null,
       isDefault: input.isDefault ?? false,
       createdAt: now,
       updatedAt: now
@@ -49,14 +42,6 @@ export class ModelConfigService {
 
     db.insert(modelConfigs).values(modelConfig).run()
     return modelConfig
-  }
-
-  async updateModel(id: string, displayName: string): Promise<void> {
-    const db = this.db.getDb()
-    db.update(modelConfigs)
-      .set({ displayName, updatedAt: new Date() })
-      .where(eq(modelConfigs.id, id))
-      .run()
   }
 
   async setDefault(id: string): Promise<void> {

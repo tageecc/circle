@@ -10,10 +10,6 @@ export function registerProviderApiKeyHandlers() {
     return await service.getApiKey(providerId)
   })
 
-  ipcMain.handle('provider-api-key:getAll', async () => {
-    return await service.getAllApiKeys()
-  })
-
   ipcMain.handle(
     'provider-api-key:set',
     async (_, input: { providerId: string; apiKey: string; baseURL?: string }) => {

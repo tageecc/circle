@@ -10,11 +10,6 @@ export class ProviderApiKeyService {
     return db.select().from(providerApiKeys).where(eq(providerApiKeys.providerId, providerId)).get()
   }
 
-  async getAllApiKeys(): Promise<ProviderApiKey[]> {
-    const db = this.db.getDb()
-    return db.select().from(providerApiKeys).all()
-  }
-
   async setApiKey(input: {
     providerId: string
     apiKey: string
@@ -23,13 +18,11 @@ export class ProviderApiKeyService {
     const db = this.db.getDb()
     const now = new Date()
 
-    const existing = await this.getApiKey(input.providerId)
-
     const apiKeyData: ProviderApiKey = {
       providerId: input.providerId,
       apiKey: input.apiKey,
       baseURL: input.baseURL || null,
-      createdAt: existing?.createdAt || now,
+      createdAt: now,
       updatedAt: now
     }
 
