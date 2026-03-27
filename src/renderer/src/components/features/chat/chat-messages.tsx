@@ -210,6 +210,8 @@ export function ChatMessages({
  * 空状态 - 当前会话无消息时显示
  */
 function EmptyState() {
+  const { t } = useTranslation()
+  
   return (
     <div className="flex h-full items-center justify-center px-6 py-12">
       <div className="text-center space-y-6 max-w-xs">
@@ -220,23 +222,23 @@ function EmptyState() {
           </div>
         </div>
         <div className="space-y-2">
-          <h3 className="text-base font-semibold text-foreground">开始与 AI 对话</h3>
+          <h3 className="text-base font-semibold text-foreground">{t('chat.welcome_title')}</h3>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            输入你的问题或想法，AI 助手将为你提供帮助
+            {t('chat.welcome_description')}
           </p>
         </div>
         <div className="space-y-2 pt-2">
           <div className="flex items-center gap-2 text-xs text-muted-foreground/80">
             <div className="size-1.5 rounded-full bg-primary/60" />
-            <span>智能代码分析</span>
+            <span>{t('chat.feature_code_analysis')}</span>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground/80">
             <div className="size-1.5 rounded-full bg-primary/60" />
-            <span>问题解答</span>
+            <span>{t('chat.feature_qa')}</span>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground/80">
             <div className="size-1.5 rounded-full bg-primary/60" />
-            <span>代码生成</span>
+            <span>{t('chat.feature_code_generation')}</span>
           </div>
         </div>
       </div>

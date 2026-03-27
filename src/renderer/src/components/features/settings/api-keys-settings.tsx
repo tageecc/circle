@@ -167,9 +167,9 @@ export function ApiKeysSettings() {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium">AI 配置</h3>
+        <h3 className="text-lg font-medium">{t('ai_config.title')}</h3>
         <p className="text-sm text-muted-foreground mt-1">
-          配置 API Keys 和向量搜索，以使用 AI 服务
+          {t('ai_config.api_keys_desc')}
         </p>
       </div>
 
@@ -190,7 +190,7 @@ export function ApiKeysSettings() {
                       {hasKey && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-600 dark:text-green-400">
                           <Check className="size-3" />
-                          已配置
+                          {t('ai_config.api_key_configured')}
                         </span>
                       )}
                     </CardTitle>
@@ -202,7 +202,7 @@ export function ApiKeysSettings() {
                     className="text-xs"
                     onClick={() => window.open(provider.docUrl, '_blank')}
                   >
-                    获取 API Key
+                    {t('ai_config.get_api_key')}
                   </Button>
                 </div>
               </CardHeader>
@@ -263,7 +263,7 @@ export function ApiKeysSettings() {
                   <div className="flex items-start gap-2 rounded-lg bg-muted/50 p-3 text-sm">
                     <AlertCircle className="size-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                     <div className="text-muted-foreground">
-                      未配置 API Key，将无法使用 {provider.name} 的模型
+                      {t('api_keys_settings.api_key_not_configured', { provider: provider.name })}
                     </div>
                   </div>
                 )}
@@ -274,15 +274,15 @@ export function ApiKeysSettings() {
       </div>
 
       <div className="border-t pt-6">
-        <h3 className="text-lg font-medium mb-4">向量语义搜索</h3>
+        <h3 className="text-lg font-medium mb-4">{t('ai_config.vector_search')}</h3>
 
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-base">启用向量搜索</CardTitle>
+                <CardTitle className="text-base">{t('ai_config.enable_vector_search')}</CardTitle>
                 <CardDescription className="mt-1">
-                  使用 AI Embeddings 实现代码语义搜索（理解含义，不仅匹配关键词）
+                  {t('ai_config.enable_vector_search_desc')}
                 </CardDescription>
               </div>
               <Switch checked={vectorSearchEnabled} onCheckedChange={handleVectorSearchToggle} />
@@ -335,9 +335,9 @@ export function ApiKeysSettings() {
               </div>
 
               <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground space-y-1">
-                <p>• 需配置对应 provider 的 API Key（见上方）</p>
-                <p>• 切换 provider 时会自动重建索引</p>
-                <p>• 关闭开关后仍可搜索（使用文本匹配）</p>
+                <p>{t('ai_config.vector_config_tip_1')}</p>
+                <p>{t('ai_config.vector_config_tip_2')}</p>
+                <p>{t('ai_config.vector_config_tip_3')}</p>
               </div>
             </CardContent>
           )}
@@ -348,11 +348,11 @@ export function ApiKeysSettings() {
         <div className="flex items-start gap-3">
           <AlertCircle className="size-5 text-blue-500 mt-0.5 flex-shrink-0" />
           <div className="space-y-2 text-sm">
-            <p className="font-medium">安全提示</p>
+            <p className="font-medium">{t('ai_config.security_notice')}</p>
             <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-              <li>API Key 将加密存储在本地，不会上传到任何服务器</li>
-              <li>请妥善保管您的 API Key，不要分享给他人</li>
-              <li>如果 API Key 泄露，请立即在对应平台重新生成</li>
+              <li>{t('ai_config.security_tip_1')}</li>
+              <li>{t('ai_config.security_tip_2')}</li>
+              <li>{t('ai_config.security_tip_3')}</li>
             </ul>
           </div>
         </div>
