@@ -31,6 +31,7 @@ export default defineConfig({
       react(),
       tailwindcss(),
       monacoEditorPlugin({
+        publicPath: 'monacoeditorwork',
         // ⭐ 启用所有常用语言的 Web Workers
         languageWorkers: [
           'editorWorkerService', // 通用编辑器服务
