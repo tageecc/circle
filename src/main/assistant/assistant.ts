@@ -186,6 +186,7 @@ Your success is measured by the user's productivity and code quality.`
 /**
  * 获取助手工具（包括内置工具和 MCP 工具）
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function getAssistantTools(): Record<string, any> {
   const mcpService = MCPService.getInstance()
   const mcpTools = mcpService.getAISDKTools()

@@ -18,6 +18,7 @@ import { WindowStateManager } from './services/window-state.service'
 import { AvatarService } from './services/avatar.service'
 import { MenuService } from './services/menu.service'
 import { initMainI18n } from './i18n'
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const i18nextBackend = require('i18next-electron-fs-backend')
 import * as fs from 'fs'
 
@@ -347,12 +348,18 @@ app.on('will-quit', async (event) => {
 
   // ✅ 记录所有活跃的句柄
 
+  interface ProcessWithHandles extends NodeJS.Process {
+    _getActiveHandles?: () => unknown[]
+    _getActiveRequests?: () => unknown[]
+  }
+
+  const processWithDebug = process as ProcessWithHandles
   logWithTime(
-    `🔍 [Quit] Active handles: ${(process as any)._getActiveHandles?.().length || 'unknown'}`
+    `🔍 [Quit] Active handles: ${processWithDebug._getActiveHandles?.().length || 'unknown'}`
   )
 
   logWithTime(
-    `🔍 [Quit] Active requests: ${(process as any)._getActiveRequests?.().length || 'unknown'}`
+    `🔍 [Quit] Active requests: ${processWithDebug._getActiveRequests?.().length || 'unknown'}`
   )
 
   const { BrowserWindow } = await import('electron')

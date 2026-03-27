@@ -48,7 +48,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
         resolve: null
       })
     },
-    [dialogState.resolve]
+    [dialogState]
   )
 
   return (

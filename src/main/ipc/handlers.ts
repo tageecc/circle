@@ -26,7 +26,7 @@ import * as jschardet from 'jschardet'
 // 存储活动的流式响应
 const activeStreams = new Map<string, { abortController: AbortController; sessionId: string }>()
 
-export function registerIpcHandlers() {
+export function registerIpcHandlers(): void {
   // 获取全局配置服务实例
   const configService = getConfigService()
 
@@ -117,9 +117,10 @@ export function registerIpcHandlers() {
         toolCallId: string
         decision: string
       }
-    ) => {
+    ): Promise<{ success: boolean; error?: string }> => {
       try {
-        handleApprovalDecision(params.toolCallId, params.decision as any)
+        const decision = params.decision === 'approved' ? 'approve' : 'reject'
+        handleApprovalDecision(params.toolCallId, decision)
         return { success: true }
       } catch (error) {
         console.error('[IPC] Failed to resume interrupt:', error)
@@ -266,9 +267,10 @@ export function registerIpcHandlers() {
     }
   })
 
-  ipcMain.handle('config:setPreference', async (_, key: string, value: boolean) => {
+  ipcMain.handle('config:setPreference', async (_, key: string, value: boolean): Promise<void> => {
     try {
-      configService.setPreference(key as any, value)
+      type PreferenceKey = Parameters<typeof configService.setPreference>[0]
+      configService.setPreference(key as PreferenceKey, value)
     } catch (error) {
       console.error('Failed to set preference:', error)
       throw error

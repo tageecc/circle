@@ -289,7 +289,7 @@ export function MonacoCodeEditor({
         }
       }
     ])
-  }, [blameInfo, shouldEnableGitBlame, currentLine])
+  }, [blameInfo, shouldEnableGitBlame, currentLine, formatTimeAgo])
 
   // 使用防抖更新装饰器，避免光标快速移动时频繁更新
   useEffect(() => {
@@ -591,7 +591,7 @@ export function MonacoCodeEditor({
         console.log('[MonacoCodeEditor] InlineCompletionProvider registered')
       }
     },
-    [theme, workspaceRoot]
+    [theme]
   )
 
   return (

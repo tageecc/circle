@@ -230,7 +230,7 @@ function CommitList({
   // 当选中的提交改变时，重新测量
   useEffect(() => {
     virtualizer.measure()
-  }, [selectedCommit, commitDetail])
+  }, [selectedCommit, commitDetail, virtualizer])
 
   // 滚动到底部时加载更多（使用原生滚动事件）
   useEffect(() => {
@@ -616,7 +616,7 @@ export function GitHistoryPanel({
   // 初始加载
   useEffect(() => {
     loadCommits(true)
-  }, [workspaceRoot, currentBranch, selectedBranch, selectedAuthor, showAllBranches])
+  }, [workspaceRoot, currentBranch, selectedBranch, selectedAuthor, showAllBranches, loadCommits])
 
   // 搜索防抖
   useEffect(() => {

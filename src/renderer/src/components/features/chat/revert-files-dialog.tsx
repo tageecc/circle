@@ -3,7 +3,7 @@
  * 用于 Revert 按钮：恢复文件到某个消息的状态
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -60,13 +60,7 @@ export function RevertFilesDialog({
   const [files, setFiles] = useState<AffectedFile[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    if (open && messageId) {
-      loadAffectedFiles()
-    }
-  }, [open, messageId])
-
-  const loadAffectedFiles = async () => {
+  const loadAffectedFiles = useCallback(async () => {
     try {
       setLoading(true)
       const affectedFiles = await window.api.message.getAffectedFiles(messageId)
@@ -77,7 +71,13 @@ export function RevertFilesDialog({
     } finally {
       setLoading(false)
     }
-  }
+  }, [messageId, t])
+
+  useEffect(() => {
+    if (open && messageId) {
+      loadAffectedFiles()
+    }
+  }, [open, messageId, loadAffectedFiles])
 
   const handleConfirm = () => {
     onConfirm()

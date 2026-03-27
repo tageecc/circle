@@ -478,7 +478,7 @@ export function MonacoDiffEditor({
         console.error(`处理 diff 失败 (${mode}):`, error)
       }
     },
-    [currentDiffIndex, scrollToDiff]
+    [currentDiffIndex, scrollToDiff, onNextFile]
   )
 
   const handleAccept = useCallback(() => handleDiffAction('accept'), [handleDiffAction])
