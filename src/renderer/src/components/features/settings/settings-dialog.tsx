@@ -11,7 +11,8 @@ import {
   Plus,
   X,
   Key,
-  Brain
+  Brain,
+  Bot
 } from 'lucide-react'
 import type { editor } from 'monaco-editor'
 import { defaultEditorOptions } from '@/config/monaco-editor-options'
@@ -56,6 +57,7 @@ import { KeymapSettingsContent } from './keymap-settings-content'
 import { UserRulesSettingsContent } from './user-rules-settings-content'
 import { ApiKeysSettings } from './api-keys-settings'
 import { MemoriesSettingsContent } from './memories-settings-content'
+import { ModelsSettingsContent } from './models-settings-content'
 import type {
   TerminalSettings,
   AppearanceSettings,
@@ -156,6 +158,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     { key: 'editor', name: t('settings.editor'), icon: Code },
     { key: 'terminal', name: t('settings.terminal'), icon: Monitor },
     { key: 'keyboard', name: t('settings.keyboard'), icon: Keyboard },
+    { key: 'models', name: t('settings.models'), icon: Bot },
     { key: 'aiconfig', name: t('settings.ai_config'), icon: Key },
     { key: 'rules', name: t('settings.rules'), icon: FileText },
     { key: 'memories', name: t('settings.memories'), icon: Brain }
@@ -385,6 +388,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         )
       case 'keyboard':
         return <KeymapSettingsContent />
+      case 'models':
+        return <ModelsSettingsContent />
       case 'aiconfig':
         return <ApiKeysSettings />
       case 'rules':

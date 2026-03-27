@@ -9,6 +9,7 @@ import { registerIpcHandlers } from './ipc/handlers'
 import { registerCompletionHandlers } from './ipc/completion.handlers'
 import { registerMCPHandlers } from './ipc/mcp.handlers'
 import { registerSkillsHandlers } from './ipc/skills.handlers'
+import { registerModelConfigHandlers } from './ipc/model-config.handlers'
 import { FileWatcherService } from './services/file-watcher.service'
 import { GitWatcherService } from './services/git-watcher.service'
 import { ConfigService } from './services/config.service'
@@ -256,6 +257,11 @@ async function initializeBackend(): Promise<boolean> {
     console.log('🔄 Registering Skills handlers...')
     registerSkillsHandlers()
     console.log('✅ Skills handlers registered')
+
+    // Register Model Config handlers
+    console.log('🔄 Registering Model Config handlers...')
+    registerModelConfigHandlers()
+    console.log('✅ Model Config handlers registered')
 
     console.log('✅ Backend initialized successfully')
     return true

@@ -232,7 +232,8 @@
     "editor": "Editor",
     "terminal": "Terminal",
     "keyboard": "Keyboard Shortcuts",
-    "ai_config": "AI Configuration",
+    "models": "Models",
+    "ai_config": "API Keys",
     "rules": "Rules",
     "memories": "Memories",
     "save_success": "Settings saved",
@@ -516,6 +517,10 @@
     "stop_generating": "Stop generating",
     "enqueue": "Add to queue",
     "send_message": "Send message",
+    "loading_models": "Loading models...",
+    "no_models_configured": "No models configured yet",
+    "go_to_settings_to_add": "Go to Settings to add models",
+    "default_model": "Default",
     "skill_loading": "Loading skill",
     "skill_load_failed": "Failed to load skill",
     "skill_loaded": "Skill loaded",
@@ -1212,5 +1217,41 @@
         "cherry_pick": "cherry-pick"
       }
     }
+  },
+  "models_settings": {
+    "title": "Model Configuration",
+    "description": "Manage your AI model configurations, add and switch between different models",
+    "add_model": "Add Model",
+    "add_first_model": "Add Your First Model",
+    "no_models": "No models configured yet",
+    "provider": "Provider",
+    "model": "Model",
+    "display_name_optional": "Display Name (Optional)",
+    "display_name_placeholder": "e.g., GPT-4o",
+    "select_provider": "Select a provider",
+    "select_provider_first": "Please select a provider first",
+    "select_model": "Select a model",
+    "select_model_first": "Please select a model first",
+    "custom_model_id": "Or enter custom model ID",
+    "search_provider": "Search providers...",
+    "or_enter_custom": "Or manually enter model ID",
+    "add_model_description": "Select a model from the predefined list or enter a custom model ID",
+    "model_added": "Model added successfully",
+    "model_deleted": "Model deleted successfully",
+    "model_already_exists": "This model already exists",
+    "default_set": "Default model set successfully",
+    "load_failed": "Failed to load models",
+    "add_failed": "Failed to add model",
+    "delete_failed": "Failed to delete model",
+    "set_default_failed": "Failed to set default model"
+  },
+  "common": {
+    "add": "Add",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "confirm": "Confirm",
+    "close": "Close"
   }
 }

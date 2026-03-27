@@ -839,6 +839,31 @@ const api = {
     delete: (skillPath: string) => ipcRenderer.invoke('skills:delete', skillPath)
   },
 
+  // Model Config APIs
+  modelConfig: {
+    getAll: () => ipcRenderer.invoke('model-config:getAll'),
+    getByProvider: (providerId: string) =>
+      ipcRenderer.invoke('model-config:getByProvider', providerId),
+    getDefault: () => ipcRenderer.invoke('model-config:getDefault'),
+    add: (input: {
+      providerId: string
+      modelId: string
+      displayName?: string
+      isDefault?: boolean
+    }) => ipcRenderer.invoke('model-config:add', input),
+    update: (
+      id: string,
+      updates: {
+        displayName?: string
+        isDefault?: boolean
+      }
+    ) => ipcRenderer.invoke('model-config:update', id, updates),
+    setDefault: (id: string) => ipcRenderer.invoke('model-config:setDefault', id),
+    delete: (id: string) => ipcRenderer.invoke('model-config:delete', id),
+    exists: (providerId: string, modelId: string) =>
+      ipcRenderer.invoke('model-config:exists', providerId, modelId)
+  },
+
   // Shell APIs
   shell: {
     openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url)

@@ -233,6 +233,17 @@ class CircleDatabase {
         skill_path TEXT PRIMARY KEY,
         enabled INTEGER NOT NULL DEFAULT 1
       );
+
+      CREATE TABLE IF NOT EXISTS model_configs (
+        id TEXT PRIMARY KEY,
+        provider_id TEXT NOT NULL,
+        model_id TEXT NOT NULL,
+        display_name TEXT,
+        is_default INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_model_configs_provider ON model_configs(provider_id);
     `)
   }
 

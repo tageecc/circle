@@ -13,10 +13,11 @@ import {
   DropdownMenuLabel
 } from '@/components/ui/dropdown-menu'
 import { RichTextInput, type PastedImage, type Attachment } from '@/components/ui/rich-text-input'
-import { ArrowUp, Square } from 'lucide-react'
+import { ArrowUp, Square, Settings } from 'lucide-react'
 import { getProviderLogo } from '@/lib/provider-logos'
 import { cn } from '@/lib/utils'
-import { PROVIDER_MODELS } from '@/config/models'
+import { getProvider } from '@/constants/providers'
+import { getModelInfo } from '@/constants/models'
 import {
   Context,
   ContextCacheUsage,
@@ -31,6 +32,16 @@ import {
 } from "@/components/ai-elements/context";
 import type { LanguageModelUsage } from 'ai'
 import { useTranslation } from 'react-i18next'
+
+interface ModelConfig {
+  id: string
+  providerId: string
+  modelId: string
+  displayName: string | null
+  isDefault: boolean
+  createdAt: Date
+  updatedAt: Date
+}
 
 export type { PastedImage, Attachment }
 
@@ -83,6 +94,43 @@ export function ChatInput({
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null)
   const [selectedProvider, setSelectedProvider] = useState(defaultProvider)
   const [selectedModel, setSelectedModel] = useState(defaultModel)
+  const [configuredModels, setConfiguredModels] = useState<ModelConfig[]>([])
+  const [isLoadingModels, setIsLoadingModels] = useState(true)
+  
+  // Load configured models
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        const models = await window.api.modelConfig.getAll()
+        setConfiguredModels(models)
+        
+        // Set default model if available
+        const defaultModel = models.find(m => m.isDefault)
+        if (defaultModel) {
+          setSelectedProvider(defaultModel.providerId)
+          setSelectedModel(defaultModel.modelId)
+          onModelChange?.(defaultModel.providerId, defaultModel.modelId)
+        }
+      } catch (error) {
+        console.error('Failed to load models:', error)
+      } finally {
+        setIsLoadingModels(false)
+      }
+    }
+    loadModels()
+  }, [onModelChange])
+  
+  // Group models by provider
+  const modelsByProvider = useMemo(() => {
+    const groups: Record<string, ModelConfig[]> = {}
+    configuredModels.forEach(model => {
+      if (!groups[model.providerId]) {
+        groups[model.providerId] = []
+      }
+      groups[model.providerId].push(model)
+    })
+    return groups
+  }, [configuredModels])
   
   // 设置下拉菜单的挂载容器
   useEffect(() => {
@@ -91,12 +139,16 @@ export function ChatInput({
     }
   }, [])
 
+  // Get display name for selected model
   const selectedModelName = useMemo(() => {
-    const providerConfig = PROVIDER_MODELS[selectedProvider]
-    if (!providerConfig) return selectedModel
-    const modelInfo = providerConfig.models.find((m) => m.id === selectedModel)
+    const configModel = configuredModels.find(
+      m => m.providerId === selectedProvider && m.modelId === selectedModel
+    )
+    if (configModel?.displayName) return configModel.displayName
+    
+    const modelInfo = getModelInfo(selectedModel)
     return modelInfo?.name || selectedModel
-  }, [selectedProvider, selectedModel])
+  }, [selectedProvider, selectedModel, configuredModels])
 
   const hasContent = value.trim() || pastedImages.length > 0 || attachments.length > 0
   const showStopButton = isSending && onStop && !hasContent
@@ -148,57 +200,91 @@ export function ChatInput({
               className="w-[380px] max-h-[500px] overflow-y-auto [--radius:0.95rem] -translate-x-32"
               container={portalContainer}
             >
-              {Object.entries(PROVIDER_MODELS).map(([provider, { nameKey, models }]) => (
-                <div key={provider}>
-                  <DropdownMenuLabel className="flex items-center gap-2 px-3 py-2">
-                    {getProviderLogo(provider) && (
-                      <img
-                        src={getProviderLogo(provider)!}
-                        alt={provider}
-                        className="size-4 dark:invert opacity-70"
-                      />
-                    )}
-                    <span className="text-xs font-semibold text-foreground">{t(nameKey)}</span>
-                  </DropdownMenuLabel>
-                  {models.map((model) => (
-                    <DropdownMenuItem
-                      key={`${provider}-${model.id}`}
-                      onSelect={() => handleModelChange(provider, model.id)}
-                      className={cn(
-                        'cursor-pointer px-3 py-3 focus:bg-accent/50',
-                        selectedProvider === provider &&
-                          selectedModel === model.id &&
-                          'bg-accent/30'
-                      )}
-                    >
-                      <div className="flex w-full flex-col gap-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-foreground">{model.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {model.contextWindow}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground leading-relaxed">
-                          {t(model.descriptionKey)}
-                        </p>
-                        {model.capabilityKeys && model.capabilityKeys.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-0.5">
-                            {model.capabilityKeys.map((capKey) => (
-                              <span
-                                key={capKey}
-                                className="inline-flex items-center rounded-md bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-secondary-foreground"
-                              >
-                                {t(capKey)}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator className="my-1" />
+              {isLoadingModels ? (
+                <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+                  {t('chat.loading_models')}
                 </div>
-              ))}
+              ) : configuredModels.length === 0 ? (
+                <div className="px-3 py-6 text-center">
+                  <p className="mb-2 text-sm text-muted-foreground">
+                    {t('chat.no_models_configured')}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {t('chat.go_to_settings_to_add')}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {Object.entries(modelsByProvider).map(([providerId, providerModels]) => {
+                    const provider = getProvider(providerId)
+                    if (!provider) return null
+                    
+                    return (
+                      <div key={providerId}>
+                        <DropdownMenuLabel className="flex items-center gap-2 px-3 py-2">
+                          {getProviderLogo(providerId) && (
+                            <img
+                              src={getProviderLogo(providerId)!}
+                              alt={provider.name}
+                              className="size-4 dark:invert opacity-70"
+                            />
+                          )}
+                          <span className="text-xs font-semibold text-foreground">{provider.name}</span>
+                        </DropdownMenuLabel>
+                        {providerModels.map((model) => {
+                          const modelInfo = getModelInfo(model.modelId)
+                          const displayName = model.displayName || modelInfo?.name || model.modelId
+                          const contextWindow = modelInfo?.contextWindow 
+                            ? modelInfo.contextWindow >= 1000000
+                              ? `${(modelInfo.contextWindow / 1000000).toFixed(1)}M`
+                              : `${Math.round(modelInfo.contextWindow / 1000)}K`
+                            : null
+                          
+                          return (
+                            <DropdownMenuItem
+                              key={model.id}
+                              onSelect={() => handleModelChange(model.providerId, model.modelId)}
+                              className={cn(
+                                'cursor-pointer px-3 py-3 focus:bg-accent/50',
+                                selectedProvider === model.providerId &&
+                                  selectedModel === model.modelId &&
+                                  'bg-accent/30'
+                              )}
+                            >
+                              <div className="flex w-full flex-col gap-1.5">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium text-foreground">{displayName}</span>
+                                  {contextWindow && (
+                                    <span className="text-xs text-muted-foreground">
+                                      {contextWindow}
+                                    </span>
+                                  )}
+                                </div>
+                                {modelInfo && (
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <span>${modelInfo.cost.input}/{modelInfo.cost.output} per 1M</span>
+                                    {modelInfo.reasoning && (
+                                      <span className="rounded bg-primary/10 px-1.5 py-0.5 text-primary">
+                                        Reasoning
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                                {model.isDefault && (
+                                  <span className="text-xs text-primary">
+                                    {t('chat.default_model')}
+                                  </span>
+                                )}
+                              </div>
+                            </DropdownMenuItem>
+                          )
+                        })}
+                        <DropdownMenuSeparator className="my-1" />
+                      </div>
+                    )
+                  })}
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
 
