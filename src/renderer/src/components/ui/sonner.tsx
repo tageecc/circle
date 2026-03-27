@@ -67,17 +67,17 @@ function ToastCopyButton({ text }: { text: string }) {
       onClick={handleCopy}
       className={cn(
         'group-hover/toast:opacity-100 opacity-0 transition-opacity',
-        'absolute right-3 top-3 flex items-center justify-center',
-        'h-6 w-6 rounded-md hover:bg-black/5 dark:hover:bg-white/5',
+        'absolute right-2 top-2 flex items-center justify-center',
+        'h-7 w-7 rounded-md hover:bg-black/5 dark:hover:bg-white/5',
         'text-muted-foreground hover:text-foreground transition-colors',
-        'z-10'
+        'z-50'
       )}
       title={t('common.copy')}
     >
       {copied ? (
-        <Check className="size-3.5 text-green-500" />
+        <Check className="size-4 text-green-500" />
       ) : (
-        <Copy className="size-3.5" />
+        <Copy className="size-4" />
       )}
     </button>
   )
@@ -115,7 +115,7 @@ function createWrappedToast() {
       : textContent
     
     const result = sonnerToast.error(
-      <div className="group/toast relative pr-8">
+      <div className="group/toast relative pr-10">
         <div>{message}</div>
         {options?.description && (
           <div className="text-xs opacity-80 mt-1">{options.description}</div>
@@ -142,7 +142,7 @@ function createWrappedToast() {
       : textContent
     
     const result = sonnerToast.warning(
-      <div className="group/toast relative pr-8">
+      <div className="group/toast relative pr-10">
         <div>{message}</div>
         {options?.description && (
           <div className="text-xs opacity-80 mt-1">{options.description}</div>
