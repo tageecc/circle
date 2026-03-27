@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { RichTextInput, type PastedImage, type Attachment } from '@/components/ui/rich-text-input'
-import { ArrowUp, Square } from 'lucide-react'
+import { ArrowUp, Square, AlertCircle } from 'lucide-react'
 import { getProviderLogo } from '@/lib/provider-logos'
 import { cn } from '@/lib/utils'
 import { getProvider } from '@/constants/providers'
@@ -179,16 +179,21 @@ export function ChatInput({
                 variant="ghost"
                 disabled={disabled || isLoadingModels}
                 className={cn(
-                  'flex items-center gap-1.5',
-                  !hasConfiguredModels && 'text-muted-foreground'
+                  'flex items-center gap-1.5 transition-colors',
+                  !hasConfiguredModels &&
+                    'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/30'
                 )}
               >
-                {hasConfiguredModels && getProviderLogo(selectedProvider) && (
-                  <img
-                    src={getProviderLogo(selectedProvider)!}
-                    alt={selectedProvider}
-                    className="size-3.5 dark:invert opacity-60"
-                  />
+                {hasConfiguredModels ? (
+                  getProviderLogo(selectedProvider) && (
+                    <img
+                      src={getProviderLogo(selectedProvider)!}
+                      alt={selectedProvider}
+                      className="size-3.5 dark:invert opacity-60"
+                    />
+                  )
+                ) : (
+                  <AlertCircle className="size-3.5" />
                 )}
                 <span className="text-xs font-medium">{selectedModelName}</span>
               </InputGroupButton>
