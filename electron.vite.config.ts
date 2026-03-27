@@ -4,6 +4,12 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import monacoEditorPlugin from 'vite-plugin-monaco-editor-esm'
+
+// Skip monaco editor plugin on Windows in CI to avoid path issues
+const isCI = process.env.CI === 'true'
+const isWindows = process.platform === 'win32'
+const skipMonacoPlugin = isCI && isWindows
+
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()]
@@ -30,40 +36,44 @@ export default defineConfig({
     plugins: [
       react(),
       tailwindcss(),
-      monacoEditorPlugin({
-        publicPath: 'monacoeditorwork',
-        // ⭐ 启用所有常用语言的 Web Workers
-        languageWorkers: [
-          'editorWorkerService', // 通用编辑器服务
-          'typescript', // TypeScript/JavaScript
-          'json', // JSON
-          'css', // CSS/SCSS/LESS
-          'html' // HTML
-        ],
-        // ✅ 自定义 Worker 路径（优化加载）
-        customWorkers: [
-          {
-            label: 'editorWorkerService',
-            entry: 'monaco-editor/esm/vs/editor/editor.worker'
-          },
-          {
-            label: 'typescript',
-            entry: 'monaco-editor/esm/vs/language/typescript/ts.worker'
-          },
-          {
-            label: 'json',
-            entry: 'monaco-editor/esm/vs/language/json/json.worker'
-          },
-          {
-            label: 'css',
-            entry: 'monaco-editor/esm/vs/language/css/css.worker'
-          },
-          {
-            label: 'html',
-            entry: 'monaco-editor/esm/vs/language/html/html.worker'
-          }
-        ]
-      })
+      ...(skipMonacoPlugin
+        ? []
+        : [
+            monacoEditorPlugin({
+              publicPath: 'monacoeditorwork/',
+              // ⭐ 启用所有常用语言的 Web Workers
+              languageWorkers: [
+                'editorWorkerService', // 通用编辑器服务
+                'typescript', // TypeScript/JavaScript
+                'json', // JSON
+                'css', // CSS/SCSS/LESS
+                'html' // HTML
+              ],
+              // ✅ 自定义 Worker 路径（优化加载）
+              customWorkers: [
+                {
+                  label: 'editorWorkerService',
+                  entry: 'monaco-editor/esm/vs/editor/editor.worker'
+                },
+                {
+                  label: 'typescript',
+                  entry: 'monaco-editor/esm/vs/language/typescript/ts.worker'
+                },
+                {
+                  label: 'json',
+                  entry: 'monaco-editor/esm/vs/language/json/json.worker'
+                },
+                {
+                  label: 'css',
+                  entry: 'monaco-editor/esm/vs/language/css/css.worker'
+                },
+                {
+                  label: 'html',
+                  entry: 'monaco-editor/esm/vs/language/html/html.worker'
+                }
+              ]
+            })
+          ])
     ]
   }
 })
