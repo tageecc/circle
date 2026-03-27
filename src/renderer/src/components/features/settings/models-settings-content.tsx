@@ -45,6 +45,7 @@ export function ModelsSettingsContent() {
   const [apiKey, setApiKey] = useState('')
   const [baseURL, setBaseURL] = useState('')
   const [displayName, setDisplayName] = useState('')
+  const [modelPopoverOpen, setModelPopoverOpen] = useState(false)
 
   // Load configured models
   const loadModels = async () => {
@@ -139,6 +140,7 @@ export function ModelsSettingsContent() {
     setApiKey('')
     setBaseURL('')
     setDisplayName('')
+    setModelPopoverOpen(false)
   }
 
   // Handle delete model
@@ -349,7 +351,7 @@ export function ModelsSettingsContent() {
                 {/* Model ID */}
                 <div className="space-y-2">
                   <Label>{t('models_settings.model_id')}</Label>
-                  <Popover>
+                  <Popover open={modelPopoverOpen} onOpenChange={setModelPopoverOpen}>
                     <PopoverTrigger asChild>
                       <div className="relative">
                         <Input
@@ -359,11 +361,13 @@ export function ModelsSettingsContent() {
                           }
                           value={modelId}
                           onChange={(e) => setModelId(e.target.value)}
+                          onFocus={() => availableModels.length > 0 && setModelPopoverOpen(true)}
                           className="pr-9"
                         />
                         {availableModels.length > 0 && (
                           <button
                             type="button"
+                            onClick={() => setModelPopoverOpen(!modelPopoverOpen)}
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                           >
                             <Check className="h-4 w-4" />
@@ -375,13 +379,24 @@ export function ModelsSettingsContent() {
                       <PopoverContent 
                         align="start" 
                         className="w-[var(--radix-popover-trigger-width)] p-0"
-                        style={{ maxHeight: '300px' }}
+                        onOpenAutoFocus={(e) => e.preventDefault()}
                       >
-                        <div className="max-h-[300px] overflow-y-auto p-2 overscroll-contain">
+                        <div 
+                          className="max-h-[300px] overflow-y-auto p-2"
+                          style={{ 
+                            overscrollBehavior: 'contain',
+                            WebkitOverflowScrolling: 'touch'
+                          }}
+                        >
                           {availableModels.map((model) => (
                             <button
                               key={model.id}
-                              onClick={() => setModelId(model.id)}
+                              type="button"
+                              onMouseDown={(e) => {
+                                e.preventDefault()
+                                setModelId(model.id)
+                                setModelPopoverOpen(false)
+                              }}
                               className="w-full flex flex-col items-start gap-1 rounded-md px-3 py-2 text-left hover:bg-accent transition-colors"
                             >
                               <span className="font-mono text-sm font-medium">{model.id}</span>
