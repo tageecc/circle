@@ -171,14 +171,14 @@ pnpm build:linux  # Linux
 
 ## Tech Stack
 
-| Domain   | Technology                                                  |
-| -------- | ----------------------------------------------------------- |
-| Frontend | React 19, TypeScript, Tailwind CSS, Radix/shadcn           |
-| Desktop  | Electron, electron-vite                                     |
-| Editor   | Monaco Editor                                               |
+| Domain   | Technology                                                              |
+| -------- | ----------------------------------------------------------------------- |
+| Frontend | React 19, TypeScript, Tailwind CSS, Radix/shadcn                        |
+| Desktop  | Electron, electron-vite                                                 |
+| Editor   | Monaco Editor                                                           |
 | AI       | Vercel AI SDK (`ai` / `@ai-sdk/*`), Multi-provider models, MCP protocol |
-| Data     | SQLite/LibSQL, Drizzle ORM, **sqlite-vec** (vector search) |
-| Terminal | node-pty                                                    |
+| Data     | SQLite/LibSQL, Drizzle ORM, **sqlite-vec** (vector search)              |
+| Terminal | node-pty                                                                |
 
 ---
 

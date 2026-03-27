@@ -211,7 +211,7 @@ export function ChatMessages({
  */
 function EmptyState() {
   const { t } = useTranslation()
-  
+
   return (
     <div className="flex h-full items-center justify-center px-6 py-12">
       <div className="text-center space-y-6 max-w-xs">

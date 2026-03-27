@@ -171,14 +171,14 @@ pnpm build:linux  # Linux
 
 ## 技术栈
 
-| 领域   | 技术                                                  |
-| ------ | ----------------------------------------------------- |
-| 前端   | React 19、TypeScript、Tailwind CSS、Radix / shadcn   |
-| 桌面   | Electron、electron-vite                               |
-| 编辑器 | Monaco Editor                                         |
+| 领域   | 技术                                                        |
+| ------ | ----------------------------------------------------------- |
+| 前端   | React 19、TypeScript、Tailwind CSS、Radix / shadcn          |
+| 桌面   | Electron、electron-vite                                     |
+| 编辑器 | Monaco Editor                                               |
 | AI     | Vercel AI SDK（`ai` / `@ai-sdk/*`）、多提供商模型、MCP 协议 |
-| 数据   | SQLite / LibSQL、Drizzle ORM、**sqlite-vec** (向量搜索) |
-| 终端   | node-pty                                              |
+| 数据   | SQLite / LibSQL、Drizzle ORM、**sqlite-vec** (向量搜索)     |
+| 终端   | node-pty                                                    |
 
 ---
 

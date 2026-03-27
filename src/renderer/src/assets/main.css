@@ -615,11 +615,10 @@
      TipTap 富文本编辑器样式
      ========================================== */
   /* EditorContent 包装器 */
-  [data-slot="rich-text-input"] .ProseMirror-parent,
-  [data-slot="rich-text-input"] .tiptap-editor {
+  [data-slot='rich-text-input'] .ProseMirror-parent,
+  [data-slot='rich-text-input'] .tiptap-editor {
     width: 100%;
     display: flex;
     flex-direction: column;
   }
-
 }

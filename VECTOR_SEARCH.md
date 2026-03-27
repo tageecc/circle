@@ -15,6 +15,7 @@ Circle 使用 **sqlite-vec** 扩展实现可选的语义代码搜索。
 ### 1. 启用向量搜索
 
 在 **设置 → AI 配置** 中：
+
 1. 配置对应 Provider 的 API Key：
    - OpenAI：需 OpenAI API key
    - Voyage AI：需 Voyage AI key
@@ -33,12 +34,14 @@ Circle 使用 **sqlite-vec** 扩展实现可选的语义代码搜索。
 点击状态栏的 **"索引项目"** 按钮，或使用命令面板 `⌘K` → "Index Project"
 
 **索引过程：**
+
 1. 扫描支持的代码文件（.ts/.js/.py/.java 等）
 2. 切分成 512 token 的 chunks（带 50 token overlap）
 3. 批量生成 embeddings（每批调用 API）
 4. 存储向量到 SQLite
 
 **预计时间：**
+
 - 小项目（1-2万行）：1-2 分钟
 - 中型项目（5-10万行）：5-10 分钟
 - 大型项目（50万行+）：30+ 分钟
@@ -58,6 +61,7 @@ Circle 使用 **sqlite-vec** 扩展实现可选的语义代码搜索。
 ```
 
 **搜索特点：**
+
 - 自动理解同义词（"auth" / "authentication" / "login"）
 - 跨文件找相关代码
 - 按相似度排序（0.5-1.0，默认阈值 0.5）
@@ -119,38 +123,47 @@ CREATE INDEX idx_codebase_vectors_file ON codebase_vectors(file_path);
 ### 相似度计算
 
 ```typescript
-score = 1 - distance  // 转换为相似度 (0-1)
-filter: score >= 0.5  // 默认阈值
+score = 1 - distance // 转换为相似度 (0-1)
+filter: score >= 0.5 // 默认阈值
 ```
 
 ## 常见问题
 
 ### Q: 索引很慢？
-**A**: 
+
+**A**:
+
 - embedding API 调用是主要耗时（网络 + 计算）
 - 使用批量接口（每批最多 2048 tokens）
 - 大项目考虑后台索引或分批索引
 
 ### Q: 搜索结果不准？
+
 **A**:
+
 - 检查 API Key 是否配置正确
 - 尝试更换 embedding 模型（`openai-large` 更精确）
 - 降低相似度阈值（代码中 `minScore` 参数）
 - 查看向量搜索是否已启用（控制台日志会显示模式）
 
 ### Q: 成本如何？
+
 **A**:
+
 - OpenAI text-embedding-3-small: $0.02 / 1M tokens
 - 示例：Circle 项目（21万行）→ 约 5万 chunks × 512 tokens ≈ $1.28
 - 索引一次，长期使用，增量更新
 
 ### Q: 能离线使用吗？
+
 **A**:
+
 - 索引时需要 embedding API（在线）
 - 已索引的项目支持离线向量搜索
 - 关闭向量搜索后可使用离线文本 LIKE 搜索
 
 ### Q: 和 grep 的区别？
+
 **A**:
 | 工具 | 适用场景 | 示例 |
 |------|---------|------|
@@ -158,7 +171,9 @@ filter: score >= 0.5  // 默认阈值
 | `codebase_search` | 语义理解 | "用户认证是怎么实现的" |
 
 ### Q: 向量存储占多少空间？
+
 **A**:
+
 - 1536 维 float32 = 6KB/chunk
 - 5万 chunks ≈ 300MB（文本 + 向量）
 - 在同一个 `circle.db` 里
@@ -187,7 +202,8 @@ filter: score >= 0.5  // 默认阈值
 
 ---
 
-**遇到问题？** 
+**遇到问题？**
+
 - 查看主进程日志（Help → Toggle Developer Tools → Console）
 - 搜索 `[Embedding]` / `[CodebaseIndex]` 标签
 - 问题反馈：Help → Report Bug

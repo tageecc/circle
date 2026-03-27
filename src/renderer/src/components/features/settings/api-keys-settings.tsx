@@ -168,9 +168,7 @@ export function ApiKeysSettings() {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-medium">{t('ai_config.title')}</h3>
-        <p className="text-sm text-muted-foreground mt-1">
-          {t('ai_config.api_keys_desc')}
-        </p>
+        <p className="text-sm text-muted-foreground mt-1">{t('ai_config.api_keys_desc')}</p>
       </div>
 
       <div className="space-y-4">
