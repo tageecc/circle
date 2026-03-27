@@ -45,7 +45,6 @@ export function ModelsSettingsContent() {
   const [apiKey, setApiKey] = useState('')
   const [baseURL, setBaseURL] = useState('')
   const [displayName, setDisplayName] = useState('')
-  const [searchQuery, setSearchQuery] = useState('')
 
   // Load configured models
   const loadModels = async () => {
@@ -75,14 +74,6 @@ export function ModelsSettingsContent() {
       setBaseURL(selectedProviderData.baseURL)
     }
   }, [selectedProviderData, baseURL])
-
-  const filteredProviders = useMemo(() => {
-    if (!searchQuery) return PROVIDERS
-    const q = searchQuery.toLowerCase()
-    return PROVIDERS.filter(
-      (p) => p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q)
-    )
-  }, [searchQuery])
 
   // Group models by provider
   const modelsByProvider = useMemo(() => {
@@ -148,7 +139,6 @@ export function ModelsSettingsContent() {
     setApiKey('')
     setBaseURL('')
     setDisplayName('')
-    setSearchQuery('')
   }
 
   // Handle delete model
@@ -306,19 +296,13 @@ export function ModelsSettingsContent() {
             {/* Provider Selection */}
             <div className="space-y-2">
               <Label>{t('models_settings.provider')}</Label>
-              <Input
-                placeholder={t('models_settings.search_provider')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="mb-2"
-              />
               <Select value={selectedProvider} onValueChange={setSelectedProvider}>
                 <SelectTrigger>
                   <SelectValue placeholder={t('models_settings.select_provider')} />
                 </SelectTrigger>
                 <SelectContent className="max-h-[300px]">
                   <SelectGroup>
-                    {filteredProviders.map((provider) => (
+                    {PROVIDERS.map((provider) => (
                       <SelectItem key={provider.id} value={provider.id}>
                         {provider.name}
                       </SelectItem>
@@ -336,6 +320,18 @@ export function ModelsSettingsContent() {
                 </button>
               )}
             </div>
+
+            {/* Custom Base URL */}
+            {selectedProvider === 'custom' && (
+              <div className="space-y-2">
+                <Label>{t('models_settings.base_url')}</Label>
+                <Input
+                  placeholder="https://api.openai.com/v1"
+                  value={baseURL}
+                  onChange={(e) => setBaseURL(e.target.value)}
+                />
+              </div>
+            )}
 
             {/* API Key */}
             {selectedProvider && (
@@ -401,18 +397,6 @@ export function ModelsSettingsContent() {
                     </p>
                   )}
                 </div>
-
-                {/* Base URL (Optional) */}
-                {selectedProvider === 'custom' && (
-                  <div className="space-y-2">
-                    <Label>{t('models_settings.base_url')}</Label>
-                    <Input
-                      placeholder="https://api.openai.com/v1"
-                      value={baseURL}
-                      onChange={(e) => setBaseURL(e.target.value)}
-                    />
-                  </div>
-                )}
 
                 {/* Display Name (Optional) */}
                 <div className="space-y-2">
