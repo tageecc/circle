@@ -1,5 +1,9 @@
-appId: com.electron.app
+appId: com.circle.app
 productName: circle
+publish:
+  provider: github
+  owner: tageecc
+  repo: circle
 directories:
   buildResources: build
 files:

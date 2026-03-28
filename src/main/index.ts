@@ -11,12 +11,14 @@ import { registerMCPHandlers } from './ipc/mcp.handlers'
 import { registerSkillsHandlers } from './ipc/skills.handlers'
 import { registerModelConfigHandlers } from './ipc/model-config.handlers'
 import { registerProviderApiKeyHandlers } from './ipc/provider-api-key.handlers'
+import { registerAutoUpdaterHandlers } from './ipc/auto-updater.handlers'
 import { FileWatcherService } from './services/file-watcher.service'
 import { GitWatcherService } from './services/git-watcher.service'
 import { ConfigService } from './services/config.service'
 import { WindowStateManager } from './services/window-state.service'
 import { AvatarService } from './services/avatar.service'
 import { MenuService } from './services/menu.service'
+import { autoUpdaterService } from './services/auto-updater.service'
 import { initMainI18n } from './i18n'
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const i18nextBackend = require('i18next-electron-fs-backend')
@@ -102,6 +104,13 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
+
+    // 初始化自动更新服务
+    if (mainWindow) {
+      autoUpdaterService.setMainWindow(mainWindow)
+      // 启动自动检查更新（每4小时检查一次）
+      autoUpdaterService.startAutoCheck(4)
+    }
 
     // 检查是否有当前打开的项目，如果有则启动 FileWatcher 和 GitWatcher
     const currentProject = configService.getCurrentProject()
@@ -265,6 +274,9 @@ async function initializeBackend(): Promise<boolean> {
     registerModelConfigHandlers()
     registerProviderApiKeyHandlers()
     console.log('✅ Model Config handlers registered')
+
+    registerAutoUpdaterHandlers()
+    console.log('✅ Auto-updater handlers registered')
 
     console.log('✅ Backend initialized successfully')
     return true

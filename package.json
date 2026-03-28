@@ -78,6 +78,8 @@
     "diff": "^8.0.2",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.44.7",
+    "electron-log": "^5.4.3",
+    "electron-updater": "^6.8.3",
     "embla-carousel-react": "^8.6.0",
     "font-list": "^2.0.1",
     "gray-matter": "^4.0.3",

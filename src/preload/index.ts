@@ -870,6 +870,33 @@ const api = {
   // Shell APIs
   shell: {
     openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url)
+  },
+
+  // Auto-updater APIs
+  updater: {
+    checkForUpdates: () => ipcRenderer.invoke('updater:check'),
+    downloadUpdate: () => ipcRenderer.invoke('updater:download'),
+    quitAndInstall: () => ipcRenderer.invoke('updater:quitAndInstall'),
+    onUpdateAvailable: (callback: (info: any) => void) => {
+      ipcRenderer.on('update-available', (_event, info) => callback(info))
+      return () => ipcRenderer.removeAllListeners('update-available')
+    },
+    onUpdateNotAvailable: (callback: (info: any) => void) => {
+      ipcRenderer.on('update-not-available', (_event, info) => callback(info))
+      return () => ipcRenderer.removeAllListeners('update-not-available')
+    },
+    onUpdateDownloaded: (callback: (info: any) => void) => {
+      ipcRenderer.on('update-downloaded', (_event, info) => callback(info))
+      return () => ipcRenderer.removeAllListeners('update-downloaded')
+    },
+    onDownloadProgress: (callback: (progress: any) => void) => {
+      ipcRenderer.on('download-progress', (_event, progress) => callback(progress))
+      return () => ipcRenderer.removeAllListeners('download-progress')
+    },
+    onUpdateError: (callback: (error: string) => void) => {
+      ipcRenderer.on('update-error', (_event, error) => callback(error))
+      return () => ipcRenderer.removeAllListeners('update-error')
+    }
   }
 }
 
