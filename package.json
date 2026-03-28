@@ -1,6 +1,6 @@
 {
   "name": "circle",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Local-first AI-native desktop IDE: Monaco editor, Git, terminal, and a built-in coding assistant (Vercel AI SDK, MCP, SQLite).",
   "main": "./out/main/index.js",
   "author": "Circle",
@@ -88,6 +88,7 @@
     "iconv-lite": "^0.7.0",
     "jschardet": "^3.1.4",
     "jsonrepair": "^3.13.1",
+    "lodash": "^4.17.23",
     "lucide-react": "^0.552.0",
     "markdownlint": "^0.39.0",
     "markdownlint-rule-helpers": "^0.30.0",
