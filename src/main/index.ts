@@ -55,6 +55,40 @@ function updateWindowTheme(isDark: boolean): void {
   mainWindow.setBackgroundColor(backgroundColor)
 }
 
+function revealWindow(win: BrowserWindow): void {
+  if (win.isMinimized()) {
+    win.restore()
+  }
+  if (!win.isVisible()) {
+    win.show()
+  }
+  win.focus()
+}
+
+function presentOrCreateWindow(): void {
+  const windows = BrowserWindow.getAllWindows()
+  if (windows.length === 0) {
+    createWindow()
+    return
+  }
+  revealWindow(windows[0])
+}
+
+function registerThemeHandlers(): void {
+  nativeTheme.on('updated', () => {
+    updateWindowTheme(nativeTheme.shouldUseDarkColors)
+  })
+
+  ipcMain.handle('theme:update', (_event, theme: 'light' | 'dark' | 'system') => {
+    if (theme === 'system') {
+      nativeTheme.themeSource = 'system'
+    } else {
+      nativeTheme.themeSource = theme
+    }
+    updateWindowTheme(nativeTheme.shouldUseDarkColors)
+  })
+}
+
 function createWindow(): void {
   // 获取保存的窗口状态
   const windowState = configService.getWindowState()
@@ -103,25 +137,17 @@ function createWindow(): void {
   const windowStateManager = new WindowStateManager(mainWindow, configService)
   windowStateManager.initialize()
 
-  const showMainWindow = (): void => {
-    if (!mainWindow || mainWindow.isDestroyed()) return
-    if (!mainWindow.isVisible()) {
-      mainWindow.show()
+  mainWindow.once('ready-to-show', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      revealWindow(mainWindow)
     }
-    mainWindow.focus()
-  }
-
-  mainWindow.on('ready-to-show', () => {
-    showMainWindow()
   })
 
   const runAfterRendererLoaded = (): void => {
     if (!mainWindow || mainWindow.isDestroyed()) return
 
     autoUpdaterService.setMainWindow(mainWindow)
-    setTimeout(() => {
-      autoUpdaterService.startAutoCheck(4)
-    }, 2000)
+    autoUpdaterService.startAutoCheck(4)
 
     const currentProject = configService.getCurrentProject()
     if (currentProject) {
@@ -157,7 +183,7 @@ function createWindow(): void {
   mainWindow.webContents.once('did-finish-load', () => {
     if (!mainWindow || mainWindow.isDestroyed()) return
     if (!mainWindow.isVisible()) {
-      showMainWindow()
+      revealWindow(mainWindow)
     }
     runAfterRendererLoaded()
   })
@@ -199,22 +225,6 @@ function createWindow(): void {
   mainWindow.on('focus', () => {
     GitWatcherService.resume()
     FileWatcherService.resume()
-  })
-
-  // 监听系统主题变化
-  nativeTheme.on('updated', () => {
-    const isDark = nativeTheme.shouldUseDarkColors
-    updateWindowTheme(isDark)
-  })
-
-  // 监听渲染进程的主题切换请求
-  ipcMain.handle('theme:update', (_event, theme: 'light' | 'dark' | 'system') => {
-    if (theme === 'system') {
-      nativeTheme.themeSource = 'system'
-    } else {
-      nativeTheme.themeSource = theme
-    }
-    updateWindowTheme(nativeTheme.shouldUseDarkColors)
   })
 }
 
@@ -310,21 +320,7 @@ const gotTheLock = app.requestSingleInstanceLock()
 if (!gotTheLock) {
   app.quit()
 } else {
-  app.on('second-instance', () => {
-    const windows = BrowserWindow.getAllWindows()
-    if (windows.length === 0) {
-      createWindow()
-      return
-    }
-    const win = windows[0]
-    if (win.isMinimized()) {
-      win.restore()
-    }
-    if (!win.isVisible()) {
-      win.show()
-    }
-    win.focus()
-  })
+  app.on('second-instance', presentOrCreateWindow)
 
   app.whenReady().then(async () => {
     // Set app user model id for windows
@@ -347,6 +343,7 @@ if (!gotTheLock) {
     const { registerProtocolHandlers } = await import('./ipc/protocol.handlers')
     registerProtocolHandlers()
 
+    registerThemeHandlers()
     createWindow()
 
     // Auto-connect MCP servers (延迟 500ms，避免启动时资源竞争)
@@ -360,21 +357,7 @@ if (!gotTheLock) {
       }
     }, 500)
 
-    app.on('activate', function () {
-      const windows = BrowserWindow.getAllWindows()
-      if (windows.length === 0) {
-        createWindow()
-        return
-      }
-      const win = windows[0]
-      if (win.isMinimized()) {
-        win.restore()
-      }
-      if (!win.isVisible()) {
-        win.show()
-      }
-      win.focus()
-    })
+    app.on('activate', presentOrCreateWindow)
   })
 }
 

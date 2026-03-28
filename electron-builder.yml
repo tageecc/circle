@@ -16,7 +16,6 @@ files:
 asarUnpack:
   - resources/**
   - node_modules/sqlite-vec/**
-  - node_modules/sqlite-vec/**
 win:
   executableName: circle
 nsis:
