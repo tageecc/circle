@@ -1,5 +1,5 @@
 appId: com.circle.app
-productName: circle
+productName: Circle
 publish:
   provider: github
   owner: tageecc

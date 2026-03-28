@@ -66,6 +66,7 @@ function createWindow(): void {
 
   // 创建浏览器窗口
   mainWindow = new BrowserWindow({
+    title: 'Circle',
     width: windowState.width,
     height: windowState.height,
     x: windowState.x,
@@ -102,26 +103,34 @@ function createWindow(): void {
   const windowStateManager = new WindowStateManager(mainWindow, configService)
   windowStateManager.initialize()
 
-  mainWindow.on('ready-to-show', () => {
-    mainWindow?.show()
-
-    // 初始化自动更新服务
-    if (mainWindow) {
-      autoUpdaterService.setMainWindow(mainWindow)
-      // 启动自动检查更新（每4小时检查一次）
-      autoUpdaterService.startAutoCheck(4)
+  const showMainWindow = (): void => {
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    if (!mainWindow.isVisible()) {
+      mainWindow.show()
     }
+    mainWindow.focus()
+  }
 
-    // 检查是否有当前打开的项目，如果有则启动 FileWatcher 和 GitWatcher
+  mainWindow.on('ready-to-show', () => {
+    showMainWindow()
+  })
+
+  const runAfterRendererLoaded = (): void => {
+    if (!mainWindow || mainWindow.isDestroyed()) return
+
+    autoUpdaterService.setMainWindow(mainWindow)
+    setTimeout(() => {
+      autoUpdaterService.startAutoCheck(4)
+    }, 2000)
+
     const currentProject = configService.getCurrentProject()
-    if (currentProject && mainWindow) {
+    if (currentProject) {
       console.log(`🎯 Auto-starting FileWatcher for current project: ${currentProject}`)
       FileWatcherService.startWatching(currentProject, mainWindow)
 
-      // ⭐ 启动Git监听器（监听.git目录的关键文件）
       GitWatcherService.startWatching(currentProject)
     }
-  })
+  }
 
   // ⭐ 监听全屏状态变化（macOS 优化：全屏时移除红绿灯预留空间）
   mainWindow.on('enter-full-screen', () => {
@@ -144,6 +153,14 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  mainWindow.webContents.once('did-finish-load', () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    if (!mainWindow.isVisible()) {
+      showMainWindow()
+    }
+    runAfterRendererLoaded()
+  })
 
   // 拦截窗口关闭事件
   mainWindow.on('close', (event) => {
@@ -293,9 +310,25 @@ const gotTheLock = app.requestSingleInstanceLock()
 if (!gotTheLock) {
   app.quit()
 } else {
+  app.on('second-instance', () => {
+    const windows = BrowserWindow.getAllWindows()
+    if (windows.length === 0) {
+      createWindow()
+      return
+    }
+    const win = windows[0]
+    if (win.isMinimized()) {
+      win.restore()
+    }
+    if (!win.isVisible()) {
+      win.show()
+    }
+    win.focus()
+  })
+
   app.whenReady().then(async () => {
     // Set app user model id for windows
-    electronApp.setAppUserModelId('com.electron')
+    electronApp.setAppUserModelId('com.circle.app')
 
     app.on('browser-window-created', (_, window) => {
       optimizer.watchWindowShortcuts(window)
@@ -328,9 +361,19 @@ if (!gotTheLock) {
     }, 500)
 
     app.on('activate', function () {
-      // On macOS it's common to re-create a window in the app when the
-      // dock icon is clicked and there are no other windows open.
-      if (BrowserWindow.getAllWindows().length === 0) createWindow()
+      const windows = BrowserWindow.getAllWindows()
+      if (windows.length === 0) {
+        createWindow()
+        return
+      }
+      const win = windows[0]
+      if (win.isMinimized()) {
+        win.restore()
+      }
+      if (!win.isVisible()) {
+        win.show()
+      }
+      win.focus()
     })
   })
 }
