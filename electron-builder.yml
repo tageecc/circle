@@ -24,6 +24,8 @@ nsis:
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
 mac:
+  hardenedRuntime: true
+  entitlements: build/entitlements.mac.plist
   target:
     - target: dmg
       arch:
@@ -35,7 +37,8 @@ mac:
     - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
     - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
-  notarize: false
+  # When APPLE_API_KEY* (or APPLE_ID + app password) and CSC_* are set in CI, notarization runs; otherwise skipped.
+  notarize: true
 protocols:
   - name: Circle URL Scheme
     schemes:
