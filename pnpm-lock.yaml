@@ -307,8 +307,8 @@ importers:
         specifier: 3.0.8
         version: 3.0.8(zod@3.25.76)
       '@ai-sdk/openai':
-        specifier: 3.0.10
-        version: 3.0.10(zod@3.25.76)
+        specifier: 3.0.48
+        version: 3.0.48(zod@3.25.76)
       '@electron-toolkit/eslint-config-prettier':
         specifier: ^3.0.0
         version: 3.0.0(eslint@9.39.4(jiti@2.6.1))(prettier@3.8.1)
@@ -426,8 +426,8 @@ packages:
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/openai@3.0.10':
-    resolution: {integrity: sha512-G6HJORN0rKuCFrqIUiYchjl2b4UjzKvv3VcNuW7xwQIdI8EcdB9Pr8ZaR9nEImK9E639nM8gCfvFEUM1xwGaCA==}
+  '@ai-sdk/openai@3.0.48':
+    resolution: {integrity: sha512-ALmj/53EXpcRqMbGpPJPP4UOSWw0q4VGpnDo7YctvsynjkrKDmoneDG/1a7VQnSPYHnJp6tTRMf5ZdxZ5whulg==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -2483,6 +2483,7 @@ packages:
   '@xmldom/xmldom@0.8.11':
     resolution: {integrity: sha512-cQzWCtO6C8TQiYl1ruKNn2U6Ao4o4WBBcbL61yJl84x+j5sOWWFU9X7DpND8XZG3daDppSsigMdfAIl2upQBRw==}
     engines: {node: '>=10.0.0'}
+    deprecated: this version has critical issues, please update to the latest version
 
   '@xterm/addon-fit@0.10.0':
     resolution: {integrity: sha512-UFYkDm4HUahf2lnEyHvio51TNGiLK66mqP2JoATy7hRZeXaGMRDr00JiSF7m63vR5WKATF605yEggJKsw0JpMQ==}
@@ -6456,10 +6457,10 @@ snapshots:
       '@ai-sdk/provider-utils': 4.0.6(zod@3.25.76)
       zod: 3.25.76
 
-  '@ai-sdk/openai@3.0.10(zod@3.25.76)':
+  '@ai-sdk/openai@3.0.48(zod@3.25.76)':
     dependencies:
-      '@ai-sdk/provider': 3.0.3
-      '@ai-sdk/provider-utils': 4.0.6(zod@3.25.76)
+      '@ai-sdk/provider': 3.0.8
+      '@ai-sdk/provider-utils': 4.0.21(zod@3.25.76)
       zod: 3.25.76
 
   '@ai-sdk/provider-utils@4.0.21(zod@3.25.76)':

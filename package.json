@@ -124,7 +124,7 @@
   "devDependencies": {
     "@ai-sdk/anthropic": "3.0.13",
     "@ai-sdk/google": "3.0.8",
-    "@ai-sdk/openai": "3.0.10",
+    "@ai-sdk/openai": "3.0.48",
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",
     "@electron-toolkit/eslint-config-ts": "^3.1.0",
     "@electron-toolkit/tsconfig": "^2.0.0",
