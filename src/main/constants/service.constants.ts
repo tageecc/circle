@@ -120,10 +120,22 @@ export const AGENT_HARNESS = {
   RESERVE_OUTPUT_TOKENS: 16_000,
   /** Max characters kept per tool result when still over budget after pruning */
   MAX_TOOL_RESULT_CHARS_IN_CONTEXT: 24_000,
+  /** Second pass: shrink tool payloads before dropping below MIN_MESSAGES_TO_PRESERVE */
+  MAX_TOOL_RESULT_CHARS_AGGRESSIVE: 8_000,
+  /** Do not prune below this count until aggressive truncation runs (then may go lower) */
+  MIN_MESSAGES_TO_PRESERVE: 4,
   /** Git snapshot block max size */
   GIT_SNIPPET_MAX_CHARS: 2500,
   /** Marker between stable product instructions and per-turn environment (future prompt cache) */
-  DYNAMIC_CONTEXT_BOUNDARY: '\n---\n## Current session context (changes every message)\n---\n'
+  DYNAMIC_CONTEXT_BOUNDARY: '\n---\n## Current session context (changes every message)\n---\n',
+  /** Pre-prune LLM summary: need at least this many messages to consider summarizing head */
+  SUMMARY_MIN_MESSAGES: 14,
+  /** Messages kept verbatim at tail (includes current user turn) */
+  SUMMARY_TAIL_MESSAGES: 8,
+  /** Run summary when estimated message tokens exceed this fraction of budget */
+  SUMMARY_TRIGGER_BUDGET_RATIO: 0.55,
+  /** Max chars per message for plain text / text & reasoning parts (single huge paste guard) */
+  MAX_MESSAGE_TEXT_CHARS_IN_CONTEXT: 96_000
 } as const
 
 // ============================================================================

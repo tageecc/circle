@@ -24,6 +24,7 @@ import {
 } from './context-budget.service'
 import { formatMcpEnvironmentNote, mcpCatalogSignature } from './mcp-catalog.util'
 import { logHarnessEvent } from './agent-harness-telemetry'
+import { maybeSummarizeOlderMessagesForContext } from './conversation-compact.service'
 import { AGENT_HARNESS } from '../constants/service.constants'
 
 export class ChatService {
@@ -167,6 +168,9 @@ export class ChatService {
       const reserveOut =
         svcSettings.contextReserveOutputTokens ?? AGENT_HARNESS.RESERVE_OUTPUT_TOKENS
 
+      const prepT0 = Date.now()
+      let t = prepT0
+
       const systemPrompt = await this.contextEnrichmentService.buildSystemPrompt({
         modelId,
         assistantInstructions: assistantConfig.instructions,
@@ -175,27 +179,67 @@ export class ChatService {
         mcpEnvironmentNote: mcpNote
       })
 
+      const buildSystemMs = Date.now() - t
+
       logHarnessEvent('system_prompt.layers', {
         static_dynamic_bytes: systemPrompt.length,
         has_mcp_note: mcpNote ? 1 : 0
       })
 
+      let budgetMessages = messages as CoreLikeMessage[]
+      let conversationSummarized = false
+      let summarizeMs = 0
+      if (svcSettings.contextSummarizationEnabled !== false) {
+        t = Date.now()
+        const compacted = await maybeSummarizeOlderMessagesForContext({
+          messages: budgetMessages,
+          systemPrompt,
+          maxInputTokens: maxInput,
+          reserveOutputTokens: reserveOut,
+          modelId,
+          configService: this.configService,
+          abortSignal
+        })
+        summarizeMs = Date.now() - t
+        budgetMessages = compacted.messages
+        conversationSummarized = compacted.summarized
+      }
+
+      t = Date.now()
       const pruned = pruneMessagesForBudget({
-        messages: messages as CoreLikeMessage[],
+        messages: budgetMessages,
         systemPrompt,
         maxInputTokens: maxInput,
         reserveOutputTokens: reserveOut
       })
+      const pruneMs = Date.now() - t
+
+      logHarnessEvent('harness.prep_timings', {
+        build_system_ms: buildSystemMs,
+        summarize_ms: summarizeMs,
+        prune_ms: pruneMs,
+        total_prep_ms: Date.now() - prepT0,
+        summarized: conversationSummarized ? 1 : 0
+      })
 
       const messagesForModel = pruned.messages as ModelMessage[]
 
-      if (pruned.prunedCount > 0 || pruned.toolResultsTruncated) {
+      if (
+        pruned.prunedCount > 0 ||
+        pruned.toolResultsTruncated ||
+        conversationSummarized ||
+        pruned.aggressiveToolTruncation ||
+        pruned.longTextTruncated
+      ) {
         yield emitChunk({
           type: 'context-notice',
           contextNotice: {
             prunedMessageCount: pruned.prunedCount,
             toolResultsTruncated: pruned.toolResultsTruncated,
-            estimatedInputTokensAfter: pruned.estimatedInputTokensAfter
+            estimatedInputTokensAfter: pruned.estimatedInputTokensAfter,
+            conversationSummarized,
+            aggressiveToolTruncation: pruned.aggressiveToolTruncation,
+            longTextTruncated: pruned.longTextTruncated
           }
         })
       }

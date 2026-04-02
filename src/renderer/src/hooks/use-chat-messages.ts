@@ -189,15 +189,30 @@ export function useChatMessages(
         return message
       case 'context-notice':
         if (chunk.contextNotice) {
-          const { prunedMessageCount, toolResultsTruncated } = chunk.contextNotice
+          const {
+            prunedMessageCount,
+            toolResultsTruncated,
+            conversationSummarized,
+            aggressiveToolTruncation,
+            longTextTruncated
+          } = chunk.contextNotice
           const parts: string[] = []
+          if (conversationSummarized) {
+            parts.push(t('chat.context_notice_summarized'))
+          }
           if (prunedMessageCount > 0) {
             parts.push(
-              `Earlier messages were omitted to fit the model context (${prunedMessageCount} turn(s)).`
+              t('chat.context_notice_pruned', { count: prunedMessageCount })
             )
           }
           if (toolResultsTruncated) {
-            parts.push('Large tool results were shortened for the same reason.')
+            parts.push(t('chat.context_notice_tool_truncated'))
+          }
+          if (aggressiveToolTruncation) {
+            parts.push(t('chat.context_notice_aggressive'))
+          }
+          if (longTextTruncated) {
+            parts.push(t('chat.context_notice_long_text'))
           }
           if (parts.length > 0) {
             toast.info(parts.join(' '), { duration: 6000 })

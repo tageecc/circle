@@ -94,6 +94,9 @@ const api = {
           prunedMessageCount: number
           toolResultsTruncated: boolean
           estimatedInputTokensAfter?: number
+          conversationSummarized?: boolean
+          aggressiveToolTruncation?: boolean
+          longTextTruncated?: boolean
         }
       }) => void,
       onEnd: (sessionId: string) => void,

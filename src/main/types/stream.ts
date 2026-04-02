@@ -84,5 +84,9 @@ export interface StreamChunk {
     prunedMessageCount: number
     toolResultsTruncated: boolean
     estimatedInputTokensAfter?: number
+    /** Older turns were replaced by an LLM summary block */
+    conversationSummarized?: boolean
+    aggressiveToolTruncation?: boolean
+    longTextTruncated?: boolean
   }
 }

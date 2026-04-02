@@ -11,7 +11,7 @@ export type CoreLikeMessage = {
   content: unknown
 }
 
-/** ~4 chars per token for mixed EN/CN; conservative for cost control */
+/** Heuristic tokenizer using AGENT_HARNESS.CHARS_PER_TOKEN (mixed EN/CN) */
 export function estimateTokens(text: string): number {
   if (!text) return 0
   return Math.ceil(text.length / AGENT_HARNESS.CHARS_PER_TOKEN)
@@ -30,6 +30,23 @@ export function estimateMessageTokens(msg: CoreLikeMessage): number {
   return estimateTokens(contentToString(msg.content))
 }
 
+/** Token ceiling for the message list (system prompt counted separately). */
+export function computeMessagesTokenBudget(params: {
+  maxInputTokens: number
+  reserveOutputTokens: number
+  systemPrompt: string
+}): number {
+  const { maxInputTokens, reserveOutputTokens, systemPrompt } = params
+  return Math.max(
+    8_000,
+    maxInputTokens - reserveOutputTokens - estimateTokens(systemPrompt)
+  )
+}
+
+function truncationSuffix(removedChars: number): string {
+  return `\n\n[… truncated ${removedChars} chars for context budget]`
+}
+
 /** Heuristic input limits by provider (conservative). */
 export function getDefaultMaxInputTokensForModel(modelId: string): number {
   const lower = modelId.toLowerCase()
@@ -44,6 +61,8 @@ export type PruneResult = {
   messages: CoreLikeMessage[]
   prunedCount: number
   toolResultsTruncated: boolean
+  aggressiveToolTruncation: boolean
+  longTextTruncated: boolean
   estimatedInputTokensAfter: number
 }
 
@@ -74,8 +93,49 @@ export function softTruncateToolResultsInMessages(
             output: {
               ...o,
               type: 'text' as const,
-              value: `${cut}\n\n[… truncated ${str.length - maxChars} chars for context budget]`
+              value: `${cut}${truncationSuffix(str.length - maxChars)}`
             }
+          }
+        }
+      }
+      return part
+    })
+    return { ...m, content: newParts }
+  })
+  return { messages: out, truncated }
+}
+
+const TEXT_LIKE_PART_TYPES = new Set(['text', 'reasoning'])
+
+/**
+ * Cap huge pasted code or assistant text blobs (CC-style: tool results are not the only risk).
+ */
+export function softTruncateLongTextInMessages(
+  messages: CoreLikeMessage[],
+  maxChars: number
+): { messages: CoreLikeMessage[]; truncated: boolean } {
+  let truncated = false
+  const out = messages.map((m) => {
+    if (typeof m.content === 'string') {
+      if (m.content.length <= maxChars) return m
+      truncated = true
+      const cut = m.content.slice(0, maxChars)
+      return {
+        ...m,
+        content: `${cut}${truncationSuffix(m.content.length - maxChars)}`
+      }
+    }
+    if (!Array.isArray(m.content)) return m
+    const newParts = (m.content as Array<Record<string, unknown>>).map((part) => {
+      const t = part.type
+      if (typeof t === 'string' && TEXT_LIKE_PART_TYPES.has(t)) {
+        const text = typeof part.text === 'string' ? part.text : ''
+        if (text.length > maxChars) {
+          truncated = true
+          const cut = text.slice(0, maxChars)
+          return {
+            ...part,
+            text: `${cut}${truncationSuffix(text.length - maxChars)}`
           }
         }
       }
@@ -94,13 +154,48 @@ export function pruneMessagesForBudget(params: {
 }): PruneResult {
   const { systemPrompt, maxInputTokens, reserveOutputTokens } = params
   let messages = cloneMessages(params.messages)
-  const budget = Math.max(
-    8_000,
-    maxInputTokens - reserveOutputTokens - estimateTokens(systemPrompt)
-  )
+  const budget = computeMessagesTokenBudget({
+    maxInputTokens,
+    reserveOutputTokens,
+    systemPrompt
+  })
 
-  let estimated = messages.reduce((s, m) => s + estimateMessageTokens(m), 0)
+  const minPreserve = AGENT_HARNESS.MIN_MESSAGES_TO_PRESERVE
   let prunedCount = 0
+  let toolResultsTruncated = false
+  let aggressiveToolTruncation = false
+  let longTextTruncated = false
+
+  const sumEstimate = (ms: CoreLikeMessage[]) =>
+    ms.reduce((s, m) => s + estimateMessageTokens(m), 0)
+
+  const textPass = softTruncateLongTextInMessages(
+    messages,
+    AGENT_HARNESS.MAX_MESSAGE_TEXT_CHARS_IN_CONTEXT
+  )
+  messages = textPass.messages
+  if (textPass.truncated) {
+    longTextTruncated = true
+    logHarnessEvent('context.long_text_truncated', {
+      max_chars: AGENT_HARNESS.MAX_MESSAGE_TEXT_CHARS_IN_CONTEXT
+    })
+  }
+
+  // 1) Soften huge tool payloads first (CC-style: tool budget before dropping turns)
+  const firstPass = softTruncateToolResultsInMessages(
+    messages,
+    AGENT_HARNESS.MAX_TOOL_RESULT_CHARS_IN_CONTEXT
+  )
+  messages = firstPass.messages
+  if (firstPass.truncated) {
+    toolResultsTruncated = true
+    logHarnessEvent('context.tool_results_truncated', {
+      max_chars: AGENT_HARNESS.MAX_TOOL_RESULT_CHARS_IN_CONTEXT,
+      phase: 'initial'
+    })
+  }
+
+  let estimated = sumEstimate(messages)
 
   logHarnessEvent('context.budget_estimate', {
     estimated_messages: estimated,
@@ -108,26 +203,36 @@ export function pruneMessagesForBudget(params: {
     message_count: messages.length
   })
 
-  while (estimated > budget && messages.length > 1) {
+  // 2) Drop oldest turns while above budget, keeping at least minPreserve messages
+  while (estimated > budget && messages.length > minPreserve) {
     const removed = messages.shift()!
     prunedCount++
     estimated -= estimateMessageTokens(removed)
   }
 
-  let toolResultsTruncated = false
-  if (estimated > budget) {
-    const soft = softTruncateToolResultsInMessages(
+  // 3) Aggressive tool shrink before discarding below minPreserve
+  if (estimated > budget && messages.length <= minPreserve) {
+    const aggressive = softTruncateToolResultsInMessages(
       messages,
-      AGENT_HARNESS.MAX_TOOL_RESULT_CHARS_IN_CONTEXT
+      AGENT_HARNESS.MAX_TOOL_RESULT_CHARS_AGGRESSIVE
     )
-    messages = soft.messages
-    toolResultsTruncated = soft.truncated
-    estimated = messages.reduce((s, m) => s + estimateMessageTokens(m), 0)
-    if (toolResultsTruncated) {
+    messages = aggressive.messages
+    if (aggressive.truncated) {
+      toolResultsTruncated = true
+      aggressiveToolTruncation = true
       logHarnessEvent('context.tool_results_truncated', {
-        max_chars: AGENT_HARNESS.MAX_TOOL_RESULT_CHARS_IN_CONTEXT
+        max_chars: AGENT_HARNESS.MAX_TOOL_RESULT_CHARS_AGGRESSIVE,
+        phase: 'aggressive'
       })
     }
+    estimated = sumEstimate(messages)
+  }
+
+  // 4) Last resort: prune down to a single message (current user turn only if structure allows)
+  while (estimated > budget && messages.length > 1) {
+    const removed = messages.shift()!
+    prunedCount++
+    estimated -= estimateMessageTokens(removed)
   }
 
   if (prunedCount > 0) {
@@ -141,6 +246,8 @@ export function pruneMessagesForBudget(params: {
     messages,
     prunedCount,
     toolResultsTruncated,
+    aggressiveToolTruncation,
+    longTextTruncated,
     estimatedInputTokensAfter: estimateTokens(systemPrompt) + estimated
   }
 }

@@ -120,6 +120,8 @@ interface ServiceSettings {
   maxContextInputTokens?: number
   /** Extra reserve subtracted from input budget for long assistant completions */
   contextReserveOutputTokens?: number
+  /** When true (default), long history may be LLM-summarized before prune (CC-style compact) */
+  contextSummarizationEnabled?: boolean
 }
 
 interface SkillsSettings {

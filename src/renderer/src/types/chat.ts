@@ -171,6 +171,9 @@ export interface StreamChunk {
     prunedMessageCount: number
     toolResultsTruncated: boolean
     estimatedInputTokensAfter?: number
+    conversationSummarized?: boolean
+    aggressiveToolTruncation?: boolean
+    longTextTruncated?: boolean
   }
 }
 
