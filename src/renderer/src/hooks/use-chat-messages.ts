@@ -214,6 +214,9 @@ export function useChatMessages(
           if (longTextTruncated) {
             parts.push(t('chat.context_notice_long_text'))
           }
+          if (chunk.contextNotice?.reactiveRetry) {
+            parts.push('Context limit hit — trimmed older turns and retried.')
+          }
           if (parts.length > 0) {
             toast.info(parts.join(' '), { duration: 6000 })
           }
@@ -221,6 +224,9 @@ export function useChatMessages(
         return message
       case 'error':
         return chunk.error ? handleErrorChunk(message, chunk) : message
+      case 'orchestration':
+      case 'agent-step':
+        return message
       default:
         return message
     }
@@ -386,6 +392,62 @@ export function useChatMessages(
           }
 
           if (chunk.type === 'session-id') return
+
+          // Phase F: oversized tool rows — resolve ref then same as message-start
+          if (chunk.type === 'message-start' && chunk.payloadRef && window.api.chat.getStreamPayload) {
+            void window.api.chat.getStreamPayload(chunk.payloadRef).then((json) => {
+              if (!json) return
+              try {
+                const parsed = JSON.parse(json) as Array<{
+                  id: number
+                  role: 'user' | 'assistant' | 'system' | 'tool'
+                  content: unknown[]
+                  timestamp?: number
+                }>
+                const newMessages: Message[] = parsed.map((msg) => ({
+                  ...msg,
+                  timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date()
+                })) as Message[]
+                if (workspaceRoot) {
+                  const pendingEditsStore = usePendingEditsStore.getState()
+                  newMessages.forEach((msg) => {
+                    if (msg.role === 'tool' && Array.isArray(msg.content)) {
+                      msg.content.forEach((part: any) => {
+                        if (part.type === 'tool-result' && part.output?.type === 'text') {
+                          try {
+                            const result = JSON.parse(part.output.value)
+                            if (result.type === 'applied-file-edit') {
+                              pendingEditsStore.addEdit(workspaceRoot, {
+                                toolCallId: part.toolCallId,
+                                sessionId,
+                                toolName: result.toolName,
+                                filePath: result.filePath,
+                                absolutePath: result.absolutePath,
+                                oldContent: result.oldContent || '',
+                                newContent: result.newContent || '',
+                                timestamp: Date.now()
+                              })
+                            }
+                          } catch {
+                            /* ignore */
+                          }
+                        }
+                      })
+                    }
+                  })
+                }
+                setSessions((prev) =>
+                  prev.map((s) => {
+                    if (s.id !== sessionId) return s
+                    return { ...s, messages: [...s.messages, ...newMessages] }
+                  })
+                )
+              } catch (e) {
+                console.warn('[chat] payloadRef parse failed', e)
+              }
+            })
+            return
+          }
 
           // 处理 message-start：直接使用后端传来的完整消息
           if (chunk.type === 'message-start' && chunk.messages) {

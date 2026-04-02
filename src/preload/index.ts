@@ -165,7 +165,11 @@ const api = {
     },
 
     submitUserQuestionAnswer: (questionId: string, answer: string) =>
-      ipcRenderer.invoke('chat:user-question:answer', { questionId, answer })
+      ipcRenderer.invoke('chat:user-question:answer', { questionId, answer }),
+
+    /** Phase F: resolve large tool payloads stored by ref in main process */
+    getStreamPayload: (ref: string) =>
+      ipcRenderer.invoke('chat:get-stream-payload', ref) as Promise<string | null>
   },
 
   // Session APIs

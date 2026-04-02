@@ -9,6 +9,10 @@ export interface ToolContext {
   workspaceRoot: string
   assistantMessageId: number // 当前助手消息ID（用于流式更新和审批状态持久化）
   abortSignal?: AbortSignal // 用于停止工具执行
+  /** Set by ChatService — required for delegate_task / nested runs */
+  modelId?: string
+  /** 0 = main agent; nested sub-agent runs use 1+ */
+  delegateDepth?: number
 }
 
 /**

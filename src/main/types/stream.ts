@@ -1,5 +1,8 @@
 import type { LanguageModelUsage } from 'ai'
 
+/** IPC / stream chunk schema version (Phase F). Bump when breaking shape changes. */
+export const STREAM_CHUNK_PROTOCOL_VERSION = 1 as const
+
 /**
  * HITL 中断数据
  */
@@ -27,9 +30,42 @@ export interface StreamChunk {
     | 'error'
     | 'usage'
     | 'context-notice'
+    /** Phase A: chain metadata + protocol version (Claude Code queryTracking-style) */
+    | 'orchestration'
+    /** Phase A: explicit agentic step boundary for UI/telemetry */
+    | 'agent-step'
+
+  /** Phase F: optional protocol version on every chunk */
+  v?: typeof STREAM_CHUNK_PROTOCOL_VERSION
 
   // 文本内容
   content?: string
+
+  /** Phase A: session chain id (correlates logs across one user turn's model↔tool loop) */
+  chainId?: string
+
+  /** Phase A: model round / tool invocation index within this chain */
+  orchestration?: {
+    protocolVersion: typeof STREAM_CHUNK_PROTOCOL_VERSION
+    chainId: string
+    maxSteps: number
+    modelId: string
+  }
+
+  /** Phase A: step telemetry (CC-style explicit transitions) */
+  agentStep?: {
+    chainId: string
+    /** Monotonic within this stream */
+    index: number
+    phase: 'tool_call' | 'tool_result' | 'model_finish' | 'stream_error'
+    toolName?: string
+    toolCallId?: string
+  }
+
+  /**
+   * Phase F: huge payloads replaced by ref; use IPC `chat:get-stream-payload` to resolve.
+   */
+  payloadRef?: string
 
   // 会话ID
   sessionId?: string
@@ -88,5 +124,7 @@ export interface StreamChunk {
     conversationSummarized?: boolean
     aggressiveToolTruncation?: boolean
     longTextTruncated?: boolean
+    /** Phase B: second attempt after deterministic shrink (reactive-style recovery) */
+    reactiveRetry?: boolean
   }
 }

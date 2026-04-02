@@ -18,6 +18,7 @@ import { getConfigService, rebuildApplicationMenu } from '../index'
 import { mainI18n, syncMainI18nFromConfig } from '../i18n'
 import { getDb } from '../database/db'
 import { sendToRenderer } from '../utils/ipc'
+import { getStreamPayload } from '../services/stream-payload-refs.service'
 import * as fontList from 'font-list'
 import * as fs from 'fs/promises'
 import * as nodePath from 'path'
@@ -39,6 +40,10 @@ export function registerIpcHandlers(): void {
 
   // 创建 MemoryService 实例
   const memoryService = new MemoryService()
+
+  ipcMain.handle('chat:get-stream-payload', (_, ref: string) => {
+    return getStreamPayload(ref) ?? null
+  })
 
   ipcMain.on('chat:stream', async (event, options) => {
     const streamId = options.streamId

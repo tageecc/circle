@@ -24,6 +24,26 @@ declare global {
               | 'error'
               | 'session-id'
               | 'message-start'
+              | 'orchestration'
+              | 'agent-step'
+              | 'usage'
+              | 'context-notice'
+            v?: 1
+            chainId?: string
+            payloadRef?: string
+            orchestration?: {
+              protocolVersion: 1
+              chainId: string
+              maxSteps: number
+              modelId: string
+            }
+            agentStep?: {
+              chainId: string
+              index: number
+              phase: string
+              toolName?: string
+              toolCallId?: string
+            }
             content?: string
             sessionId?: string
             messages?: Array<{
@@ -53,6 +73,22 @@ declare global {
             }
             interrupt?: any
             error?: string
+            contextNotice?: {
+              prunedMessageCount: number
+              toolResultsTruncated: boolean
+              estimatedInputTokensAfter?: number
+              conversationSummarized?: boolean
+              aggressiveToolTruncation?: boolean
+              longTextTruncated?: boolean
+              reactiveRetry?: boolean
+            }
+            usage?: {
+              promptTokens?: number
+              completionTokens?: number
+              totalTokens?: number
+              inputTokens?: number
+              outputTokens?: number
+            }
           }) => void,
           onEnd: (sessionId: string) => void,
           onError: (error: string) => void
@@ -73,6 +109,7 @@ declare global {
           }) => void
         ) => () => void
         submitUserQuestionAnswer: (questionId: string, answer: string) => Promise<void>
+        getStreamPayload: (ref: string) => Promise<string | null>
       }
       sessions: {
         create: (modelId: string, projectPath: string) => Promise<string>

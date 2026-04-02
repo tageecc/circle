@@ -4,8 +4,9 @@
  */
 
 import { streamText, stepCountIs } from 'ai'
-import type { ModelMessage, TextPart, ToolCallPart, ToolResultPart } from 'ai'
+import type { TextPart, ToolCallPart, ToolResultPart } from 'ai'
 import type { ReasoningPart } from '@ai-sdk/provider-utils'
+import { STREAM_CHUNK_PROTOCOL_VERSION } from '../types/stream'
 import type { StreamChunk } from '../types/stream'
 import type { MessageMetadata } from '../types/message'
 
@@ -17,15 +18,24 @@ import type { ToolContext } from './tool-context'
 import { assistantConfig, getAssistantTools } from '../assistant/assistant'
 import { createLanguageModel } from '../utils/model-factory'
 import { MessageSnapshotService, type FileSnapshot } from './message-snapshot.service'
-import {
-  getDefaultMaxInputTokensForModel,
-  pruneMessagesForBudget,
-  type CoreLikeMessage
-} from './context-budget.service'
+import { getDefaultMaxInputTokensForModel, type CoreLikeMessage } from './context-budget.service'
 import { formatMcpEnvironmentNote, mcpCatalogSignature } from './mcp-catalog.util'
 import { logHarnessEvent } from './agent-harness-telemetry'
-import { maybeSummarizeOlderMessagesForContext } from './conversation-compact.service'
 import { AGENT_HARNESS } from '../constants/service.constants'
+import {
+  prepareMessagesForAgenticTurn,
+  isLikelyContextOverflowError,
+  shrinkMessagesForReactiveRetry
+} from './context-pipeline.service'
+import {
+  buildAgentStepChunk,
+  buildOrchestrationChunk,
+  createChainId,
+  withProtocolChunk
+} from '../agent/coding-session.runner'
+import { getSessionHooks } from '../agent/session-hooks'
+import { reportExclusiveToolBatchIfRisky } from '../tools/tool-policy'
+import { shouldUsePayloadRef, storeStreamPayload } from './stream-payload-refs.service'
 
 export class ChatService {
   private contextEnrichmentService = ContextEnrichmentService.getInstance()
@@ -62,12 +72,6 @@ export class ChatService {
     // 收集当前消息的文件变更（用于快照）
     const messageFileChanges: Record<string, FileSnapshot> = {}
 
-    // 辅助函数：发送 chunk
-    const emitChunk = (chunk: StreamChunk) => {
-      onStream?.(chunk)
-      return chunk
-    }
-
     // 辅助函数：保存消息
     const saveMessage = async () => {
       const content: Array<TextPart | ReasoningPart | ToolCallPart> = [...contentParts]
@@ -86,9 +90,19 @@ export class ChatService {
       })
     }
 
+    let chainId = ''
+
     try {
       if (!workspaceRoot) {
         throw new Error('workspaceRoot is required')
+      }
+
+      chainId = createChainId()
+
+      const emitChunk = (chunk: StreamChunk) => {
+        const c = withProtocolChunk(chunk, chainId)
+        onStream?.(c)
+        return c
       }
 
       const modelId = this.configService.getDefaultModel()
@@ -186,103 +200,166 @@ export class ChatService {
         has_mcp_note: mcpNote ? 1 : 0
       })
 
-      let budgetMessages = messages as CoreLikeMessage[]
-      let conversationSummarized = false
-      let summarizeMs = 0
-      if (svcSettings.contextSummarizationEnabled !== false) {
-        t = Date.now()
-        const compacted = await maybeSummarizeOlderMessagesForContext({
-          messages: budgetMessages,
-          systemPrompt,
-          maxInputTokens: maxInput,
-          reserveOutputTokens: reserveOut,
-          modelId,
-          configService: this.configService,
-          abortSignal
-        })
-        summarizeMs = Date.now() - t
-        budgetMessages = compacted.messages
-        conversationSummarized = compacted.summarized
-      }
+      let coreMessages: CoreLikeMessage[] = messages as CoreLikeMessage[]
+      const maxAgentSteps = 100
 
-      t = Date.now()
-      const pruned = pruneMessagesForBudget({
-        messages: budgetMessages,
+      const prepFirst = await prepareMessagesForAgenticTurn({
+        messages: coreMessages,
         systemPrompt,
+        modelId,
+        configService: this.configService,
         maxInputTokens: maxInput,
-        reserveOutputTokens: reserveOut
+        reserveOutputTokens: reserveOut,
+        summarizationEnabled: svcSettings.contextSummarizationEnabled !== false,
+        abortSignal
       })
-      const pruneMs = Date.now() - t
 
       logHarnessEvent('harness.prep_timings', {
         build_system_ms: buildSystemMs,
-        summarize_ms: summarizeMs,
-        prune_ms: pruneMs,
+        summarize_ms: 0,
+        prune_ms: Date.now() - prepT0 - buildSystemMs,
         total_prep_ms: Date.now() - prepT0,
-        summarized: conversationSummarized ? 1 : 0
+        summarized: prepFirst.conversationSummarized ? 1 : 0
       })
 
-      const messagesForModel = pruned.messages as ModelMessage[]
+      let messagesForModel = prepFirst.messagesForModel
+      let pruned = prepFirst.pruned
+      let conversationSummarized = prepFirst.conversationSummarized
 
-      if (
-        pruned.prunedCount > 0 ||
-        pruned.toolResultsTruncated ||
-        conversationSummarized ||
-        pruned.aggressiveToolTruncation ||
-        pruned.longTextTruncated
-      ) {
-        yield emitChunk({
-          type: 'context-notice',
-          contextNotice: {
-            prunedMessageCount: pruned.prunedCount,
-            toolResultsTruncated: pruned.toolResultsTruncated,
-            estimatedInputTokensAfter: pruned.estimatedInputTokensAfter,
-            conversationSummarized,
-            aggressiveToolTruncation: pruned.aggressiveToolTruncation,
-            longTextTruncated: pruned.longTextTruncated
-          }
-        })
+      const emitContextNotice = (reactiveRetry?: boolean) => {
+        if (
+          pruned.prunedCount > 0 ||
+          pruned.toolResultsTruncated ||
+          conversationSummarized ||
+          pruned.aggressiveToolTruncation ||
+          pruned.longTextTruncated ||
+          reactiveRetry
+        ) {
+          return emitChunk({
+            type: 'context-notice',
+            contextNotice: {
+              prunedMessageCount: pruned.prunedCount,
+              toolResultsTruncated: pruned.toolResultsTruncated,
+              estimatedInputTokensAfter: pruned.estimatedInputTokensAfter,
+              conversationSummarized,
+              aggressiveToolTruncation: pruned.aggressiveToolTruncation,
+              longTextTruncated: pruned.longTextTruncated,
+              reactiveRetry: reactiveRetry === true
+            }
+          })
+        }
+        return undefined
+      }
+
+      {
+        const notice = emitContextNotice(false)
+        if (notice) yield notice
       }
 
       debugLogger.logChatRequest(sessionId, messagesForModel, { workspaceRoot })
+
+      await getSessionHooks().beforeModelCall?.({
+        chainId,
+        sessionId,
+        workspaceRoot,
+        modelId,
+        messageCount: messagesForModel.length,
+        estimatedInputTokens: pruned.estimatedInputTokensAfter
+      })
+
+      yield emitChunk(
+        buildOrchestrationChunk(
+          {
+            protocolVersion: STREAM_CHUNK_PROTOCOL_VERSION,
+            chainId,
+            maxSteps: maxAgentSteps,
+            modelId
+          },
+          chainId
+        )
+      )
 
       const toolContext: ToolContext = {
         sessionId,
         workspaceRoot,
         assistantMessageId,
-        abortSignal
+        abortSignal,
+        modelId,
+        delegateDepth: 0
       }
 
-      const result = streamText({
-        model: createLanguageModel(modelId, this.configService),
-        system: systemPrompt,
-        messages: messagesForModel,
-        tools,
-        stopWhen: stepCountIs(100),
-        maxRetries: 2,
-        temperature: this.configService.getTemperature(),
-        experimental_context: toolContext,
-        abortSignal,
-        providerOptions: {
-          qwen: {
-            enable_thinking: true,
-            stream_options: {
-              include_usage: true
-            }
-          }
-        },
-        // 在每一步之前过滤 reasoning parts
-        prepareStep: ({ messages: stepMessages }) => ({
-          messages: stepMessages.map((msg) =>
-            msg.role === 'assistant' && Array.isArray(msg.content)
-              ? { ...msg, content: msg.content.filter((part) => part.type !== 'reasoning') }
-              : msg
-          )
-        })
-      })
+      let reactiveRetryUsed = false
+      let allowReactiveRetry = true
+      let stepIndex = 0
+      const toolNamesSinceLastFinish: string[] = []
 
-      for await (const part of result.fullStream) {
-        switch (part.type) {
+      outer: while (true) {
+        const result = streamText({
+          model: createLanguageModel(modelId, this.configService),
+          system: systemPrompt,
+          messages: messagesForModel,
+          tools,
+          stopWhen: stepCountIs(maxAgentSteps),
+          maxRetries: 2,
+          temperature: this.configService.getTemperature(),
+          experimental_context: toolContext,
+          abortSignal,
+          providerOptions: {
+            qwen: {
+              enable_thinking: true,
+              stream_options: {
+                include_usage: true
+              }
+            }
+          },
+          prepareStep: ({ messages: stepMessages }) => ({
+            messages: stepMessages.map((msg) =>
+              msg.role === 'assistant' && Array.isArray(msg.content)
+                ? { ...msg, content: msg.content.filter((part) => part.type !== 'reasoning') }
+                : msg
+            )
+          })
+        })
+
+        try {
+          for await (const part of result.fullStream) {
+            if (
+              part.type === 'error' &&
+              isLikelyContextOverflowError(part.error) &&
+              allowReactiveRetry &&
+              !reactiveRetryUsed
+            ) {
+              reactiveRetryUsed = true
+              coreMessages = shrinkMessagesForReactiveRetry(
+                coreMessages,
+                AGENT_HARNESS.SUMMARY_TAIL_MESSAGES
+              )
+              const prepAgain = await prepareMessagesForAgenticTurn({
+                messages: coreMessages,
+                systemPrompt,
+                modelId,
+                configService: this.configService,
+                maxInputTokens: maxInput,
+                reserveOutputTokens: reserveOut,
+                summarizationEnabled: svcSettings.contextSummarizationEnabled !== false,
+                abortSignal
+              })
+              messagesForModel = prepAgain.messagesForModel
+              pruned = prepAgain.pruned
+              conversationSummarized = prepAgain.conversationSummarized
+              {
+                const notice = emitContextNotice(true)
+                if (notice) yield notice
+              }
+              logHarnessEvent('context.reactive_retry', { chain_id: chainId })
+              continue outer
+            }
+
+            if (part.type === 'text-delta' || part.type === 'tool-call' || part.type === 'reasoning-delta') {
+              allowReactiveRetry = false
+            }
+
+            switch (part.type) {
           case 'reasoning-start': {
             reasoningContent = ''
             metadata.streamingStates!.reasoning = { isStreaming: true, type: 'reasoning' }
@@ -342,6 +419,21 @@ export class ChatService {
               }
             })
 
+            stepIndex += 1
+            toolNamesSinceLastFinish.push(part.toolName)
+            yield emitChunk(
+              buildAgentStepChunk(
+                {
+                  chainId,
+                  index: stepIndex,
+                  phase: 'tool_call',
+                  toolName: part.toolName,
+                  toolCallId: part.toolCallId
+                },
+                chainId
+              )
+            )
+
             await saveMessage() // ✅ 恢复保存：工具调用是关键状态点
             break
           }
@@ -379,16 +471,63 @@ export class ChatService {
             })
 
             // ✅ 发送tool消息到前端（关键：让前端能找到tool-result）
-            yield emitChunk({
-              type: 'message-start',
-              messages: [
+            const toolMsgPayload = [
+              {
+                id: toolMessageId,
+                role: 'tool' as const,
+                content: [toolResultPart],
+                timestamp: Date.now()
+              }
+            ]
+            const serializedTool = JSON.stringify(toolMsgPayload)
+            if (shouldUsePayloadRef(serializedTool)) {
+              const ref = storeStreamPayload(serializedTool)
+              yield emitChunk({
+                type: 'message-start',
+                payloadRef: ref,
+                messages: [
+                  {
+                    id: toolMessageId,
+                    role: 'tool',
+                    content: [
+                      {
+                        type: 'text',
+                        text: '[Large tool result omitted — resolve payloadRef in renderer]'
+                      }
+                    ],
+                    timestamp: Date.now()
+                  }
+                ]
+              })
+            } else {
+              yield emitChunk({
+                type: 'message-start',
+                messages: toolMsgPayload
+              })
+            }
+
+            stepIndex += 1
+            yield emitChunk(
+              buildAgentStepChunk(
                 {
-                  id: toolMessageId,
-                  role: 'tool',
-                  content: [toolResultPart],
-                  timestamp: Date.now()
-                }
-              ]
+                  chainId,
+                  index: stepIndex,
+                  phase: 'tool_result',
+                  toolName: part.toolName,
+                  toolCallId: part.toolCallId
+                },
+                chainId
+              )
+            )
+
+            await getSessionHooks().afterToolResult?.({
+              chainId,
+              sessionId,
+              workspaceRoot,
+              modelId,
+              toolName: part.toolName,
+              toolCallId: part.toolCallId,
+              output: partWithOutput.output
             })
 
             // ✅ 移除toolStates更新：状态从tool-result消息推导
@@ -479,6 +618,9 @@ export class ChatService {
           }
 
           case 'finish': {
+            reportExclusiveToolBatchIfRisky(toolNamesSinceLastFinish)
+            toolNamesSinceLastFinish.length = 0
+
             closeStreaming()
             await saveMessage()
 
@@ -539,8 +681,46 @@ export class ChatService {
             yield emitChunk({ type: 'error', error: errorMsg })
             break
           }
+            }
+          }
+          break outer
+        } catch (innerErr: unknown) {
+          if (isLikelyContextOverflowError(innerErr) && !reactiveRetryUsed) {
+            reactiveRetryUsed = true
+            coreMessages = shrinkMessagesForReactiveRetry(
+              coreMessages,
+              AGENT_HARNESS.SUMMARY_TAIL_MESSAGES
+            )
+            const prepThrow = await prepareMessagesForAgenticTurn({
+              messages: coreMessages,
+              systemPrompt,
+              modelId,
+              configService: this.configService,
+              maxInputTokens: maxInput,
+              reserveOutputTokens: reserveOut,
+              summarizationEnabled: svcSettings.contextSummarizationEnabled !== false,
+              abortSignal
+            })
+            messagesForModel = prepThrow.messagesForModel
+            pruned = prepThrow.pruned
+            conversationSummarized = prepThrow.conversationSummarized
+            {
+              const notice = emitContextNotice(true)
+              if (notice) yield notice
+            }
+            logHarnessEvent('context.reactive_retry_throw', { chain_id: chainId })
+            continue outer
+          }
+          throw innerErr
         }
       }
+
+      await getSessionHooks().onSessionIdle?.({
+        chainId,
+        sessionId,
+        workspaceRoot,
+        modelId
+      })
 
       // 异步生成标题（不阻塞流完成）
       this.sessionService.maybeGenerateTitle(sessionId).catch((error) => {
@@ -551,10 +731,15 @@ export class ChatService {
       closeStreaming()
       await saveMessage()
 
-      yield emitChunk({
+      const errChunk: StreamChunk = {
         type: 'error',
-        error: error instanceof Error ? error.message : String(error)
-      })
+        v: STREAM_CHUNK_PROTOCOL_VERSION,
+        error: error instanceof Error ? error.message : String(error),
+        ...(chainId ? { chainId } : {})
+      }
+      const out = chainId ? withProtocolChunk(errChunk, chainId) : errChunk
+      onStream?.(out)
+      yield out
     }
   }
 

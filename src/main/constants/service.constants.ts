@@ -132,6 +132,8 @@ export const AGENT_HARNESS = {
   SUMMARY_MIN_MESSAGES: 14,
   /** Messages kept verbatim at tail (includes current user turn) */
   SUMMARY_TAIL_MESSAGES: 8,
+  /** Micro-compact: leave this many latest messages untouched before placeholdering old tool blobs */
+  MICROCOMPACT_PRESERVE_LAST: 6,
   /** Run summary when estimated message tokens exceed this fraction of budget */
   SUMMARY_TRIGGER_BUDGET_RATIO: 0.55,
   /** Max chars per message for plain text / text & reasoning parts (single huge paste guard) */

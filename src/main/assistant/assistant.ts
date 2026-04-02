@@ -1,18 +1,8 @@
-import { readFileTool } from '../tools/read-file.tool'
-import { editFileTool } from '../tools/edit-file.tool'
-import { listDirTool } from '../tools/list-dir.tool'
-import { globFileSearchTool } from '../tools/glob-file-search.tool'
-import { grepTool } from '../tools/grep.tool'
-import { codebaseSearchTool } from '../tools/codebase-search.tool'
-import { deleteFileTool } from '../tools/delete-file.tool'
-import { readLintsTool } from '../tools/read-lints.tool'
-import { runTerminalCmdTool } from '../tools/run-terminal-cmd.tool'
-import { updateMemoryTool } from '../tools/update-memory.tool'
-import { todoWriteTool } from '../tools/todo-write.tool'
-import { getSkillDetailsTool } from '../tools/get-skill-details.tool'
-import { askUserTool } from '../tools/ask-user.tool'
 import { MCPService } from '../services/mcp.service'
 import { mainI18n as i18n } from '../i18n'
+import { getCoreTools } from './core-tools'
+import { delegateTaskTool } from '../tools/delegate-task.tool'
+import { wrapToolsForExclusiveSerialization } from '../tools/wrap-tools-execution'
 
 // 助手配置（name / description 随主进程语言变化）
 export const assistantConfig = {
@@ -56,6 +46,7 @@ Choose the RIGHT tool for each task:
 - **Finding symbols** → \`grep\` (exact text/regex matching)
 - **File operations** → Use built-in tools (not MCP when possible)
 - **External capabilities** → MCP tools (browser, database, etc.)
+- **Large isolated sub-tasks** (deep exploration, big refactors) → \`delegate_task\` — bounded sub-agent run; do not nest it
 
 **Don't mention tool names** to the user - just explain what you're doing naturally.
 
@@ -192,22 +183,9 @@ export function getAssistantTools(): Record<string, any> {
   const mcpService = MCPService.getInstance()
   const mcpTools = mcpService.getAISDKTools()
 
-  return {
-    // 内置工具
-    read_file: readFileTool,
-    edit_file: editFileTool,
-    delete_file: deleteFileTool,
-    list_dir: listDirTool,
-    glob_file_search: globFileSearchTool,
-    grep: grepTool,
-    codebase_search: codebaseSearchTool,
-    run_terminal_cmd: runTerminalCmdTool,
-    read_lints: readLintsTool,
-    update_memory: updateMemoryTool,
-    todo_write: todoWriteTool,
-    get_skill_details: getSkillDetailsTool,
-    ask_user: askUserTool,
-    // MCP 工具（动态加载）
+  return wrapToolsForExclusiveSerialization({
+    ...getCoreTools(),
+    delegate_task: delegateTaskTool,
     ...mcpTools
-  }
+  })
 }

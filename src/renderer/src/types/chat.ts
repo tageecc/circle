@@ -128,6 +128,11 @@ export interface StreamChunk {
     | 'finish'
     | 'usage'
     | 'context-notice'
+    | 'orchestration'
+    | 'agent-step'
+  v?: 1
+  chainId?: string
+  payloadRef?: string
   content?: string
   sessionId?: string
   messages?: Array<{
@@ -174,6 +179,20 @@ export interface StreamChunk {
     conversationSummarized?: boolean
     aggressiveToolTruncation?: boolean
     longTextTruncated?: boolean
+    reactiveRetry?: boolean
+  }
+  orchestration?: {
+    protocolVersion: 1
+    chainId: string
+    maxSteps: number
+    modelId: string
+  }
+  agentStep?: {
+    chainId: string
+    index: number
+    phase: string
+    toolName?: string
+    toolCallId?: string
   }
 }
 
