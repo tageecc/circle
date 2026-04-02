@@ -10,7 +10,8 @@ import {
   ExternalLink,
   Play,
   X,
-  SkipForward
+  SkipForward,
+  MessageCircle
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -294,6 +295,33 @@ export function ToolCall({
             </div>
           )}
         </div>
+      </div>
+    )
+  }
+
+  // ask_user: blocking question (modal answers in renderer)
+  if (tool.name === 'ask_user') {
+    const question = tool.args?.question || ''
+    const awaiting = tool.isLoading || (!tool.result && !tool.isError)
+    return (
+      <div
+        className={cn(
+          'flex flex-col gap-2 rounded-lg border border-border/50 bg-muted/20 px-3 py-2 text-xs',
+          className
+        )}
+      >
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <MessageCircle className="size-3.5 shrink-0" />
+          <span>ask_user</span>
+        </div>
+        <p className="text-foreground leading-relaxed">{question}</p>
+        {awaiting ? (
+          <span className="text-amber-600 dark:text-amber-400">{t('chat.user_question_awaiting')}</span>
+        ) : tool.result ? (
+          <pre className="mt-1 whitespace-pre-wrap font-mono text-[11px] text-muted-foreground">
+            {typeof tool.result === 'string' ? tool.result : JSON.stringify(tool.result, null, 2)}
+          </pre>
+        ) : null}
       </div>
     )
   }

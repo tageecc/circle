@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/components/ui/sonner'
 import type { Session, Message, StreamChunk, ContentPart, ToolCallPart } from '@/types/chat'
@@ -12,6 +12,7 @@ import {
 import { useWorkspaceStore } from '@/stores/workspace.store'
 import { useChatStore } from '@/stores/chat.store'
 import { usePendingEditsStore } from '@/stores/pending-edits.store'
+import type { UserQuestionPayload } from '@/components/features/chat/user-question-dialog'
 
 /**
  * ✅ 最佳实践实现 - 彻底重构版本
@@ -49,6 +50,8 @@ export function useChatMessages(
 
   // ✅ 流式控制器（用于停止）
   const streamStopRef = useRef<(() => void) | null>(null)
+
+  const [userQuestion, setUserQuestion] = useState<UserQuestionPayload | null>(null)
 
   useEffect(() => {
     setCurrentSessionId(currentSessionId)
@@ -139,12 +142,32 @@ export function useChatMessages(
       // ✅ 移除state更新：从tool-result推导，不需要处理
     })
 
+    const unsubscribeUserQuestion = window.api.chat.onUserQuestion((data) => {
+      setUserQuestion(data)
+      setSessions((prev) =>
+        prev.map((s) => {
+          if (s.id !== data.sessionId) return s
+          return {
+            ...s,
+            messages: s.messages.map((m) => {
+              if (m.id !== data.assistantMessageId) return m
+              return setToolUIState(m, data.questionId, {
+                needsApproval: true,
+                approvalStatus: 'pending'
+              })
+            })
+          }
+        })
+      )
+    })
+
     return () => {
       unsubscribeApproval()
       unsubscribeCreated()
       unsubscribeStreamingStarted?.()
       unsubscribeOutputStream()
       unsubscribeOutputComplete()
+      unsubscribeUserQuestion()
     }
   }, [setSessions]) // ✅ 只依赖 setSessions（Zustand store 方法稳定）
 
@@ -163,6 +186,23 @@ export function useChatMessages(
         return chunk.toolCall ? handleToolCallChunk(message, chunk) : message
       case 'tool-result':
         // ✅ 不再处理 tool-result chunk（已在 message-start 中处理）
+        return message
+      case 'context-notice':
+        if (chunk.contextNotice) {
+          const { prunedMessageCount, toolResultsTruncated } = chunk.contextNotice
+          const parts: string[] = []
+          if (prunedMessageCount > 0) {
+            parts.push(
+              `Earlier messages were omitted to fit the model context (${prunedMessageCount} turn(s)).`
+            )
+          }
+          if (toolResultsTruncated) {
+            parts.push('Large tool results were shortened for the same reason.')
+          }
+          if (parts.length > 0) {
+            toast.info(parts.join(' '), { duration: 6000 })
+          }
+        }
         return message
       case 'error':
         return chunk.error ? handleErrorChunk(message, chunk) : message
@@ -533,6 +573,12 @@ export function useChatMessages(
     }
   }
 
+  const submitUserQuestionAnswer = useCallback(async (answer: string) => {
+    if (!userQuestion) return
+    await window.api.chat.submitUserQuestionAnswer(userQuestion.questionId, answer)
+    setUserQuestion(null)
+  }, [userQuestion])
+
   return {
     sessions,
     activeSessionId,
@@ -540,6 +586,8 @@ export function useChatMessages(
     sendMessage,
     stopStreaming,
     setSessions,
-    onApprovalDecision
+    onApprovalDecision,
+    userQuestion,
+    submitUserQuestionAnswer
   }
 }

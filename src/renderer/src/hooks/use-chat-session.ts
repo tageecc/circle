@@ -29,7 +29,8 @@ export function useChatSession(workspaceRoot: string | null) {
           title: session.title,
           modelId: session.modelId,
           messages: [],
-          createdAt: new Date(session.createdAt)
+          createdAt: new Date(session.createdAt),
+          metadata: session.metadata
         }))
 
         const state = useChatStore.getState()

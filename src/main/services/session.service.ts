@@ -70,7 +70,8 @@ export class SessionService {
       title: session.title,
       messages: [],
       createdAt: new Date(session.createdAt).getTime(),
-      updatedAt: new Date(session.updatedAt).getTime()
+      updatedAt: new Date(session.updatedAt).getTime(),
+      metadata: session.metadata ? (JSON.parse(session.metadata) as Record<string, unknown>) : {}
     }))
   }
 

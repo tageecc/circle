@@ -5,6 +5,7 @@ import { ChatInput, type PastedImage, type Attachment } from './chat-input'
 import { ChatHeader } from './chat-header'
 import { ChatMessages } from './chat-messages'
 import { MessageQueue } from './message-queue'
+import { UserQuestionDialog } from './user-question-dialog'
 import { useChatMessages } from '@/hooks/use-chat-messages'
 import type { PendingFileEdit } from '@/types/ide'
 import { useChatSession } from '@/hooks/use-chat-session'
@@ -80,10 +81,8 @@ export function ChatSidebar({
   }, [currentSession])
 
   // 消息处理
-  const { isStreaming, sendMessage, stopStreaming, onApprovalDecision } = useChatMessages(
-    currentSessionId,
-    markSessionAsLoaded
-  )
+  const { isStreaming, sendMessage, stopStreaming, onApprovalDecision, userQuestion, submitUserQuestionAnswer } =
+    useChatMessages(currentSessionId, markSessionAsLoaded)
 
   // 消息队列处理标志
   const isProcessingQueue = useRef(false)
@@ -209,6 +208,8 @@ export function ChatSidebar({
 
   return (
     <div className="flex h-full w-full flex-col border-l border-sidebar-border/50 bg-sidebar">
+      <UserQuestionDialog payload={userQuestion} onSubmit={submitUserQuestionAnswer} />
+
       {/* Header with Session Tabs */}
       <ChatHeader
         currentSession={currentSession || undefined}

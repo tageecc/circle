@@ -108,6 +108,25 @@ export const AI_MODEL = {
 } as const
 
 // ============================================================================
+// Agent harness (context window, MCP deltas, parity with CC-style budgeting)
+// ============================================================================
+
+export const AGENT_HARNESS = {
+  /** Rough tokenizer: characters per token (mixed languages) */
+  CHARS_PER_TOKEN: 3.5,
+  /** Default max input context when model-specific limit unknown */
+  DEFAULT_MAX_INPUT_TOKENS: 120_000,
+  /** Reserve headroom for model output + tool JSON */
+  RESERVE_OUTPUT_TOKENS: 16_000,
+  /** Max characters kept per tool result when still over budget after pruning */
+  MAX_TOOL_RESULT_CHARS_IN_CONTEXT: 24_000,
+  /** Git snapshot block max size */
+  GIT_SNIPPET_MAX_CHARS: 2500,
+  /** Marker between stable product instructions and per-turn environment (future prompt cache) */
+  DYNAMIC_CONTEXT_BOUNDARY: '\n---\n## Current session context (changes every message)\n---\n'
+} as const
+
+// ============================================================================
 // 文件监控配置
 // ============================================================================
 

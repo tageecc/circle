@@ -127,6 +127,7 @@ export interface StreamChunk {
     | 'interrupt'
     | 'finish'
     | 'usage'
+    | 'context-notice'
   content?: string
   sessionId?: string
   messages?: Array<{
@@ -165,6 +166,12 @@ export interface StreamChunk {
   error?: string
   finishReason?: string
   usage?: LanguageModelUsage
+
+  contextNotice?: {
+    prunedMessageCount: number
+    toolResultsTruncated: boolean
+    estimatedInputTokensAfter?: number
+  }
 }
 
 /**

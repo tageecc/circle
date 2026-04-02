@@ -35,6 +35,7 @@ const api = {
           | 'interrupt'
           | 'finish'
           | 'usage'
+          | 'context-notice'
         content?: string
         sessionId?: string
         messages?: Array<{
@@ -89,6 +90,11 @@ const api = {
           completionTokens: number
           totalTokens: number
         }
+        contextNotice?: {
+          prunedMessageCount: number
+          toolResultsTruncated: boolean
+          estimatedInputTokensAfter?: number
+        }
       }) => void,
       onEnd: (sessionId: string) => void,
       onError: (error: string) => void
@@ -128,7 +134,35 @@ const api = {
 
     // HITL: Resume interrupt
     resumeInterrupt: (sessionId: string, toolCallId: string, decision: string) =>
-      ipcRenderer.invoke('chat:resume-interrupt', { sessionId, toolCallId, decision })
+      ipcRenderer.invoke('chat:resume-interrupt', { sessionId, toolCallId, decision }),
+
+    onUserQuestion: (
+      callback: (data: {
+        questionId: string
+        sessionId: string
+        assistantMessageId: number
+        question: string
+        options?: string[]
+        allowFreeText: boolean
+      }) => void
+    ) => {
+      const listener = (
+        _: unknown,
+        data: {
+          questionId: string
+          sessionId: string
+          assistantMessageId: number
+          question: string
+          options?: string[]
+          allowFreeText: boolean
+        }
+      ) => callback(data)
+      ipcRenderer.on('chat:user-question', listener)
+      return () => ipcRenderer.removeListener('chat:user-question', listener)
+    },
+
+    submitUserQuestionAnswer: (questionId: string, answer: string) =>
+      ipcRenderer.invoke('chat:user-question:answer', { questionId, answer })
   },
 
   // Session APIs

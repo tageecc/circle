@@ -10,6 +10,7 @@ import { runTerminalCmdTool } from '../tools/run-terminal-cmd.tool'
 import { updateMemoryTool } from '../tools/update-memory.tool'
 import { todoWriteTool } from '../tools/todo-write.tool'
 import { getSkillDetailsTool } from '../tools/get-skill-details.tool'
+import { askUserTool } from '../tools/ask-user.tool'
 import { MCPService } from '../services/mcp.service'
 import { mainI18n as i18n } from '../i18n'
 
@@ -205,6 +206,7 @@ export function getAssistantTools(): Record<string, any> {
     update_memory: updateMemoryTool,
     todo_write: todoWriteTool,
     get_skill_details: getSkillDetailsTool,
+    ask_user: askUserTool,
     // MCP 工具（动态加载）
     ...mcpTools
   }

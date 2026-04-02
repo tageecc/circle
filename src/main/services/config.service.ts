@@ -116,6 +116,10 @@ interface ServiceSettings {
   vectorSearchEnabled?: boolean
   /** Embedding provider for code search */
   embeddingProvider?: string
+  /** Override max input tokens for chat context budgeting (provider-specific limits apply on API side too) */
+  maxContextInputTokens?: number
+  /** Extra reserve subtracted from input budget for long assistant completions */
+  contextReserveOutputTokens?: number
 }
 
 interface SkillsSettings {

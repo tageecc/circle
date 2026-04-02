@@ -9,6 +9,7 @@ import { GitUtils } from '../services/git.utils'
 import { TerminalService } from '../services/terminal.service'
 import { WindowService } from '../services/window.service'
 import { handleApprovalDecision } from '../tools/run-terminal-cmd.tool'
+import { resolveUserQuestionAnswer } from '../tools/ask-user.tool'
 import { RecentFilesService } from '../services/recent-files.service'
 import { BugReportService } from '../services/bug-report.service'
 import { MessageSnapshotService } from '../services/message-snapshot.service'
@@ -126,6 +127,13 @@ export function registerIpcHandlers(): void {
         console.error('[IPC] Failed to resume interrupt:', error)
         return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
       }
+    }
+  )
+
+  ipcMain.handle(
+    'chat:user-question:answer',
+    async (_, payload: { questionId: string; answer: string }): Promise<void> => {
+      resolveUserQuestionAnswer(payload.questionId, payload.answer)
     }
   )
 

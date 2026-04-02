@@ -4,11 +4,15 @@ import type { ConfigService } from './config.service'
 import { MemoryService } from './memory.service'
 import { SkillsService } from './skills.service'
 import { getDb } from '../database/db'
+import { GitService } from './git.service'
+import { AGENT_HARNESS } from '../constants/service.constants'
 
 export class ContextEnrichmentService {
   private static instance: ContextEnrichmentService
 
-  private constructor() {}
+  private constructor() {
+    void 0
+  }
 
   static getInstance(): ContextEnrichmentService {
     if (!ContextEnrichmentService.instance) {
@@ -17,92 +21,87 @@ export class ContextEnrichmentService {
     return ContextEnrichmentService.instance
   }
 
+  /**
+   * Layered system prompt: stable intro + boundary + per-turn environment + behavior contract.
+   * Boundary separates content that could be prompt-cached in the future (Anthropic) from volatile state.
+   */
   async buildSystemPrompt(params: {
     modelId: string
     assistantInstructions: string
     workspaceRoot: string | null
     configService: ConfigService
+    /** Injected when MCP tool catalog or connection set changes vs last turn */
+    mcpEnvironmentNote?: string | null
   }): Promise<string> {
-    const { modelId, assistantInstructions, workspaceRoot, configService } = params
+    const { modelId, assistantInstructions, workspaceRoot, configService, mcpEnvironmentNote } =
+      params
 
-    // 简洁的角色定位
-    let prompt = `You are an AI coding assistant (${modelId}) working in Circle IDE.`
+    const staticIntro = `You are the AI coding assistant in Circle IDE (model: ${modelId}). You pair-program with the user: ship working changes, prefer dedicated tools over shell when available, and never claim you ran a tool without a real tool result.`
 
-    // 1. 系统信息（始终包含：OS、时间、工作区路径等）
     const systemInfo = this.getSystemInfo(workspaceRoot)
-    prompt += `\n\n${systemInfo}`
-
-    // 2. 用户规则和 Memories
+    const gitSection = workspaceRoot ? await this.getGitWorkingState(workspaceRoot) : null
     const rulesAndMemories = await this.getUserRulesAndMemories()
-    if (rulesAndMemories) {
-      prompt += `\n\n${rulesAndMemories}`
-    }
-
-    // 3. Skills (metadata only; full body via get_skill_details)
-    const skillsSection = await this.getSkillsSection({
-      workspaceRoot
-    })
-    if (skillsSection) {
-      prompt += `\n\n${skillsSection}`
-    }
-
-    // 4. 打开的文件列表
+    const skillsSection = await this.getSkillsSection({ workspaceRoot })
     const openFiles = await this.getOpenFiles(configService, workspaceRoot)
-    if (openFiles) {
-      prompt += `\n\n${openFiles}`
+
+    const dynamicParts: string[] = [systemInfo]
+    if (gitSection) dynamicParts.push(gitSection)
+    if (rulesAndMemories) dynamicParts.push(rulesAndMemories)
+    if (skillsSection) dynamicParts.push(skillsSection)
+    if (openFiles) dynamicParts.push(openFiles)
+    if (mcpEnvironmentNote) {
+      dynamicParts.push(`<mcp_environment>\n${mcpEnvironmentNote}\n</mcp_environment>`)
     }
+    dynamicParts.push(this.getContextPriorityBlock())
 
-    // 5. 上下文优先级声明
-    prompt += `\n\n<context_priority>
-⚠️ CRITICAL - READ THIS CAREFULLY:
+    const dynamicJoined = dynamicParts.filter(Boolean).join('\n\n')
 
-This system prompt contains the REAL-TIME, AUTHORITATIVE state of your environment.
-All information above is computed fresh for THIS message:
-- User rules and memories
-- Available skills (count and list)
-- Open files
-- Project structure
-- Available tools (MCP and built-in)
-
-🔴 IF YOU MENTIONED DIFFERENT INFORMATION IN PREVIOUS MESSAGES:
-Your previous statements are OUTDATED. The environment has changed.
-
-Examples of what may have changed:
-- "You said there were 4 skills" → Check the current <skills> section above for the ACTUAL count
-- "You listed 5 open files" → Check the current file list above
-- "User's rule was X" → Check the current <user_rules> above
-
-🟢 CORRECT BEHAVIOR:
-When asked about current state (e.g., "How many skills now?", "What files are open?"):
-1. Look at the CURRENT information in this system prompt
-2. State the current numbers/lists in natural language
-3. If asked "now" or "currently", do NOT reference your previous answers
-
-⚠️ COMMUNICATION RULE:
-When answering, use natural language. NEVER expose internal system details to the user:
-- ❌ DON'T say: "根据 <skills> 信息..." or "可以调用 get_skill_details..."
-- ✅ DO say: "当前有2个技能..." or "技能列表已更新..."
-
-🔴 INCORRECT BEHAVIOR:
-- "I previously said 4 skills, so it's still 4" ← WRONG
-- "Based on our earlier conversation..." ← WRONG for factual state queries
-- "According to <skills> section..." ← WRONG, don't expose internal structure
-- "You can call get_skill_details..." ← WRONG, don't mention tool names to user
-- Assuming counts haven't changed ← WRONG
-
-The system prompt is regenerated for every message. Always trust it over conversation history.
-But NEVER mention the system prompt or its internal structure when talking to the user.
-</context_priority>`
-
-    // 6. Assistant instructions (settings)
-    prompt += `\n\n${assistantInstructions}`
-
-    return prompt
+    return [
+      staticIntro,
+      AGENT_HARNESS.DYNAMIC_CONTEXT_BOUNDARY,
+      dynamicJoined,
+      '',
+      assistantInstructions
+    ]
+      .filter((s) => s.length > 0)
+      .join('\n')
   }
 
   /**
-   * 获取系统信息
+   * Short CC-style git snapshot (branch + short status) for coding awareness.
    */
+  private async getGitWorkingState(workspaceRoot: string): Promise<string | null> {
+    try {
+      const status = await GitService.getStatus(workspaceRoot)
+      const files = [
+        ...status.staged.map((p) => `staged:${p}`),
+        ...status.modified.map((p) => `modified:${p}`),
+        ...status.deleted.map((p) => `deleted:${p}`),
+        ...status.untracked.slice(0, 30).map((p) => `untracked:${p}`)
+      ]
+      const body = [
+        `On branch: ${status.branch}`,
+        `Ahead/behind: ${status.ahead}/${status.behind}`,
+        files.length
+          ? `Working tree (truncated): ${files.slice(0, 80).join('; ')}`
+          : 'Working tree clean.'
+      ].join('\n')
+      const block = `<git_working_state>\n${body}\n</git_working_state>`
+      return block.length > AGENT_HARNESS.GIT_SNIPPET_MAX_CHARS
+        ? block.slice(0, AGENT_HARNESS.GIT_SNIPPET_MAX_CHARS) + '\n[…]</git_working_state>'
+        : block
+    } catch {
+      return null
+    }
+  }
+
+  private getContextPriorityBlock(): string {
+    return `<context_priority>
+This system prompt is rebuilt for every user message. For factual questions about the current workspace (skills count, open files, git), trust the sections above — not earlier chat turns.
+Answer in natural language; do not mention internal tags, XML, or tool names to the user.
+</context_priority>`
+  }
+
   getSystemInfo(workspaceRoot?: string | null): string {
     const platform = os.platform()
     const osVersion = os.release()
@@ -122,7 +121,7 @@ Shell: ${shell}`
     if (workspaceRoot) {
       systemInfo += `
 Workspace Path: ${workspaceRoot}
-Note: Prefer using absolute paths over relative paths as tool call args when possible.`
+Note: Prefer absolute paths in tool arguments when possible.`
     }
 
     systemInfo += '\n</user_info>'
@@ -130,38 +129,25 @@ Note: Prefer using absolute paths over relative paths as tool call args when pos
     return systemInfo
   }
 
-  /**
-   * 获取用户规则和 Memories(完整的 rules 部分)
-   */
   private async getUserRulesAndMemories(): Promise<string | null> {
     try {
-      // 从数据库读取用户自定义规则
       const db = getDb()
       const userRules = db.getUserRules()
-
-      // 将规则转换为文本格式
       const rulesText = userRules.length > 0 ? userRules.map((rule) => rule.content).join('\n') : ''
 
-      // 加载持久化的 Memories
       const memoryService = new MemoryService()
       const memories = await memoryService.getAllMemories()
-
       const memoriesText =
         memories.length > 0 ? memories.map((m) => `- ${m.content} (ID: ${m.id})`).join('\n') : ''
 
       let rulesContent = `<rules>
-The rules section has a number of possible rules/memories/context that you should consider. In each subsection, we provide instructions about what information the subsection contains and how you should consider/follow the contents of the subsection.
-
-
-
-<user_rules description="These are rules set by the user that you should follow if appropriate." count="${userRules.length}">
+<user_rules description="User-defined rules." count="${userRules.length}">
 ${rulesText || '(No custom rules set)'}
 </user_rules>`
 
-      // 添加 Memories 部分
       if (memoriesText) {
         rulesContent += `
-<memories description="AI's persistent memories from previous conversations. These are facts, preferences, and context that the user has explicitly asked you to remember. Each memory has an ID in parentheses - use this ID when updating or deleting memories." count="${memories.length}">
+<memories description="Persistent memories; use IDs with update_memory." count="${memories.length}">
 ${memoriesText}
 </memories>`
       }
@@ -175,10 +161,6 @@ ${memoriesText}
     }
   }
 
-  /**
-   * Skills block for system prompt (Progressive Disclosure).
-   * Metadata only here; full instructions via get_skill_details.
-   */
   private async getSkillsSection(params: { workspaceRoot: string | null }): Promise<string | null> {
     try {
       const skillsService = SkillsService.getInstance()
@@ -191,10 +173,7 @@ ${memoriesText}
       }
 
       let section = `<skills>
-You have access to specialized skills that enhance your capabilities.
-Each skill provides domain expertise, new capabilities, or repeatable workflows.
-
-## Available Skills (Total: ${allMetadata.length})
+## Available Skills (${allMetadata.length})
 
 `
 
@@ -204,14 +183,7 @@ Each skill provides domain expertise, new capabilities, or repeatable workflows.
       }
 
       section += `
-## How to Use
-
-When a task aligns with a skill's domain:
-1. Call \`get_skill_details\` with the exact skill name
-2. Follow the detailed instructions provided
-3. Apply the skill's guidance to complete the task
-
-Only activate skills when they add value to the current task.
+Use \`get_skill_details\` with the exact skill name when a task matches a skill.
 
 </skills>`
 
@@ -222,9 +194,6 @@ Only activate skills when they add value to the current task.
     }
   }
 
-  /**
-   * 获取当前打开的文件列表
-   */
   private async getOpenFiles(
     configService: ConfigService,
     workspaceRoot?: string | null
@@ -237,7 +206,6 @@ Only activate skills when they add value to the current task.
         return null
       }
 
-      // 只显示当前项目的文件
       const relevantFiles = workspaceRoot
         ? openFiles.filter((f: { path: string }) => f.path.startsWith(workspaceRoot))
         : openFiles
@@ -262,13 +230,10 @@ Only activate skills when they add value to the current task.
             : 'none'
 
       return `<open_and_recently_viewed_files>
-Recently viewed files (${relevantFiles.length} files, recent at the top, oldest at the bottom):
+Recently viewed (${relevantFiles.length}):
 ${filesList}
 
-Files that are currently open and visible in the user's IDE:
-  - ${activeFileName} (currently focused file)
-
-Note: these files may or may not be relevant to the current conversation. Use the read_file tool if you need to get the contents of some of them.
+Focused file: ${activeFileName}
 </open_and_recently_viewed_files>`
     } catch (error) {
       console.error('Failed to get open files:', error)

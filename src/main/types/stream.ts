@@ -26,6 +26,7 @@ export interface StreamChunk {
     | 'message-start'
     | 'error'
     | 'usage'
+    | 'context-notice'
 
   // 文本内容
   content?: string
@@ -77,4 +78,11 @@ export interface StreamChunk {
 
   // Token usage
   usage?: LanguageModelUsage
+
+  /** When older turns were dropped or tool payloads truncated for context budget */
+  contextNotice?: {
+    prunedMessageCount: number
+    toolResultsTruncated: boolean
+    estimatedInputTokensAfter?: number
+  }
 }

@@ -4,7 +4,7 @@
  */
 
 import { streamText, stepCountIs } from 'ai'
-import type { TextPart, ToolCallPart, ToolResultPart } from 'ai'
+import type { ModelMessage, TextPart, ToolCallPart, ToolResultPart } from 'ai'
 import type { ReasoningPart } from '@ai-sdk/provider-utils'
 import type { StreamChunk } from '../types/stream'
 import type { MessageMetadata } from '../types/message'
@@ -17,6 +17,14 @@ import type { ToolContext } from './tool-context'
 import { assistantConfig, getAssistantTools } from '../assistant/assistant'
 import { createLanguageModel } from '../utils/model-factory'
 import { MessageSnapshotService, type FileSnapshot } from './message-snapshot.service'
+import {
+  getDefaultMaxInputTokensForModel,
+  pruneMessagesForBudget,
+  type CoreLikeMessage
+} from './context-budget.service'
+import { formatMcpEnvironmentNote, mcpCatalogSignature } from './mcp-catalog.util'
+import { logHarnessEvent } from './agent-harness-telemetry'
+import { AGENT_HARNESS } from '../constants/service.constants'
 
 export class ChatService {
   private contextEnrichmentService = ContextEnrichmentService.getInstance()
@@ -128,7 +136,7 @@ export class ChatService {
         content: message
       })
 
-      // 5. 立即返回创建的消息
+      // Show user + empty assistant immediately so the UI does not wait on system prompt / pruning
       yield emitChunk({
         type: 'message-start',
         messages: [
@@ -148,7 +156,51 @@ export class ChatService {
         ]
       })
 
-      debugLogger.logChatRequest(sessionId, messages, { workspaceRoot })
+      const tools = getAssistantTools()
+      const mcpSig = mcpCatalogSignature(tools as Record<string, unknown>)
+      const prevMcpSig = session?.metadata?.mcpToolCatalogSignature as string | undefined
+      const mcpNote = formatMcpEnvironmentNote(prevMcpSig ?? null, mcpSig, Object.keys(tools))
+
+      const svcSettings = this.configService.getServiceSettings()
+      const maxInput =
+        svcSettings.maxContextInputTokens ?? getDefaultMaxInputTokensForModel(modelId)
+      const reserveOut =
+        svcSettings.contextReserveOutputTokens ?? AGENT_HARNESS.RESERVE_OUTPUT_TOKENS
+
+      const systemPrompt = await this.contextEnrichmentService.buildSystemPrompt({
+        modelId,
+        assistantInstructions: assistantConfig.instructions,
+        workspaceRoot,
+        configService: this.configService,
+        mcpEnvironmentNote: mcpNote
+      })
+
+      logHarnessEvent('system_prompt.layers', {
+        static_dynamic_bytes: systemPrompt.length,
+        has_mcp_note: mcpNote ? 1 : 0
+      })
+
+      const pruned = pruneMessagesForBudget({
+        messages: messages as CoreLikeMessage[],
+        systemPrompt,
+        maxInputTokens: maxInput,
+        reserveOutputTokens: reserveOut
+      })
+
+      const messagesForModel = pruned.messages as ModelMessage[]
+
+      if (pruned.prunedCount > 0 || pruned.toolResultsTruncated) {
+        yield emitChunk({
+          type: 'context-notice',
+          contextNotice: {
+            prunedMessageCount: pruned.prunedCount,
+            toolResultsTruncated: pruned.toolResultsTruncated,
+            estimatedInputTokensAfter: pruned.estimatedInputTokensAfter
+          }
+        })
+      }
+
+      debugLogger.logChatRequest(sessionId, messagesForModel, { workspaceRoot })
 
       const toolContext: ToolContext = {
         sessionId,
@@ -157,20 +209,14 @@ export class ChatService {
         abortSignal
       }
 
-      const systemPrompt = await this.contextEnrichmentService.buildSystemPrompt({
-        modelId,
-        assistantInstructions: assistantConfig.instructions,
-        workspaceRoot,
-        configService: this.configService
-      })
-
-      const tools = getAssistantTools()
       const result = streamText({
         model: createLanguageModel(modelId, this.configService),
         system: systemPrompt,
-        messages,
+        messages: messagesForModel,
         tools,
         stopWhen: stepCountIs(100),
+        maxRetries: 2,
+        temperature: this.configService.getTemperature(),
         experimental_context: toolContext,
         abortSignal,
         providerOptions: {
@@ -406,12 +452,17 @@ export class ChatService {
 
               await this.sessionService.updateSessionMetadata(sessionId, {
                 lastUsage: part.totalUsage,
-                totalUsage
+                totalUsage,
+                mcpToolCatalogSignature: mcpSig
               })
 
               yield emitChunk({
                 type: 'usage',
                 usage: part.totalUsage
+              })
+            } else {
+              await this.sessionService.updateSessionMetadata(sessionId, {
+                mcpToolCatalogSignature: mcpSig
               })
             }
 

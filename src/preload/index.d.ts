@@ -62,6 +62,17 @@ declare global {
           toolCallId: string,
           decision: string
         ) => Promise<{ success: boolean }>
+        onUserQuestion: (
+          callback: (data: {
+            questionId: string
+            sessionId: string
+            assistantMessageId: number
+            question: string
+            options?: string[]
+            allowFreeText: boolean
+          }) => void
+        ) => () => void
+        submitUserQuestionAnswer: (questionId: string, answer: string) => Promise<void>
       }
       sessions: {
         create: (modelId: string, projectPath: string) => Promise<string>
