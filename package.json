@@ -70,7 +70,6 @@
     "@xterm/addon-web-links": "^0.11.0",
     "@xterm/xterm": "^5.5.0",
     "@xyflow/react": "^12.10.0",
-    "ai": "6.0.35",
     "ai-elements": "^1.6.3",
     "ansi-to-react": "^6.1.6",
     "better-sqlite3": "^12.5.0",
@@ -125,9 +124,6 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
-    "@ai-sdk/anthropic": "3.0.13",
-    "@ai-sdk/google": "3.0.8",
-    "@ai-sdk/openai": "3.0.10",
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",
     "@electron-toolkit/eslint-config-ts": "^3.1.0",
     "@electron-toolkit/tsconfig": "^2.0.0",

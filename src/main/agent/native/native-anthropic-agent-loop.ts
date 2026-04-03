@@ -7,11 +7,11 @@ import type {
   AssistantModelMessage,
   ModelMessage,
   TextPart,
-  Tool,
   ToolCallPart,
   ToolExecutionOptions,
   ToolResultPart
 } from '@ai-sdk/provider-utils'
+import type { CircleToolSet } from '../../types/circle-tool-set'
 import type { ToolContext } from '../../services/tool-context'
 import { modelMessagesToAnthropic } from './model-messages-to-anthropic'
 import { stripReasoningFromModelMessages } from './strip-reasoning-messages'
@@ -24,7 +24,7 @@ export type NativeAnthropicLoopOptions = {
   model: string
   systemPrompt: string
   initialMessages: ModelMessage[]
-  tools: Record<string, Tool>
+  tools: CircleToolSet
   toolContext: ToolContext
   temperature: number
   maxSteps: number

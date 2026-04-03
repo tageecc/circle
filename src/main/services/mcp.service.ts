@@ -5,8 +5,8 @@
 
 import { spawn, ChildProcessWithoutNullStreams } from 'child_process'
 import { jsonSchema } from '@ai-sdk/provider-utils'
-import type { Tool } from '@ai-sdk/provider-utils'
 import type { JSONSchema7 } from '@ai-sdk/provider'
+import type { CircleToolSet } from '../types/circle-tool-set'
 import { getDb } from '../database/db'
 import * as schema from '../database/schema'
 import { eq } from 'drizzle-orm'
@@ -592,8 +592,8 @@ export class MCPService {
   /**
    * MCP tools as AI SDK `Tool` (inputSchema via jsonSchema — same shape as defineTool).
    */
-  getAISDKTools(): Record<string, Tool> {
-    const tools: Record<string, Tool> = {}
+  getAISDKTools(): CircleToolSet {
+    const tools: CircleToolSet = {}
 
     for (const conn of this.connections.values()) {
       if (conn.status !== 'connected') continue

@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import { cn } from '@/lib/utils'
-import type { FileUIPart, SourceDocumentUIPart } from 'ai'
+import type { FileUIPart, SourceDocumentUIPart } from '@/types/ui-message-parts'
 import {
   FileTextIcon,
   GlobeIcon,

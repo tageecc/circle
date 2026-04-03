@@ -6,11 +6,11 @@ import type {
   AssistantModelMessage,
   ModelMessage,
   TextPart,
-  Tool,
   ToolCallPart,
   ToolExecutionOptions,
   ToolResultPart
 } from '@ai-sdk/provider-utils'
+import type { CircleToolSet } from '../../types/circle-tool-set'
 import type { OpenAICompatibleEndpoint } from './resolve-openai-endpoint'
 import { modelMessagesToOpenAIChat } from './model-messages-to-openai'
 import { stripReasoningFromModelMessages } from './strip-reasoning-messages'
@@ -24,7 +24,7 @@ export type NativeOpenAILoopOptions = {
   endpoint: OpenAICompatibleEndpoint
   systemPrompt: string
   initialMessages: ModelMessage[]
-  tools: Record<string, Tool>
+  tools: CircleToolSet
   toolContext: ToolContext
   temperature: number
   maxSteps: number

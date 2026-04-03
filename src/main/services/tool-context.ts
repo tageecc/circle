@@ -24,7 +24,7 @@ export function getToolContext(options: ToolCallOptions): ToolContext {
   const ctx = options.experimental_context as ToolContext | undefined
   if (!ctx) {
     throw new Error(
-      'Tool context not available. Ensure experimental_context is passed to streamText.'
+      'Tool context not available. Ensure experimental_context is passed to the agent tool executor.'
     )
   }
   return ctx

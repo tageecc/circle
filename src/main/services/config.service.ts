@@ -122,11 +122,6 @@ interface ServiceSettings {
   contextReserveOutputTokens?: number
   /** When true (default), long history may be LLM-summarized before prune (CC-style compact) */
   contextSummarizationEnabled?: boolean
-  /**
-   * When true, chat uses the native agent loop (HTTP/SDK + tool rounds, no streamText) for all configured providers
-   * (OpenAI-compatible, Anthropic, Google). Also set via env CIRCLE_NATIVE_AGENT=1.
-   */
-  nativeAgentLoop?: boolean
 }
 
 interface SkillsSettings {

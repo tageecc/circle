@@ -1,13 +1,12 @@
 /**
  * Spawn a focused sub-agent run (Claude Code AgentTool / runAgent parity — same process, bounded steps).
- * Same routing as main chat: native loop when enabled and credentials exist, otherwise streamText.
+ * Uses the native agent loop only (same execution model as main chat).
  */
 
 import { z } from 'zod'
 import { nanoid } from 'nanoid'
-import { streamText, stepCountIs } from 'ai'
-import type { TextStreamPart, ToolSet } from 'ai'
-import type { Tool, ToolCallOptions } from '@ai-sdk/provider-utils'
+import type { ToolCallOptions } from '@ai-sdk/provider-utils'
+import type { CircleToolSet } from '../types/circle-tool-set'
 import { getToolContext, type ToolContext } from '../services/tool-context'
 import { getCoreTools } from '../assistant/core-tools'
 import { MCPService } from '../services/mcp.service'
@@ -17,17 +16,15 @@ import { wrapToolsForExclusiveSerialization } from './wrap-tools-execution'
 import { defineTool } from './define-tool'
 import {
   canUseNativeAgentLoop,
-  nativeAgentLoopEnabled,
   runNativeAgentLoop,
   type NativeAgentStreamPart
 } from '../agent/native'
 import { stripReasoningFromModelMessages } from '../agent/native/strip-reasoning-messages'
-import { createLanguageModel } from '../utils/model-factory'
 
 const SUBAGENT_SYSTEM = `You are a focused coding sub-agent. Complete the assigned task using tools.
 Be concise in your final summary. Do not call delegate_task or ask the user questions.`
 
-function getSubagentTools(): Record<string, Tool> {
+function getSubagentTools(): CircleToolSet {
   const core = getCoreTools()
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { ask_user, ...rest } = core
@@ -35,10 +32,8 @@ function getSubagentTools(): Record<string, Tool> {
   return wrapToolsForExclusiveSerialization({ ...rest, ...mcp })
 }
 
-type DelegateStreamPart = NativeAgentStreamPart | TextStreamPart<Record<string, never>>
-
 function accumulateDelegateOutput(
-  part: DelegateStreamPart,
+  part: NativeAgentStreamPart,
   state: { text: string; rounds: number }
 ): void {
   if (part.type === 'start-step') state.rounds += 1
@@ -86,6 +81,14 @@ Do NOT nest delegate_task inside a sub-result. Prefer direct tools for simple on
         throw new Error('modelId missing from tool context')
       }
 
+      if (!canUseNativeAgentLoop(modelId, config)) {
+        return {
+          success: false,
+          task_id: taskId,
+          error: `No API credentials for native agent (model: ${modelId}). Configure the provider API key in Settings.`
+        }
+      }
+
       const prompt = context ? `${task}\n\nContext:\n${context}` : task
 
       const subCtx: ToolContext = {
@@ -96,41 +99,19 @@ Do NOT nest delegate_task inside a sub-result. Prefer direct tools for simple on
       const tools = getSubagentTools()
       const state = { text: '', rounds: 0 }
 
-      const useNative = nativeAgentLoopEnabled(config) && canUseNativeAgentLoop(modelId, config)
-
-      if (useNative) {
-        for await (const part of runNativeAgentLoop({
-          modelId,
-          configService: config,
-          systemPrompt: SUBAGENT_SYSTEM,
-          initialMessages: [{ role: 'user', content: prompt }],
-          tools,
-          toolContext: subCtx,
-          temperature: config.getTemperature(),
-          maxSteps: 32,
-          abortSignal: ctx.abortSignal,
-          prepareStepMessages: stripReasoningFromModelMessages
-        })) {
-          accumulateDelegateOutput(part, state)
-        }
-      } else {
-        const stream = streamText({
-          model: createLanguageModel(modelId, config),
-          system: SUBAGENT_SYSTEM,
-          messages: [{ role: 'user', content: prompt }],
-          tools: tools as ToolSet,
-          stopWhen: stepCountIs(32),
-          maxRetries: 2,
-          temperature: config.getTemperature(),
-          experimental_context: subCtx,
-          abortSignal: ctx.abortSignal,
-          prepareStep: ({ messages }) => ({
-            messages: stripReasoningFromModelMessages(messages)
-          })
-        })
-        for await (const part of stream.fullStream) {
-          accumulateDelegateOutput(part as DelegateStreamPart, state)
-        }
+      for await (const part of runNativeAgentLoop({
+        modelId,
+        configService: config,
+        systemPrompt: SUBAGENT_SYSTEM,
+        initialMessages: [{ role: 'user', content: prompt }],
+        tools,
+        toolContext: subCtx,
+        temperature: config.getTemperature(),
+        maxSteps: 32,
+        abortSignal: ctx.abortSignal,
+        prepareStepMessages: stripReasoningFromModelMessages
+      })) {
+        accumulateDelegateOutput(part, state)
       }
 
       updateTaskRun(taskId, {

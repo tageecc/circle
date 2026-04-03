@@ -1,17 +1,16 @@
 /**
- * 前端 Chat 类型定义 - 完全使用 AI SDK 标准
+ * Frontend chat types — content parts from @ai-sdk/provider-utils (same wire as main process).
  */
 
 import type { PastedImage } from '@/components/features/chat/chat-input'
-import type { TextPart, ImagePart, FilePart, ToolCallPart, ToolResultPart } from 'ai'
+import type {
+  TextPart,
+  ImagePart,
+  FilePart,
+  ToolCallPart,
+  ToolResultPart
+} from '@ai-sdk/provider-utils'
 
-/**
- * ============================================
- * 直接使用 AI SDK 标准类型（从 'ai' 包导入）
- * ============================================
- */
-
-// ✅ 重新导出 AI SDK 标准类型
 export type { TextPart, ImagePart, FilePart, ToolCallPart, ToolResultPart }
 
 /**

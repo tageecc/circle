@@ -1,4 +1,5 @@
 import type { Tool } from '@ai-sdk/provider-utils'
+import type { CircleToolSet } from '../../types/circle-tool-set'
 import { toolEntryToJsonSchema } from './tool-json-schema'
 
 export type OpenAIFunctionTool = {
@@ -11,11 +12,11 @@ export type OpenAIFunctionTool = {
 }
 
 export async function toolsToOpenAIFunctions(
-  tools: Record<string, Tool>
+  tools: CircleToolSet
 ): Promise<OpenAIFunctionTool[]> {
   const out: OpenAIFunctionTool[] = []
   for (const [name, t] of Object.entries(tools)) {
-    const parameters = await toolEntryToJsonSchema(t)
+    const parameters = await toolEntryToJsonSchema(t as Tool)
     out.push({
       type: 'function',
       function: {

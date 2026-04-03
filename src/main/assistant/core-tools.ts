@@ -15,9 +15,9 @@ import { updateMemoryTool } from '../tools/update-memory.tool'
 import { todoWriteTool } from '../tools/todo-write.tool'
 import { getSkillDetailsTool } from '../tools/get-skill-details.tool'
 import { askUserTool } from '../tools/ask-user.tool'
-import type { Tool } from '@ai-sdk/provider-utils'
+import type { CircleToolSet } from '../types/circle-tool-set'
 
-export function getCoreTools(): Record<string, Tool> {
+export function getCoreTools(): CircleToolSet {
   return {
     read_file: readFileTool,
     edit_file: editFileTool,

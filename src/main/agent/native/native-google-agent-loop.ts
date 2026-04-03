@@ -8,11 +8,11 @@ import type {
   AssistantModelMessage,
   ModelMessage,
   TextPart,
-  Tool,
   ToolCallPart,
   ToolExecutionOptions,
   ToolResultPart
 } from '@ai-sdk/provider-utils'
+import type { CircleToolSet } from '../../types/circle-tool-set'
 import type { ToolContext } from '../../services/tool-context'
 import { modelMessagesToGeminiContents } from './model-messages-to-gemini'
 import { toolsToGeminiDeclarations } from './gemini-tools'
@@ -25,7 +25,7 @@ export type NativeGoogleLoopOptions = {
   model: string
   systemPrompt: string
   initialMessages: ModelMessage[]
-  tools: Record<string, Tool>
+  tools: CircleToolSet
   toolContext: ToolContext
   temperature: number
   maxSteps: number

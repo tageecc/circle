@@ -1,6 +1,5 @@
 export {
   canUseNativeAgentLoop,
-  nativeAgentLoopEnabled,
   resolveOpenAICompatibleEndpoint,
   resolveAnthropicCredentials,
   resolveGoogleCredentials,

@@ -2,7 +2,8 @@
  * Dispatch native agent loop by provider (OpenAI-compatible, Anthropic, Google).
  */
 
-import type { ModelMessage, Tool } from '@ai-sdk/provider-utils'
+import type { ModelMessage } from '@ai-sdk/provider-utils'
+import type { CircleToolSet } from '../../types/circle-tool-set'
 import type { NativeAgentStreamPart } from './native-agent-stream-parts'
 import type { ConfigService } from '../../services/config.service'
 import type { ToolContext } from '../../services/tool-context'
@@ -20,7 +21,7 @@ export type RunNativeAgentLoopParams = {
   configService: ConfigService
   systemPrompt: string
   initialMessages: ModelMessage[]
-  tools: Record<string, Tool>
+  tools: CircleToolSet
   toolContext: ToolContext
   temperature: number
   maxSteps: number

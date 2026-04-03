@@ -3,8 +3,6 @@
  * 简洁、无冗余、最佳实践
  */
 
-import { streamText, stepCountIs } from 'ai'
-import type { TextStreamPart, ToolSet } from 'ai'
 import type { TextPart, ToolCallPart, ToolResultPart } from '@ai-sdk/provider-utils'
 import type { ReasoningPart } from '@ai-sdk/provider-utils'
 import { STREAM_CHUNK_PROTOCOL_VERSION } from '../types/stream'
@@ -17,7 +15,6 @@ import { SessionService } from './session.service'
 import { debugLogger } from './debug-logger.service'
 import type { ToolContext } from './tool-context'
 import { assistantConfig, getAssistantTools } from '../assistant/assistant'
-import { createLanguageModel } from '../utils/model-factory'
 import { MessageSnapshotService, type FileSnapshot } from './message-snapshot.service'
 import { getDefaultMaxInputTokensForModel, type CoreLikeMessage } from './context-budget.service'
 import { formatMcpEnvironmentNote, mcpCatalogSignature } from './mcp-catalog.util'
@@ -39,14 +36,13 @@ import { reportExclusiveToolBatchIfRisky } from '../tools/tool-policy'
 import { shouldUsePayloadRef, storeStreamPayload } from './stream-payload-refs.service'
 import {
   canUseNativeAgentLoop,
-  nativeAgentLoopEnabled,
   runNativeAgentLoop,
   type NativeAgentStreamPart
 } from '../agent/native'
 import { stripReasoningFromModelMessages } from '../agent/native/strip-reasoning-messages'
 
-/** Native loop chunks + AI SDK streamText fullStream parts (shared switch in streamChat). */
-type ChatAgentStreamPart = NativeAgentStreamPart | TextStreamPart<Record<string, never>>
+/** Chunks from the native agent loop (single chat execution path). */
+type ChatAgentStreamPart = NativeAgentStreamPart
 
 export class ChatService {
   private contextEnrichmentService = ContextEnrichmentService.getInstance()
@@ -304,46 +300,31 @@ export class ChatService {
       let stepIndex = 0
       const toolNamesSinceLastFinish: string[] = []
 
-      const useNativeAgentLoop =
-        nativeAgentLoopEnabled(this.configService) &&
-        canUseNativeAgentLoop(modelId, this.configService)
+      if (!canUseNativeAgentLoop(modelId, this.configService)) {
+        const msg = `No API credentials for native agent (model: ${modelId}). Configure the provider API key in Settings.`
+        closeStreaming()
+        await saveMessage()
+        yield emitChunk({
+          type: 'error',
+          error: msg,
+          v: STREAM_CHUNK_PROTOCOL_VERSION
+        })
+        return
+      }
 
       outer: while (true) {
-        const streamIterable: AsyncIterable<ChatAgentStreamPart> = useNativeAgentLoop
-          ? runNativeAgentLoop({
-              modelId,
-              configService: this.configService,
-              systemPrompt,
-              initialMessages: messagesForModel,
-              tools,
-              toolContext,
-              temperature: this.configService.getTemperature(),
-              maxSteps: maxAgentSteps,
-              abortSignal,
-              prepareStepMessages: stripReasoningFromModelMessages
-            })
-          : streamText({
-              model: createLanguageModel(modelId, this.configService),
-              system: systemPrompt,
-              messages: messagesForModel,
-              tools: tools as ToolSet,
-              stopWhen: stepCountIs(maxAgentSteps),
-              maxRetries: 2,
-              temperature: this.configService.getTemperature(),
-              experimental_context: toolContext,
-              abortSignal,
-              providerOptions: {
-                qwen: {
-                  enable_thinking: true,
-                  stream_options: {
-                    include_usage: true
-                  }
-                }
-              },
-              prepareStep: ({ messages: stepMessages }) => ({
-                messages: stripReasoningFromModelMessages(stepMessages)
-              })
-            }).fullStream
+        const streamIterable: AsyncIterable<ChatAgentStreamPart> = runNativeAgentLoop({
+          modelId,
+          configService: this.configService,
+          systemPrompt,
+          initialMessages: messagesForModel,
+          tools,
+          toolContext,
+          temperature: this.configService.getTemperature(),
+          maxSteps: maxAgentSteps,
+          abortSignal,
+          prepareStepMessages: stripReasoningFromModelMessages
+        })
 
         try {
           for await (const part of streamIterable) {

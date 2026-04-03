@@ -85,9 +85,3 @@ export function resolveOpenAICompatibleEndpoint(
       return null
   }
 }
-
-/** Native agent loop (HTTP/SDK tool rounds, no streamText). Covers OpenAI-compatible, Anthropic, and Gemini. */
-export function nativeAgentLoopEnabled(configService: ConfigService): boolean {
-  if (process.env.CIRCLE_NATIVE_AGENT === '1') return true
-  return configService.getServiceSettings().nativeAgentLoop === true
-}
