@@ -1,5 +1,5 @@
 /**
- * Claude Code–style agent loop without Vercel streamText: OpenAI-compatible chat.completions + tool rounds.
+ * Claude Code–style agent loop: OpenAI-compatible chat.completions + tool rounds (no `ai` package).
  */
 
 import type {

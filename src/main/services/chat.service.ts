@@ -1,5 +1,5 @@
 /**
- * Chat Service - 完全使用 AI SDK 标准格式
+ * Chat Service — native agent loop; message/tool parts aligned with @ai-sdk/provider-utils.
  * 简洁、无冗余、最佳实践
  */
 

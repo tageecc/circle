@@ -1,6 +1,6 @@
 /**
  * UI message part types for ai-elements (previously imported from `ai`).
- * Kept local to avoid depending on the Vercel AI SDK UI package.
+ * Local definitions so the renderer does not depend on the `ai` npm package.
  */
 
 /** Matches AI SDK UIMessage.role for components that only style by role. */

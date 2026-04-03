@@ -176,7 +176,7 @@ pnpm build:linux  # Linux
 | Frontend | React 19, TypeScript, Tailwind CSS, Radix/shadcn                        |
 | Desktop  | Electron, electron-vite                                                 |
 | Editor   | Monaco Editor                                                           |
-| AI       | Vercel AI SDK (`ai` / `@ai-sdk/*`), Multi-provider models, MCP protocol |
+| AI       | `@ai-sdk/provider` / `provider-utils`, native agent loops, multi-provider models, MCP |
 | Data     | SQLite/LibSQL, Drizzle ORM, **sqlite-vec** (vector search)              |
 | Terminal | node-pty                                                                |
 

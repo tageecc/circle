@@ -1,5 +1,5 @@
 /**
- * Native Anthropic Messages API streaming + tool rounds (no Vercel AI SDK).
+ * Native Anthropic Messages API streaming + tool rounds (no `ai` package).
  */
 
 import Anthropic from '@anthropic-ai/sdk'

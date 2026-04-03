@@ -11,7 +11,7 @@
 
 - Monaco 通过 **`registerInlineCompletionsProvider`** 向编辑器注册「行内补全」来源。
 - 用户输入时 Monaco 会调用 `provideInlineCompletions`；前端将 **光标前后文本** 打成 **FIM（Fill-in-the-Middle）** 提示，经 **IPC** 交给主进程。
-- 主进程 **`CompletionService`** 使用 Vercel AI SDK 的 **`generateText`** 调用配置的 **聊天模型**（默认来自 `ConfigService.getCompletionModel()`），生成 **仅中间缺口** 的代码。
+- 主进程 **`CompletionService`** 通过私有方法 **`generateText`** 调用 **`generateTextOneShot`**（`src/main/agent/llm-one-shot.ts`，原生 OpenAI 兼容 / Anthropic / Google，**不依赖 `ai` 包**），使用配置的 **补全模型**（默认来自 `ConfigService.getCompletionModel()`），生成 **仅中间缺口** 的代码。
 - 返回文本经 **后处理**（去 markdown、去模型思考标签、去 FIM 特殊 token、去重前缀、截断行数）后，作为 **幽灵文本** 显示；用户按 Tab 等键接受（Monaco 默认行为）。
 - 可选：对 **TS/JS** 启用 **Shadow Workspace**：在内存里把补全「缝」进文件，用 **LanguageService 诊断** 校验；失败则带错误信息 **重试生成**。
 
@@ -184,13 +184,13 @@ Monaco (InlineCompletionsProvider)
 
 ### 3.11 `src/main/services/config.service.ts`（节选）
 
-- **`getCompletionModel()`**：默认 `'Alibaba (China)/qwen-turbo'`（以实际 `db.getUIState` 为准），供 **`CompletionService.generateText`** 使用。
+- **`getCompletionModel()`**：默认 `'Alibaba (China)/qwen-turbo'`（以实际 `db.getUIState` 为准），供 **`CompletionService`** 内部 **`generateText` → `generateTextOneShot`** 使用。
 
 ---
 
 ## 4. 如何复刻（Checklist）
 
-1. **依赖**：主进程需 `@ai-sdk/openai` 等（见 `model-factory`）、`ai` 包的 `generateText`；DashScope/Qwen 等按项目配置。
+1. **依赖**：主进程需 **`generateTextOneShot`**（`llm-one-shot.ts`）及对应厂商 API Key / Base URL；无需 `ai` 包或 `model-factory`。
 2. **IPC**：实现 `completion:generate`，入参对齐 `CompletionRequest`。
 3. **Preload**：暴露 `window.api.completion.generate`，类型与主进程一致。
 4. **渲染进程**：

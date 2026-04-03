@@ -1,5 +1,5 @@
 /**
- * Single-turn text generation without Vercel AI SDK — OpenAI-compatible, Anthropic Messages, or Gemini.
+ * Single-turn text generation via native HTTP/SDKs — OpenAI-compatible, Anthropic Messages, or Gemini.
  */
 
 import Anthropic from '@anthropic-ai/sdk'

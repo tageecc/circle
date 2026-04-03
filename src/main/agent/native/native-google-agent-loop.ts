@@ -1,5 +1,5 @@
 /**
- * Native Gemini streaming + function-call rounds (no Vercel AI SDK).
+ * Native Gemini streaming + function-call rounds (no `ai` package).
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai'
