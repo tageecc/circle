@@ -3,22 +3,17 @@
  * replace older turns with a single summary user message, then prune/truncate as usual.
  */
 
-import { generateText } from 'ai'
+import { generateTextOneShot } from '../agent/llm-one-shot'
 import type { CoreLikeMessage } from './context-budget.service'
-import {
-  computeMessagesTokenBudget,
-  estimateMessageTokens
-} from './context-budget.service'
+import { computeMessagesTokenBudget, estimateMessageTokens } from './context-budget.service'
 import { AGENT_HARNESS } from '../constants/service.constants'
 import { logHarnessEvent } from './agent-harness-telemetry'
-import { createLanguageModel } from '../utils/model-factory'
 import type { ConfigService } from './config.service'
 
 function flattenForSummary(messages: CoreLikeMessage[]): string {
   const lines: string[] = []
   for (const m of messages) {
-    const body =
-      typeof m.content === 'string' ? m.content : JSON.stringify(m.content)
+    const body = typeof m.content === 'string' ? m.content : JSON.stringify(m.content)
     lines.push(`[${m.role}]: ${body.slice(0, 120_000)}`)
   }
   return lines.join('\n\n')
@@ -63,8 +58,9 @@ export async function maybeSummarizeOlderMessagesForContext(params: {
   const plain = flattenForSummary(head)
 
   try {
-    const { text } = await generateText({
-      model: createLanguageModel(modelId, configService),
+    const text = await generateTextOneShot({
+      modelId,
+      configService,
       system:
         'You compress prior conversation for a coding assistant continuation. Preserve: file paths, shell commands, errors, agreed decisions, TODOs. Be dense; no preamble.',
       prompt: plain.slice(0, 200_000),

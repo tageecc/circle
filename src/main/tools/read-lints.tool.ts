@@ -1,4 +1,4 @@
-import { tool } from 'ai'
+import { defineTool } from './define-tool'
 import { z } from 'zod'
 import { DiagnosticsService } from '../services/diagnostics.service'
 import * as path from 'path'
@@ -28,7 +28,7 @@ interface DiagnosticResult {
 /**
  * 读取 Linter 错误工具
  */
-export const readLintsTool = tool({
+export const readLintsTool = defineTool({
   description: `Read linter errors and warnings from the workspace. Checks TypeScript, JavaScript, YAML, and Markdown files.
 
 ### When to Use This Tool

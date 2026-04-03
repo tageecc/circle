@@ -1,4 +1,4 @@
-import { tool } from 'ai'
+import { defineTool } from './define-tool'
 import { z } from 'zod'
 import { SkillsService } from '../services/skills.service'
 import { getToolContext } from '../services/tool-context'
@@ -15,7 +15,7 @@ const inputSchema = z.object({
  * Load full skill instructions on demand (Progressive Disclosure).
  * System prompt only lists skill metadata; this tool returns the body.
  */
-export const getSkillDetailsTool = tool({
+export const getSkillDetailsTool = defineTool({
   description:
     "Get the full instructions for a specific skill. Use when you need detailed guidance to complete a task that aligns with a skill's domain.",
 

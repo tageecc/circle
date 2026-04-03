@@ -1,4 +1,4 @@
-import { tool } from 'ai'
+import { defineTool } from './define-tool'
 import { z } from 'zod'
 import { CodebaseIndexService } from '../services/codebase-index.service'
 
@@ -11,7 +11,7 @@ const inputSchema = z.object({
 /**
  * 代码库语义搜索工具 - 使用 sqlite-vec 向量检索
  */
-export const codebaseSearchTool = tool({
+export const codebaseSearchTool = defineTool({
   description: `Semantic code search - finds code by meaning (vector search) or text (LIKE search).
 
 ### Mode Selection

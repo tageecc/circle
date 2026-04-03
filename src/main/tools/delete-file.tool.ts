@@ -1,4 +1,5 @@
-import { tool, type ToolCallOptions } from 'ai'
+import type { ToolCallOptions } from '@ai-sdk/provider-utils'
+import { defineTool } from './define-tool'
 import { z } from 'zod'
 import { promises as fs } from 'fs'
 import { getToolContext } from '../services/tool-context'
@@ -17,7 +18,7 @@ const inputSchema = z.object({
  *
  * Cursor 风格：文件删除也是 pending 操作，用户可以 Accept/Reject
  */
-export const deleteFileTool = tool({
+export const deleteFileTool = defineTool({
   description: `Delete a file or directory from the filesystem. Supports undo through pending edits system.
 
 ### When to Use This Tool

@@ -1,4 +1,4 @@
-import { tool } from 'ai'
+import { defineTool } from './define-tool'
 import { z } from 'zod'
 import { glob as globFunc } from 'glob'
 import { promises as fs } from 'fs'
@@ -21,7 +21,7 @@ const inputSchema = z.object({
 /**
  * Glob File Search Tool - Cursor 风格
  */
-export const globFileSearchTool = tool({
+export const globFileSearchTool = defineTool({
   description: `Fast recursive file search using glob patterns. Find files by name/path patterns across entire directory trees.
 
 ### When to Use This Tool

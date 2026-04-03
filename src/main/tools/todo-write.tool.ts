@@ -1,4 +1,5 @@
-import { tool, type ToolCallOptions } from 'ai'
+import type { ToolCallOptions } from '@ai-sdk/provider-utils'
+import { defineTool } from './define-tool'
 import { z } from 'zod'
 import { getToolContext } from '../services/tool-context'
 import { SessionService } from '../services/session.service'
@@ -35,7 +36,7 @@ const inputSchema = z.object({
  * Todo Write Tool
  * 管理任务列表，追踪复杂任务的进度
  */
-export const todoWriteTool = tool({
+export const todoWriteTool = defineTool({
   description: `Create and manage a structured task list for complex coding tasks. Helps organize work, track progress, and ensure nothing is forgotten.
 
 ### When to Use This Tool

@@ -1,4 +1,4 @@
-import { tool } from 'ai'
+import { defineTool } from './define-tool'
 import { z } from 'zod'
 import { promises as fs } from 'fs'
 import { resolveFilePath } from './utils'
@@ -13,7 +13,7 @@ const inputSchema = z.object({
  * Read File Tool
  * 读取文件内容，支持行号显示和分页
  */
-export const readFileTool = tool({
+export const readFileTool = defineTool({
   description: `Read file contents from the local filesystem. Returns content with line numbers for easy reference.
 
 ### When to Use This Tool

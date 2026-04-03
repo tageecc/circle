@@ -1,4 +1,5 @@
-import { tool, type ToolCallOptions } from 'ai'
+import type { ToolCallOptions } from '@ai-sdk/provider-utils'
+import { defineTool } from './define-tool'
 import { z } from 'zod'
 import { spawn } from 'child_process'
 import { getCurrentProjectDir } from './utils'
@@ -250,7 +251,7 @@ The system will show output either way, but background creates a persistent term
 })
 
 // Tool definition
-export const runTerminalCmdTool = tool({
+export const runTerminalCmdTool = defineTool({
   description: `PROPOSE a command to run on behalf of the user.
 Note that the user may have to approve the command before it is executed.
 The user may reject it if it is not to their liking, or may modify the command before approving it.  If they do change it, take those changes into account.

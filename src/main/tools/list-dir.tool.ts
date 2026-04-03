@@ -1,4 +1,4 @@
-import { tool } from 'ai'
+import { defineTool } from './define-tool'
 import { z } from 'zod'
 import { promises as fs } from 'fs'
 import { resolveFilePath } from './utils'
@@ -16,7 +16,7 @@ const inputSchema = z.object({
 /**
  * List Directory Tool - Cursor 风格
  */
-export const listDirTool = tool({
+export const listDirTool = defineTool({
   description: `List files and directories in a given path. Fast directory exploration tool.
 
 ### When to Use This Tool

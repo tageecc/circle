@@ -4,7 +4,7 @@
  */
 
 import { streamText, stepCountIs } from 'ai'
-import type { TextPart, ToolCallPart, ToolResultPart } from 'ai'
+import type { TextPart, ToolCallPart, ToolResultPart } from '@ai-sdk/provider-utils'
 import type { ReasoningPart } from '@ai-sdk/provider-utils'
 import { STREAM_CHUNK_PROTOCOL_VERSION } from '../types/stream'
 import type { StreamChunk } from '../types/stream'
@@ -36,6 +36,11 @@ import {
 import { getSessionHooks } from '../agent/session-hooks'
 import { reportExclusiveToolBatchIfRisky } from '../tools/tool-policy'
 import { shouldUsePayloadRef, storeStreamPayload } from './stream-payload-refs.service'
+import {
+  canUseNativeAgentLoop,
+  nativeAgentLoopEnabled,
+  runNativeAgentLoop
+} from '../agent/native'
 
 export class ChatService {
   private contextEnrichmentService = ContextEnrichmentService.getInstance()
@@ -183,7 +188,7 @@ export class ChatService {
         svcSettings.contextReserveOutputTokens ?? AGENT_HARNESS.RESERVE_OUTPUT_TOKENS
 
       const prepT0 = Date.now()
-      let t = prepT0
+      const t = prepT0
 
       const systemPrompt = await this.contextEnrichmentService.buildSystemPrompt({
         modelId,
@@ -293,36 +298,60 @@ export class ChatService {
       let stepIndex = 0
       const toolNamesSinceLastFinish: string[] = []
 
+      const useNativeAgentLoop =
+        nativeAgentLoopEnabled(this.configService) &&
+        canUseNativeAgentLoop(modelId, this.configService)
+
       outer: while (true) {
-        const result = streamText({
-          model: createLanguageModel(modelId, this.configService),
-          system: systemPrompt,
-          messages: messagesForModel,
-          tools,
-          stopWhen: stepCountIs(maxAgentSteps),
-          maxRetries: 2,
-          temperature: this.configService.getTemperature(),
-          experimental_context: toolContext,
-          abortSignal,
-          providerOptions: {
-            qwen: {
-              enable_thinking: true,
-              stream_options: {
-                include_usage: true
-              }
-            }
-          },
-          prepareStep: ({ messages: stepMessages }) => ({
-            messages: stepMessages.map((msg) =>
-              msg.role === 'assistant' && Array.isArray(msg.content)
-                ? { ...msg, content: msg.content.filter((part) => part.type !== 'reasoning') }
-                : msg
-            )
-          })
-        })
+        const streamIterable: AsyncIterable<unknown> = useNativeAgentLoop
+          ? runNativeAgentLoop({
+              modelId,
+              configService: this.configService,
+              systemPrompt,
+              initialMessages: messagesForModel,
+              tools,
+              toolContext,
+              temperature: this.configService.getTemperature(),
+              maxSteps: maxAgentSteps,
+              abortSignal,
+              prepareStepMessages: (msgs) =>
+                msgs.map((msg) =>
+                  msg.role === 'assistant' && Array.isArray(msg.content)
+                    ? { ...msg, content: msg.content.filter((part) => part.type !== 'reasoning') }
+                    : msg
+                )
+            })
+          : streamText({
+              model: createLanguageModel(modelId, this.configService),
+              system: systemPrompt,
+              messages: messagesForModel,
+              tools,
+              stopWhen: stepCountIs(maxAgentSteps),
+              maxRetries: 2,
+              temperature: this.configService.getTemperature(),
+              experimental_context: toolContext,
+              abortSignal,
+              providerOptions: {
+                qwen: {
+                  enable_thinking: true,
+                  stream_options: {
+                    include_usage: true
+                  }
+                }
+              },
+              prepareStep: ({ messages: stepMessages }) => ({
+                messages: stepMessages.map((msg) =>
+                  msg.role === 'assistant' && Array.isArray(msg.content)
+                    ? { ...msg, content: msg.content.filter((part) => part.type !== 'reasoning') }
+                    : msg
+                )
+              })
+            }).fullStream
 
         try {
-          for await (const part of result.fullStream) {
+          for await (const part of streamIterable as AsyncIterable<
+            import('ai').TextStreamPart<Record<string, never>>
+          >) {
             if (
               part.type === 'error' &&
               isLikelyContextOverflowError(part.error) &&

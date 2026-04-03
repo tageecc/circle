@@ -7,7 +7,7 @@ import { maybeSummarizeOlderMessagesForContext } from './conversation-compact.se
 import { pruneMessagesForBudget } from './context-budget.service'
 import type { ConfigService } from './config.service'
 import { logHarnessEvent } from './agent-harness-telemetry'
-import type { ModelMessage } from 'ai'
+import type { ModelMessage } from '@ai-sdk/provider-utils'
 import { microcompactOldToolResults } from './microcompact-messages.service'
 import { AGENT_HARNESS } from '../constants/service.constants'
 

@@ -3,7 +3,8 @@
  * Mirrors the terminal approval Promise pattern.
  */
 
-import { tool, type ToolCallOptions } from 'ai'
+import type { ToolCallOptions } from '@ai-sdk/provider-utils'
+import { defineTool } from './define-tool'
 import { z } from 'zod'
 import { nanoid } from 'nanoid'
 import { getToolContext } from '../services/tool-context'
@@ -38,7 +39,7 @@ export function resolveUserQuestionAnswer(questionId: string, answer: string): v
   }
 }
 
-export const askUserTool = tool({
+export const askUserTool = defineTool({
   description: `Ask the user a clarifying question and pause until they respond. Use when:
 - Requirements are ambiguous or multiple valid approaches exist
 - You need a preference (library, style, scope) before editing code

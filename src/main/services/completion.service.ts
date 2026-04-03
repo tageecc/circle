@@ -12,11 +12,10 @@ const DEBUG = process.env.NODE_ENV === 'development' || process.env.DEBUG_COMPLE
 const debug = (...args: any[]) => DEBUG && console.log('[CompletionService]', ...args)
 debug // prevent unused warning
 
-import { generateText } from 'ai'
+import { generateTextOneShot } from '../agent/llm-one-shot'
 import type { ConfigService } from './config.service'
 import { getShadowWorkspace } from './shadow-workspace.service'
 import type { Diagnostic } from './language-service'
-import { createLanguageModel } from '../utils/model-factory'
 import { COMPLETION } from '../constants/service.constants'
 import * as path from 'path'
 import * as fs from 'fs'
@@ -217,7 +216,10 @@ export class CompletionService {
     abortSignal?: AbortSignal
   ): Promise<string | null> {
     try {
-      const model = this.getModel(request.modelId || this.configService.getCompletionModel())
+      const modelId =
+        request.modelId ||
+        this.configService.getCompletionModel() ||
+        this.configService.getDefaultModel()
       const prompt = this.buildPrompt(request)
 
       // 如果有错误，增强 system prompt
@@ -232,27 +234,23 @@ export class CompletionService {
         timeoutId = setTimeout(() => reject(new Error('Timeout')), TIMEOUT_MS)
       })
 
-      const textPromise = generateText({
-        model,
+      const textPromise = generateTextOneShot({
+        modelId,
+        configService: this.configService,
         system: systemPrompt,
         prompt,
         temperature: TEMPERATURE,
-        abortSignal,
-        providerOptions: {
-          dashscope: {
-            enableThinking: false
-          }
-        }
+        abortSignal
       })
 
-      let result
+      let result: string
       try {
         result = await Promise.race([textPromise, timeoutPromise])
       } finally {
         if (timeoutId) clearTimeout(timeoutId)
       }
 
-      return result.text
+      return result
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       if (!errorMessage.includes('timeout') && !errorMessage.includes('abort')) {
@@ -331,11 +329,6 @@ export class CompletionService {
 
     // 行尾且有一定长度，换行
     return before.length > 20
-  }
-
-  private getModel(modelId?: string) {
-    const targetModelId = modelId || this.configService.getDefaultModel()
-    return createLanguageModel(targetModelId, this.configService)
   }
 
   private estimateTokenCount(text: string): number {

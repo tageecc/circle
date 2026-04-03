@@ -1,7 +1,8 @@
 import { promises as fs } from 'fs'
-import { tool, type ToolCallOptions, generateText } from 'ai'
-import { createOpenAI } from '@ai-sdk/openai'
+import type { ToolCallOptions } from '@ai-sdk/provider-utils'
 import { z } from 'zod'
+import { defineTool } from './define-tool'
+import { generateTextOneShot } from '../agent/llm-one-shot'
 import { getToolContext } from '../services/tool-context'
 import * as path from 'path'
 
@@ -42,24 +43,11 @@ function hasExistingCodeMarker(content: string): boolean {
   )
 }
 
-/** 创建用于应用编辑的小模型 */
-function createApplyModel() {
-  const apiKey = process.env.DASHSCOPE_API_KEY
-  if (!apiKey) {
-    throw new Error('未配置 DASHSCOPE_API_KEY')
-  }
-
-  return createOpenAI({
-    baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-    apiKey
-  }).chat('qwen-coder-plus-latest')
-}
-
 /**
  * Edit File Tool
  * 使用小模型来应用编辑
  */
-export const editFileTool = tool({
+export const editFileTool = defineTool({
   description: `Propose an edit to an existing file or create a new file. Uses a specialized model to apply changes intelligently.
 
 ### When to Use This Tool
@@ -281,13 +269,16 @@ ${codeEdit}
 直接输出：`
 
   try {
-    const result = await generateText({
-      model: createApplyModel(),
+    const { getConfigService } = await import('../index.js')
+    const config = getConfigService()
+    const text = await generateTextOneShot({
+      modelId: 'Alibaba (China)/qwen-coder-plus-latest',
+      configService: config,
       prompt,
-      temperature: 0 // 零随机性，确保确定性输出
+      temperature: 0
     })
 
-    const content = cleanMarkdown(result.text)
+    const content = cleanMarkdown(text)
 
     if (!content) {
       console.warn('[edit_file] 模型返回空内容，保持原文件')

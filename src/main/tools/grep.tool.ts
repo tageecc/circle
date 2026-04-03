@@ -1,4 +1,4 @@
-import { tool } from 'ai'
+import { defineTool } from './define-tool'
 import { z } from 'zod'
 import { exec } from 'child_process'
 import { promisify } from 'util'
@@ -19,7 +19,7 @@ const inputSchema = z.object({
 /**
  * Grep Search Tool
  */
-export const grepTool = tool({
+export const grepTool = defineTool({
   description: `Fast exact-text search powered by ripgrep. Finds code by literal strings or regex patterns.
 
 ### When to Use This Tool

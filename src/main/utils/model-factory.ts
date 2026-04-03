@@ -1,4 +1,4 @@
-import { LanguageModel } from 'ai'
+import type { LanguageModelV3 } from '@ai-sdk/provider'
 import { createOpenAI } from '@ai-sdk/openai'
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
@@ -12,7 +12,7 @@ import { createQwen } from 'qwen-ai-provider-v5'
  *
  * 避免在多个 Service 中重复实现相同的逻辑
  */
-export function createLanguageModel(modelId: string, configService: ConfigService): LanguageModel {
+export function createLanguageModel(modelId: string, configService: ConfigService): LanguageModelV3 {
   const [provider, model] = modelId.split('/')
 
   if (!provider || !model) {

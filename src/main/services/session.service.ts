@@ -1,11 +1,10 @@
-import { generateText } from 'ai'
-import type { TextPart } from 'ai'
+import type { TextPart } from '@ai-sdk/provider-utils'
+import { generateTextOneShot } from '../agent/llm-one-shot'
 import { getDb } from '../database/db'
 import * as schema from '../database/schema'
 import { eq, desc, asc, and, gt } from 'drizzle-orm'
 import type { MessageMetadata } from '../types/message'
 import { nanoid } from 'nanoid'
-import { createQwen } from 'qwen-ai-provider-v5'
 
 export interface ChatMessage {
   id: number
@@ -356,13 +355,16 @@ Assistant: ${assistantContent.slice(0, 200)}
 
 Title (3-5 words):`
 
-      const { text } = await generateText({
-        model: createQwen({
-          apiKey: process.env.DASHSCOPE_API_KEY,
-          baseURL:
-            process.env.DASHSCOPE_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1'
-        })('qwen-plus'),
-        prompt: titlePrompt
+      const { getConfigService } = await import('../index.js')
+      const config = getConfigService()
+      const sess = await this.getSession(sessionId)
+      const modelId = sess?.modelId ?? 'Alibaba (China)/qwen-plus'
+
+      const text = await generateTextOneShot({
+        modelId,
+        configService: config,
+        prompt: titlePrompt,
+        temperature: 0.3
       })
 
       const generatedTitle = text

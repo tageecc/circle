@@ -28,7 +28,7 @@ import {
   ContextReasoningUsage,
   ContextTrigger
 } from '@/components/ai-elements/context'
-import type { LanguageModelUsage } from 'ai'
+import type { LanguageModelUsage } from '@/types/chat'
 import { useTranslation } from 'react-i18next'
 
 interface ModelConfig {

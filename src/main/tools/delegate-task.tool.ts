@@ -1,19 +1,19 @@
 /**
  * Spawn a focused sub-agent run (Claude Code AgentTool / runAgent parity — same process, bounded steps).
- * Uses generateText + tool loop; no nested delegate_task or ask_user (avoids HITL deadlock in sub-context).
+ * Uses native agent loop (no Vercel generateText). No nested delegate_task or ask_user in sub-context.
  */
 
-import { tool, generateText, stepCountIs } from 'ai'
 import { z } from 'zod'
 import { nanoid } from 'nanoid'
-import { getToolContext, type ToolContext } from '../services/tool-context'
 import type { ToolCallOptions } from '@ai-sdk/provider-utils'
-import { createLanguageModel } from '../utils/model-factory'
+import { getToolContext, type ToolContext } from '../services/tool-context'
 import { getCoreTools } from '../assistant/core-tools'
 import { MCPService } from '../services/mcp.service'
 import { registerTaskRun, updateTaskRun } from '../agent/task-run-registry'
 import { logHarnessEvent } from '../services/agent-harness-telemetry'
 import { wrapToolsForExclusiveSerialization } from './wrap-tools-execution'
+import { defineTool } from './define-tool'
+import { runNativeAgentLoop } from '../agent/native/run-native-agent-loop'
 
 const SUBAGENT_SYSTEM = `You are a focused coding sub-agent. Complete the assigned task using tools.
 Be concise in your final summary. Do not call delegate_task or ask the user questions.`
@@ -34,15 +34,12 @@ const inputSchema = z.object({
     .describe('Optional extra context (paths, constraints) — keep short.')
 })
 
-export const delegateTaskTool = tool({
+export const delegateTaskTool = defineTool({
   description: `Delegate a self-contained sub-task to a bounded agent run (separate tool loop, same workspace).
 Use for: large explorations, parallelizable research, or isolated refactors that would clutter the main thread.
 Do NOT nest delegate_task inside a sub-result. Prefer direct tools for simple one-off reads.`,
   inputSchema,
-  execute: async (
-    { task, context }: z.infer<typeof inputSchema>,
-    options: ToolCallOptions
-  ) => {
+  execute: async ({ task, context }: z.infer<typeof inputSchema>, options: ToolCallOptions) => {
     const ctx = getToolContext(options) as ToolContext
     if ((ctx.delegateDepth ?? 0) >= 1) {
       return {
@@ -77,20 +74,23 @@ Do NOT nest delegate_task inside a sub-result. Prefer direct tools for simple on
         delegateDepth: 1
       }
 
-      const result = await generateText({
-        model: createLanguageModel(modelId, config),
-        system: SUBAGENT_SYSTEM,
-        messages: [{ role: 'user', content: prompt }],
+      let text = ''
+      let rounds = 0
+      for await (const part of runNativeAgentLoop({
+        modelId,
+        configService: config,
+        systemPrompt: SUBAGENT_SYSTEM,
+        initialMessages: [{ role: 'user', content: prompt }],
         tools: getSubagentTools(),
-        stopWhen: stepCountIs(32),
+        toolContext: subCtx,
         temperature: config.getTemperature(),
-        maxRetries: 1,
-        experimental_context: subCtx,
+        maxSteps: 32,
         abortSignal: ctx.abortSignal
-      })
-
-      const text = result.text
-      const stepCount = result.steps?.length ?? 0
+      })) {
+        const p = part as { type: string; text?: string }
+        if (p.type === 'start-step') rounds += 1
+        if (p.type === 'text-delta' && typeof p.text === 'string') text += p.text
+      }
 
       updateTaskRun(taskId, {
         status: 'completed',
@@ -99,14 +99,14 @@ Do NOT nest delegate_task inside a sub-result. Prefer direct tools for simple on
 
       logHarnessEvent('agent.delegate_task_done', {
         ms: Date.now() - t0,
-        steps: stepCount
+        steps: rounds
       })
 
       return {
         success: true,
         task_id: taskId,
         summary: text ?? '(no text)',
-        steps_used: stepCount
+        steps_used: rounds
       }
     } catch (e) {
       updateTaskRun(taskId, {

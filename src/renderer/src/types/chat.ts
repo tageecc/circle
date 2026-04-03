@@ -90,8 +90,14 @@ export interface Message {
  * ============================================
  */
 
-import type { LanguageModelUsage } from 'ai'
-export type { LanguageModelUsage }
+/** Token usage (main process mirrors this shape; avoid coupling renderer to `ai` for this). */
+export type LanguageModelUsage = {
+  inputTokens?: number
+  outputTokens?: number
+  totalTokens?: number
+  reasoningTokens?: number
+  cachedInputTokens?: number
+}
 
 export interface SessionMetadata {
   lastUsage?: LanguageModelUsage

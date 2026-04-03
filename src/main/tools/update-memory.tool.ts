@@ -2,7 +2,7 @@
  * Update Memory Tool
  */
 
-import { tool } from 'ai'
+import { defineTool } from './define-tool'
 import { z } from 'zod'
 import { MemoryService } from '../services/memory.service'
 
@@ -19,7 +19,7 @@ const inputSchema = z.object({
   existing_knowledge_id: z.string().optional().describe('ID of existing memory to update/delete')
 })
 
-export const updateMemoryTool = tool({
+export const updateMemoryTool = defineTool({
   description: `Manage persistent memories in the AI's knowledge base. Stores user preferences, project context, and important facts for future conversations.
 
 ### When to Use This Tool

@@ -1,4 +1,14 @@
-import type { LanguageModelUsage } from 'ai'
+/**
+ * Token usage on finish/usage chunks (matches AI SDK usage fields used by ChatService).
+ * Defined locally so main process types do not depend on the `ai` package.
+ */
+export type LanguageModelUsage = {
+  inputTokens?: number
+  outputTokens?: number
+  totalTokens?: number
+  reasoningTokens?: number
+  cachedInputTokens?: number
+}
 
 /** IPC / stream chunk schema version (Phase F). Bump when breaking shape changes. */
 export const STREAM_CHUNK_PROTOCOL_VERSION = 1 as const
