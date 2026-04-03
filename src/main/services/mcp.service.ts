@@ -4,6 +4,9 @@
  */
 
 import { spawn, ChildProcessWithoutNullStreams } from 'child_process'
+import { jsonSchema } from '@ai-sdk/provider-utils'
+import type { Tool } from '@ai-sdk/provider-utils'
+import type { JSONSchema7 } from '@ai-sdk/provider'
 import { getDb } from '../database/db'
 import * as schema from '../database/schema'
 import { eq } from 'drizzle-orm'
@@ -587,10 +590,10 @@ export class MCPService {
   }
 
   /**
-   * 获取所有 MCP 工具（AI SDK 格式）
+   * MCP tools as AI SDK `Tool` (inputSchema via jsonSchema — same shape as defineTool).
    */
-  getAISDKTools(): Record<string, any> {
-    const tools: Record<string, any> = {}
+  getAISDKTools(): Record<string, Tool> {
+    const tools: Record<string, Tool> = {}
 
     for (const conn of this.connections.values()) {
       if (conn.status !== 'connected') continue
@@ -598,8 +601,8 @@ export class MCPService {
       for (const tool of conn.tools) {
         tools[`${conn.serverName}__${tool.name}`] = {
           description: tool.description || `${tool.name} from ${conn.serverName}`,
-          parameters: tool.inputSchema,
-          execute: async (args: any) => {
+          inputSchema: jsonSchema(tool.inputSchema as JSONSchema7),
+          execute: async (args: unknown) => {
             const result = await this.callTool(conn.serverId, tool.name, args)
             return typeof result === 'string' ? result : JSON.stringify(result)
           }

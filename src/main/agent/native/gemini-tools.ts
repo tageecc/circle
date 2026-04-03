@@ -1,34 +1,17 @@
-import {
-  type FunctionDeclaration,
-  type FunctionDeclarationSchema,
-  SchemaType
-} from '@google/generative-ai'
-import { asSchema, type Tool } from '@ai-sdk/provider-utils'
-
-async function paramsFor(
-  t: Tool | Record<string, unknown>
-): Promise<FunctionDeclarationSchema | undefined> {
-  const x = t as Record<string, unknown>
-  if (x.inputSchema != null) {
-    const schema = asSchema(x.inputSchema as Tool['inputSchema'])
-    return (await schema.jsonSchema) as unknown as FunctionDeclarationSchema
-  }
-  if (x.parameters != null && typeof x.parameters === 'object') {
-    return x.parameters as unknown as FunctionDeclarationSchema
-  }
-  return { type: SchemaType.OBJECT, properties: {} }
-}
+import { type FunctionDeclaration, type FunctionDeclarationSchema } from '@google/generative-ai'
+import type { Tool } from '@ai-sdk/provider-utils'
+import { toolEntryToJsonSchema } from './tool-json-schema'
 
 export async function toolsToGeminiDeclarations(
-  tools: Record<string, Tool | Record<string, unknown>>
+  tools: Record<string, Tool>
 ): Promise<FunctionDeclaration[]> {
   const out: FunctionDeclaration[] = []
   for (const [name, t] of Object.entries(tools)) {
-    const parameters = await paramsFor(t)
-    const desc = (t as { description?: string }).description
+    const raw = await toolEntryToJsonSchema(t)
+    const parameters = raw as unknown as FunctionDeclarationSchema
     out.push({
       name,
-      description: desc,
+      description: t.description,
       parameters
     })
   }

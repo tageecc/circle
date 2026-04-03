@@ -1,30 +1,16 @@
 import type { Tool as AnthropicAPITool } from '@anthropic-ai/sdk/resources/messages'
-import { asSchema, type Tool } from '@ai-sdk/provider-utils'
-
-async function inputSchemaFor(
-  t: Tool | Record<string, unknown>
-): Promise<AnthropicAPITool['input_schema']> {
-  const x = t as Record<string, unknown>
-  if (x.inputSchema != null) {
-    const schema = asSchema(x.inputSchema as Tool['inputSchema'])
-    return (await schema.jsonSchema) as AnthropicAPITool['input_schema']
-  }
-  if (x.parameters != null && typeof x.parameters === 'object') {
-    return x.parameters as AnthropicAPITool['input_schema']
-  }
-  return { type: 'object', properties: {} } as AnthropicAPITool['input_schema']
-}
+import type { Tool } from '@ai-sdk/provider-utils'
+import { toolEntryToJsonSchema } from './tool-json-schema'
 
 export async function toolsToAnthropicAPI(
-  tools: Record<string, Tool | Record<string, unknown>>
+  tools: Record<string, Tool>
 ): Promise<AnthropicAPITool[]> {
   const out: AnthropicAPITool[] = []
   for (const [name, t] of Object.entries(tools)) {
-    const input_schema = await inputSchemaFor(t)
-    const desc = (t as { description?: string }).description
+    const input_schema = (await toolEntryToJsonSchema(t)) as AnthropicAPITool['input_schema']
     out.push({
       name,
-      description: desc,
+      description: t.description,
       input_schema
     })
   }

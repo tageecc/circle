@@ -1,11 +1,13 @@
 /**
  * Spawn a focused sub-agent run (Claude Code AgentTool / runAgent parity — same process, bounded steps).
- * Uses native agent loop (no Vercel generateText). No nested delegate_task or ask_user in sub-context.
+ * Same routing as main chat: native loop when enabled and credentials exist, otherwise streamText.
  */
 
 import { z } from 'zod'
 import { nanoid } from 'nanoid'
-import type { ToolCallOptions } from '@ai-sdk/provider-utils'
+import { streamText, stepCountIs } from 'ai'
+import type { TextStreamPart, ToolSet } from 'ai'
+import type { Tool, ToolCallOptions } from '@ai-sdk/provider-utils'
 import { getToolContext, type ToolContext } from '../services/tool-context'
 import { getCoreTools } from '../assistant/core-tools'
 import { MCPService } from '../services/mcp.service'
@@ -13,17 +15,34 @@ import { registerTaskRun, updateTaskRun } from '../agent/task-run-registry'
 import { logHarnessEvent } from '../services/agent-harness-telemetry'
 import { wrapToolsForExclusiveSerialization } from './wrap-tools-execution'
 import { defineTool } from './define-tool'
-import { runNativeAgentLoop } from '../agent/native/run-native-agent-loop'
+import {
+  canUseNativeAgentLoop,
+  nativeAgentLoopEnabled,
+  runNativeAgentLoop,
+  type NativeAgentStreamPart
+} from '../agent/native'
+import { stripReasoningFromModelMessages } from '../agent/native/strip-reasoning-messages'
+import { createLanguageModel } from '../utils/model-factory'
 
 const SUBAGENT_SYSTEM = `You are a focused coding sub-agent. Complete the assigned task using tools.
 Be concise in your final summary. Do not call delegate_task or ask the user questions.`
 
-function getSubagentTools() {
+function getSubagentTools(): Record<string, Tool> {
   const core = getCoreTools()
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { ask_user, ...rest } = core
   const mcp = MCPService.getInstance().getAISDKTools()
   return wrapToolsForExclusiveSerialization({ ...rest, ...mcp })
+}
+
+type DelegateStreamPart = NativeAgentStreamPart | TextStreamPart<Record<string, never>>
+
+function accumulateDelegateOutput(
+  part: DelegateStreamPart,
+  state: { text: string; rounds: number }
+): void {
+  if (part.type === 'start-step') state.rounds += 1
+  if (part.type === 'text-delta' && typeof part.text === 'string') state.text += part.text
 }
 
 const inputSchema = z.object({
@@ -74,39 +93,61 @@ Do NOT nest delegate_task inside a sub-result. Prefer direct tools for simple on
         delegateDepth: 1
       }
 
-      let text = ''
-      let rounds = 0
-      for await (const part of runNativeAgentLoop({
-        modelId,
-        configService: config,
-        systemPrompt: SUBAGENT_SYSTEM,
-        initialMessages: [{ role: 'user', content: prompt }],
-        tools: getSubagentTools(),
-        toolContext: subCtx,
-        temperature: config.getTemperature(),
-        maxSteps: 32,
-        abortSignal: ctx.abortSignal
-      })) {
-        const p = part as { type: string; text?: string }
-        if (p.type === 'start-step') rounds += 1
-        if (p.type === 'text-delta' && typeof p.text === 'string') text += p.text
+      const tools = getSubagentTools()
+      const state = { text: '', rounds: 0 }
+
+      const useNative = nativeAgentLoopEnabled(config) && canUseNativeAgentLoop(modelId, config)
+
+      if (useNative) {
+        for await (const part of runNativeAgentLoop({
+          modelId,
+          configService: config,
+          systemPrompt: SUBAGENT_SYSTEM,
+          initialMessages: [{ role: 'user', content: prompt }],
+          tools,
+          toolContext: subCtx,
+          temperature: config.getTemperature(),
+          maxSteps: 32,
+          abortSignal: ctx.abortSignal,
+          prepareStepMessages: stripReasoningFromModelMessages
+        })) {
+          accumulateDelegateOutput(part, state)
+        }
+      } else {
+        const stream = streamText({
+          model: createLanguageModel(modelId, config),
+          system: SUBAGENT_SYSTEM,
+          messages: [{ role: 'user', content: prompt }],
+          tools: tools as ToolSet,
+          stopWhen: stepCountIs(32),
+          maxRetries: 2,
+          temperature: config.getTemperature(),
+          experimental_context: subCtx,
+          abortSignal: ctx.abortSignal,
+          prepareStep: ({ messages }) => ({
+            messages: stripReasoningFromModelMessages(messages)
+          })
+        })
+        for await (const part of stream.fullStream) {
+          accumulateDelegateOutput(part as DelegateStreamPart, state)
+        }
       }
 
       updateTaskRun(taskId, {
         status: 'completed',
-        resultSummary: text?.slice(0, 2_000)
+        resultSummary: state.text?.slice(0, 2_000)
       })
 
       logHarnessEvent('agent.delegate_task_done', {
         ms: Date.now() - t0,
-        steps: rounds
+        steps: state.rounds
       })
 
       return {
         success: true,
         task_id: taskId,
-        summary: text ?? '(no text)',
-        steps_used: rounds
+        summary: state.text ?? '(no text)',
+        steps_used: state.rounds
       }
     } catch (e) {
       updateTaskRun(taskId, {

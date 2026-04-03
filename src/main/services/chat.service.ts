@@ -4,6 +4,7 @@
  */
 
 import { streamText, stepCountIs } from 'ai'
+import type { TextStreamPart, ToolSet } from 'ai'
 import type { TextPart, ToolCallPart, ToolResultPart } from '@ai-sdk/provider-utils'
 import type { ReasoningPart } from '@ai-sdk/provider-utils'
 import { STREAM_CHUNK_PROTOCOL_VERSION } from '../types/stream'
@@ -39,8 +40,13 @@ import { shouldUsePayloadRef, storeStreamPayload } from './stream-payload-refs.s
 import {
   canUseNativeAgentLoop,
   nativeAgentLoopEnabled,
-  runNativeAgentLoop
+  runNativeAgentLoop,
+  type NativeAgentStreamPart
 } from '../agent/native'
+import { stripReasoningFromModelMessages } from '../agent/native/strip-reasoning-messages'
+
+/** Native loop chunks + AI SDK streamText fullStream parts (shared switch in streamChat). */
+type ChatAgentStreamPart = NativeAgentStreamPart | TextStreamPart<Record<string, never>>
 
 export class ChatService {
   private contextEnrichmentService = ContextEnrichmentService.getInstance()
@@ -177,7 +183,7 @@ export class ChatService {
       })
 
       const tools = getAssistantTools()
-      const mcpSig = mcpCatalogSignature(tools as Record<string, unknown>)
+      const mcpSig = mcpCatalogSignature(tools)
       const prevMcpSig = session?.metadata?.mcpToolCatalogSignature as string | undefined
       const mcpNote = formatMcpEnvironmentNote(prevMcpSig ?? null, mcpSig, Object.keys(tools))
 
@@ -303,7 +309,7 @@ export class ChatService {
         canUseNativeAgentLoop(modelId, this.configService)
 
       outer: while (true) {
-        const streamIterable: AsyncIterable<unknown> = useNativeAgentLoop
+        const streamIterable: AsyncIterable<ChatAgentStreamPart> = useNativeAgentLoop
           ? runNativeAgentLoop({
               modelId,
               configService: this.configService,
@@ -314,18 +320,13 @@ export class ChatService {
               temperature: this.configService.getTemperature(),
               maxSteps: maxAgentSteps,
               abortSignal,
-              prepareStepMessages: (msgs) =>
-                msgs.map((msg) =>
-                  msg.role === 'assistant' && Array.isArray(msg.content)
-                    ? { ...msg, content: msg.content.filter((part) => part.type !== 'reasoning') }
-                    : msg
-                )
+              prepareStepMessages: stripReasoningFromModelMessages
             })
           : streamText({
               model: createLanguageModel(modelId, this.configService),
               system: systemPrompt,
               messages: messagesForModel,
-              tools,
+              tools: tools as ToolSet,
               stopWhen: stepCountIs(maxAgentSteps),
               maxRetries: 2,
               temperature: this.configService.getTemperature(),
@@ -340,18 +341,12 @@ export class ChatService {
                 }
               },
               prepareStep: ({ messages: stepMessages }) => ({
-                messages: stepMessages.map((msg) =>
-                  msg.role === 'assistant' && Array.isArray(msg.content)
-                    ? { ...msg, content: msg.content.filter((part) => part.type !== 'reasoning') }
-                    : msg
-                )
+                messages: stripReasoningFromModelMessages(stepMessages)
               })
             }).fullStream
 
         try {
-          for await (const part of streamIterable as AsyncIterable<
-            import('ai').TextStreamPart<Record<string, never>>
-          >) {
+          for await (const part of streamIterable) {
             if (
               part.type === 'error' &&
               isLikelyContextOverflowError(part.error) &&
@@ -384,332 +379,343 @@ export class ChatService {
               continue outer
             }
 
-            if (part.type === 'text-delta' || part.type === 'tool-call' || part.type === 'reasoning-delta') {
+            if (
+              part.type === 'text-delta' ||
+              part.type === 'tool-call' ||
+              part.type === 'reasoning-delta'
+            ) {
               allowReactiveRetry = false
             }
 
             switch (part.type) {
-          case 'reasoning-start': {
-            reasoningContent = ''
-            metadata.streamingStates!.reasoning = { isStreaming: true, type: 'reasoning' }
-            break
-          }
-
-          case 'reasoning-delta': {
-            reasoningContent += part.text
-            yield emitChunk({ type: 'reasoning', content: part.text })
-            break
-          }
-
-          case 'reasoning-end': {
-            if (metadata.streamingStates?.reasoning) {
-              metadata.streamingStates.reasoning.isStreaming = false
-            }
-            if (reasoningContent) {
-              contentParts.push({
-                type: 'reasoning',
-                text: reasoningContent
-              } as ReasoningPart)
-            }
-            reasoningContent = ''
-            await saveMessage() // ✅ 恢复保存：防止用户停止时丢失思考内容
-            break
-          }
-
-          case 'text-delta': {
-            textContent += part.text
-            yield emitChunk({ type: 'text', content: part.text })
-            break
-          }
-
-          case 'tool-call': {
-            // 固化之前的 text 内容（如果有）
-            if (textContent) {
-              contentParts.push({ type: 'text', text: textContent })
-              textContent = ''
-            }
-
-            const toolCallPart: ToolCallPart = {
-              type: 'tool-call',
-              toolCallId: part.toolCallId,
-              toolName: part.toolName,
-              input: part.input
-            }
-            contentParts.push(toolCallPart)
-
-            // ✅ 移除toolStates初始化：不再需要
-
-            yield emitChunk({
-              type: 'tool-call',
-              toolCall: {
-                id: part.toolCallId,
-                name: part.toolName,
-                args: part.input as Record<string, unknown>
+              case 'start-step': {
+                break
               }
-            })
 
-            stepIndex += 1
-            toolNamesSinceLastFinish.push(part.toolName)
-            yield emitChunk(
-              buildAgentStepChunk(
-                {
-                  chainId,
-                  index: stepIndex,
-                  phase: 'tool_call',
+              case 'reasoning-start': {
+                reasoningContent = ''
+                metadata.streamingStates!.reasoning = { isStreaming: true, type: 'reasoning' }
+                break
+              }
+
+              case 'reasoning-delta': {
+                reasoningContent += part.text
+                yield emitChunk({ type: 'reasoning', content: part.text })
+                break
+              }
+
+              case 'reasoning-end': {
+                if (metadata.streamingStates?.reasoning) {
+                  metadata.streamingStates.reasoning.isStreaming = false
+                }
+                if (reasoningContent) {
+                  contentParts.push({
+                    type: 'reasoning',
+                    text: reasoningContent
+                  } as ReasoningPart)
+                }
+                reasoningContent = ''
+                await saveMessage() // ✅ 恢复保存：防止用户停止时丢失思考内容
+                break
+              }
+
+              case 'text-delta': {
+                textContent += part.text
+                yield emitChunk({ type: 'text', content: part.text })
+                break
+              }
+
+              case 'tool-call': {
+                // 固化之前的 text 内容（如果有）
+                if (textContent) {
+                  contentParts.push({ type: 'text', text: textContent })
+                  textContent = ''
+                }
+
+                const toolCallPart: ToolCallPart = {
+                  type: 'tool-call',
+                  toolCallId: part.toolCallId,
                   toolName: part.toolName,
-                  toolCallId: part.toolCallId
-                },
-                chainId
-              )
-            )
+                  input: part.input
+                }
+                contentParts.push(toolCallPart)
 
-            await saveMessage() // ✅ 恢复保存：工具调用是关键状态点
-            break
-          }
+                // ✅ 移除toolStates初始化：不再需要
 
-          case 'tool-result': {
-            // ✅ AI SDK 类型定义：tool-result 事件包含 input 和 output 字段
-            // 参考：node_modules/ai/dist/index.d.ts:503-529
-            // type DynamicToolResult = {
-            //   type: 'tool-result'
-            //   toolCallId: string
-            //   toolName: string
-            //   input: unknown
-            //   output: unknown  // ← 工具执行结果在这里！
-            // }
-            const partWithOutput = part as {
-              toolCallId: string
-              toolName: string
-              output: unknown
-            }
+                yield emitChunk({
+                  type: 'tool-call',
+                  toolCall: {
+                    id: part.toolCallId,
+                    name: part.toolName,
+                    args: part.input as Record<string, unknown>
+                  }
+                })
 
-            const toolResultPart: ToolResultPart = {
-              type: 'tool-result',
-              toolCallId: part.toolCallId,
-              toolName: part.toolName,
-              output: {
-                type: typeof partWithOutput.output === 'string' ? 'text' : 'json',
-                value: (partWithOutput.output !== undefined ? partWithOutput.output : null) as any
+                stepIndex += 1
+                toolNamesSinceLastFinish.push(part.toolName)
+                yield emitChunk(
+                  buildAgentStepChunk(
+                    {
+                      chainId,
+                      index: stepIndex,
+                      phase: 'tool_call',
+                      toolName: part.toolName,
+                      toolCallId: part.toolCallId
+                    },
+                    chainId
+                  )
+                )
+
+                await saveMessage() // ✅ 恢复保存：工具调用是关键状态点
+                break
               }
-            }
 
-            // ✅ 保存tool-result消息（AI SDK标准）
-            const toolMessageId = await this.sessionService.saveMessage(sessionId, {
-              role: 'tool',
-              content: [toolResultPart]
-            })
+              case 'tool-result': {
+                // ✅ AI SDK 类型定义：tool-result 事件包含 input 和 output 字段
+                // 参考：node_modules/ai/dist/index.d.ts:503-529
+                // type DynamicToolResult = {
+                //   type: 'tool-result'
+                //   toolCallId: string
+                //   toolName: string
+                //   input: unknown
+                //   output: unknown  // ← 工具执行结果在这里！
+                // }
+                const partWithOutput = part as {
+                  toolCallId: string
+                  toolName: string
+                  output: unknown
+                }
 
-            // ✅ 发送tool消息到前端（关键：让前端能找到tool-result）
-            const toolMsgPayload = [
-              {
-                id: toolMessageId,
-                role: 'tool' as const,
-                content: [toolResultPart],
-                timestamp: Date.now()
-              }
-            ]
-            const serializedTool = JSON.stringify(toolMsgPayload)
-            if (shouldUsePayloadRef(serializedTool)) {
-              const ref = storeStreamPayload(serializedTool)
-              yield emitChunk({
-                type: 'message-start',
-                payloadRef: ref,
-                messages: [
+                const toolResultPart: ToolResultPart = {
+                  type: 'tool-result',
+                  toolCallId: part.toolCallId,
+                  toolName: part.toolName,
+                  output: {
+                    type: typeof partWithOutput.output === 'string' ? 'text' : 'json',
+                    value: (partWithOutput.output !== undefined
+                      ? partWithOutput.output
+                      : null) as any
+                  }
+                }
+
+                // ✅ 保存tool-result消息（AI SDK标准）
+                const toolMessageId = await this.sessionService.saveMessage(sessionId, {
+                  role: 'tool',
+                  content: [toolResultPart]
+                })
+
+                // ✅ 发送tool消息到前端（关键：让前端能找到tool-result）
+                const toolMsgPayload = [
                   {
                     id: toolMessageId,
-                    role: 'tool',
-                    content: [
-                      {
-                        type: 'text',
-                        text: '[Large tool result omitted — resolve payloadRef in renderer]'
-                      }
-                    ],
+                    role: 'tool' as const,
+                    content: [toolResultPart],
                     timestamp: Date.now()
                   }
                 ]
-              })
-            } else {
-              yield emitChunk({
-                type: 'message-start',
-                messages: toolMsgPayload
-              })
-            }
-
-            stepIndex += 1
-            yield emitChunk(
-              buildAgentStepChunk(
-                {
-                  chainId,
-                  index: stepIndex,
-                  phase: 'tool_result',
-                  toolName: part.toolName,
-                  toolCallId: part.toolCallId
-                },
-                chainId
-              )
-            )
-
-            await getSessionHooks().afterToolResult?.({
-              chainId,
-              sessionId,
-              workspaceRoot,
-              modelId,
-              toolName: part.toolName,
-              toolCallId: part.toolCallId,
-              output: partWithOutput.output
-            })
-
-            // ✅ 移除toolStates更新：状态从tool-result消息推导
-
-            await saveMessage() // ✅ 持久化assistant消息
-
-            const toolCallPart = contentParts.find(
-              (p): p is ToolCallPart => p.type === 'tool-call' && p.toolCallId === part.toolCallId
-            )
-            debugLogger.logToolCall(
-              sessionId,
-              part.toolName,
-              part.toolCallId,
-              toolCallPart?.input,
-              partWithOutput.output
-            )
-
-            // ✅ 处理工具结果（存储快照等）但不发送chunk到前端
-            // 前端已经从message-start中的tool消息提取所有信息
-            for await (const _chunk of this.processToolResult(
-              part.toolCallId,
-              part.toolName,
-              partWithOutput.output,
-              metadata,
-              messageFileChanges
-            )) {
-              // 不再发送chunk到前端（优化性能，减少网络传输）
-            }
-
-            break
-          }
-
-          case 'tool-error': {
-            console.error('[ChatService] Tool error:', {
-              toolCallId: part.toolCallId,
-              toolName: part.toolName,
-              error: part.error
-            })
-
-            const errorMessage =
-              part.error instanceof Error ? part.error.message : String(part.error)
-
-            // 保存为 tool-result 格式（AI SDK 兼容）
-            const toolResultPart: ToolResultPart = {
-              type: 'tool-result',
-              toolCallId: part.toolCallId,
-              toolName: part.toolName,
-              output: {
-                type: 'text',
-                value: JSON.stringify({
-                  success: false,
-                  error: errorMessage,
-                  isError: true
-                })
-              }
-            }
-
-            const toolErrorMessageId = await this.sessionService.saveMessage(sessionId, {
-              role: 'tool',
-              content: [toolResultPart]
-            })
-
-            // 发送消息到前端
-            yield emitChunk({
-              type: 'message-start',
-              messages: [
-                {
-                  id: toolErrorMessageId,
-                  role: 'tool',
-                  content: [toolResultPart],
-                  timestamp: Date.now()
+                const serializedTool = JSON.stringify(toolMsgPayload)
+                if (shouldUsePayloadRef(serializedTool)) {
+                  const ref = storeStreamPayload(serializedTool)
+                  yield emitChunk({
+                    type: 'message-start',
+                    payloadRef: ref,
+                    messages: [
+                      {
+                        id: toolMessageId,
+                        role: 'tool',
+                        content: [
+                          {
+                            type: 'text',
+                            text: '[Large tool result omitted — resolve payloadRef in renderer]'
+                          }
+                        ],
+                        timestamp: Date.now()
+                      }
+                    ]
+                  })
+                } else {
+                  yield emitChunk({
+                    type: 'message-start',
+                    messages: toolMsgPayload
+                  })
                 }
-              ]
-            })
 
-            await saveMessage()
+                stepIndex += 1
+                yield emitChunk(
+                  buildAgentStepChunk(
+                    {
+                      chainId,
+                      index: stepIndex,
+                      phase: 'tool_result',
+                      toolName: part.toolName,
+                      toolCallId: part.toolCallId
+                    },
+                    chainId
+                  )
+                )
 
-            yield emitChunk({
-              type: 'tool-result',
-              toolResult: {
-                tool_call_id: part.toolCallId,
-                content: errorMessage,
-                isError: true
+                await getSessionHooks().afterToolResult?.({
+                  chainId,
+                  sessionId,
+                  workspaceRoot,
+                  modelId,
+                  toolName: part.toolName,
+                  toolCallId: part.toolCallId,
+                  output: partWithOutput.output
+                })
+
+                // ✅ 移除toolStates更新：状态从tool-result消息推导
+
+                await saveMessage() // ✅ 持久化assistant消息
+
+                const toolCallPart = contentParts.find(
+                  (p): p is ToolCallPart =>
+                    p.type === 'tool-call' && p.toolCallId === part.toolCallId
+                )
+                debugLogger.logToolCall(
+                  sessionId,
+                  part.toolName,
+                  part.toolCallId,
+                  toolCallPart?.input,
+                  partWithOutput.output
+                )
+
+                // ✅ 处理工具结果（存储快照等）但不发送chunk到前端
+                // 前端已经从message-start中的tool消息提取所有信息
+                for await (const _chunk of this.processToolResult(
+                  part.toolCallId,
+                  part.toolName,
+                  partWithOutput.output,
+                  metadata,
+                  messageFileChanges
+                )) {
+                  // 不再发送chunk到前端（优化性能，减少网络传输）
+                }
+
+                break
               }
-            })
 
-            break
-          }
+              case 'tool-error': {
+                console.error('[ChatService] Tool error:', {
+                  toolCallId: part.toolCallId,
+                  toolName: part.toolName,
+                  error: part.error
+                })
 
-          case 'finish': {
-            reportExclusiveToolBatchIfRisky(toolNamesSinceLastFinish)
-            toolNamesSinceLastFinish.length = 0
+                const errorMessage =
+                  part.error instanceof Error ? part.error.message : String(part.error)
 
-            closeStreaming()
-            await saveMessage()
+                // 保存为 tool-result 格式（AI SDK 兼容）
+                const toolResultPart: ToolResultPart = {
+                  type: 'tool-result',
+                  toolCallId: part.toolCallId,
+                  toolName: part.toolName,
+                  output: {
+                    type: 'text',
+                    value: JSON.stringify({
+                      success: false,
+                      error: errorMessage,
+                      isError: true
+                    })
+                  }
+                }
 
-            if (part.totalUsage) {
-              totalUsage.inputTokens =
-                (totalUsage.inputTokens || 0) + (part.totalUsage.inputTokens || 0)
-              totalUsage.outputTokens =
-                (totalUsage.outputTokens || 0) + (part.totalUsage.outputTokens || 0)
-              totalUsage.totalTokens =
-                (totalUsage.totalTokens || 0) + (part.totalUsage.totalTokens || 0)
-              if (part.totalUsage.reasoningTokens) {
-                totalUsage.reasoningTokens =
-                  (totalUsage.reasoningTokens || 0) + part.totalUsage.reasoningTokens
+                const toolErrorMessageId = await this.sessionService.saveMessage(sessionId, {
+                  role: 'tool',
+                  content: [toolResultPart]
+                })
+
+                // 发送消息到前端
+                yield emitChunk({
+                  type: 'message-start',
+                  messages: [
+                    {
+                      id: toolErrorMessageId,
+                      role: 'tool',
+                      content: [toolResultPart],
+                      timestamp: Date.now()
+                    }
+                  ]
+                })
+
+                await saveMessage()
+
+                yield emitChunk({
+                  type: 'tool-result',
+                  toolResult: {
+                    tool_call_id: part.toolCallId,
+                    content: errorMessage,
+                    isError: true
+                  }
+                })
+
+                break
               }
 
-              await this.sessionService.updateSessionMetadata(sessionId, {
-                lastUsage: part.totalUsage,
-                totalUsage,
-                mcpToolCatalogSignature: mcpSig
-              })
+              case 'finish': {
+                reportExclusiveToolBatchIfRisky(toolNamesSinceLastFinish)
+                toolNamesSinceLastFinish.length = 0
 
-              yield emitChunk({
-                type: 'usage',
-                usage: part.totalUsage
-              })
-            } else {
-              await this.sessionService.updateSessionMetadata(sessionId, {
-                mcpToolCatalogSignature: mcpSig
-              })
-            }
+                closeStreaming()
+                await saveMessage()
 
-            // 如果有文件变更，创建快照
-            if (Object.keys(messageFileChanges).length > 0) {
-              console.log(
-                `[ChatService] Creating snapshot for message ${assistantMessageId}, files: ${Object.keys(messageFileChanges).length}`
-              )
-              await this.snapshotService.createSnapshot({
-                messageId: assistantMessageId,
-                sessionId,
-                timestamp: Date.now(),
-                files: messageFileChanges
-              })
-            }
+                if (part.totalUsage) {
+                  totalUsage.inputTokens =
+                    (totalUsage.inputTokens || 0) + (part.totalUsage.inputTokens || 0)
+                  totalUsage.outputTokens =
+                    (totalUsage.outputTokens || 0) + (part.totalUsage.outputTokens || 0)
+                  totalUsage.totalTokens =
+                    (totalUsage.totalTokens || 0) + (part.totalUsage.totalTokens || 0)
+                  if (part.totalUsage.reasoningTokens) {
+                    totalUsage.reasoningTokens =
+                      (totalUsage.reasoningTokens || 0) + part.totalUsage.reasoningTokens
+                  }
 
-            yield emitChunk({ type: 'text', content: '' })
-            break
-          }
+                  await this.sessionService.updateSessionMetadata(sessionId, {
+                    lastUsage: part.totalUsage,
+                    totalUsage,
+                    mcpToolCatalogSignature: mcpSig
+                  })
 
-          case 'error': {
-            const errorMsg =
-              part.error instanceof Error
-                ? part.error.message
-                : String(part.error || 'Unknown error')
-            console.error('[ChatService] Stream error:', errorMsg)
-            closeStreaming()
-            await saveMessage()
+                  yield emitChunk({
+                    type: 'usage',
+                    usage: part.totalUsage
+                  })
+                } else {
+                  await this.sessionService.updateSessionMetadata(sessionId, {
+                    mcpToolCatalogSignature: mcpSig
+                  })
+                }
 
-            yield emitChunk({ type: 'error', error: errorMsg })
-            break
-          }
+                // 如果有文件变更，创建快照
+                if (Object.keys(messageFileChanges).length > 0) {
+                  console.log(
+                    `[ChatService] Creating snapshot for message ${assistantMessageId}, files: ${Object.keys(messageFileChanges).length}`
+                  )
+                  await this.snapshotService.createSnapshot({
+                    messageId: assistantMessageId,
+                    sessionId,
+                    timestamp: Date.now(),
+                    files: messageFileChanges
+                  })
+                }
+
+                yield emitChunk({ type: 'text', content: '' })
+                break
+              }
+
+              case 'error': {
+                const errorMsg =
+                  part.error instanceof Error
+                    ? part.error.message
+                    : String(part.error || 'Unknown error')
+                console.error('[ChatService] Stream error:', errorMsg)
+                closeStreaming()
+                await saveMessage()
+
+                yield emitChunk({ type: 'error', error: errorMsg })
+                break
+              }
             }
           }
           break outer

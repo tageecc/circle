@@ -10,11 +10,6 @@ export type OpenAICompatibleEndpoint = {
   model: string
 }
 
-export function canUseNativeOpenAILoop(modelId: string): boolean {
-  const provider = modelId.split('/')[0]
-  return provider === 'Alibaba (China)' || provider === 'OpenAI' || provider === 'DeepSeek'
-}
-
 export type AnthropicCredentials = { apiKey: string; model: string }
 
 export function resolveAnthropicCredentials(
@@ -91,10 +86,8 @@ export function resolveOpenAICompatibleEndpoint(
   }
 }
 
-export function nativeOpenAILoopEnabled(configService: ConfigService): boolean {
+/** Native agent loop (HTTP/SDK tool rounds, no streamText). Covers OpenAI-compatible, Anthropic, and Gemini. */
+export function nativeAgentLoopEnabled(configService: ConfigService): boolean {
   if (process.env.CIRCLE_NATIVE_AGENT === '1') return true
   return configService.getServiceSettings().nativeAgentLoop === true
 }
-
-/** Alias — native loop covers OpenAI-compatible, Anthropic, and Gemini. */
-export const nativeAgentLoopEnabled = nativeOpenAILoopEnabled

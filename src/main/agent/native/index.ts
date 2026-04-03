@@ -1,7 +1,5 @@
 export {
-  canUseNativeOpenAILoop,
   canUseNativeAgentLoop,
-  nativeOpenAILoopEnabled,
   nativeAgentLoopEnabled,
   resolveOpenAICompatibleEndpoint,
   resolveAnthropicCredentials,
@@ -10,6 +8,7 @@ export {
   type AnthropicCredentials,
   type GoogleCredentials
 } from './resolve-openai-endpoint'
+export type { NativeAgentStreamPart } from './native-agent-stream-parts'
 export { runNativeOpenAIAgentLoop, type NativeOpenAILoopOptions } from './native-openai-agent-loop'
 export {
   runNativeAnthropicAgentLoop,

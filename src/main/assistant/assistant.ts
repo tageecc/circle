@@ -3,6 +3,7 @@ import { mainI18n as i18n } from '../i18n'
 import { getCoreTools } from './core-tools'
 import { delegateTaskTool } from '../tools/delegate-task.tool'
 import { wrapToolsForExclusiveSerialization } from '../tools/wrap-tools-execution'
+import type { Tool } from '@ai-sdk/provider-utils'
 
 // 助手配置（name / description 随主进程语言变化）
 export const assistantConfig = {
@@ -178,8 +179,7 @@ Your success is measured by the user's productivity and code quality.`
 /**
  * 获取助手工具（包括内置工具和 MCP 工具）
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getAssistantTools(): Record<string, any> {
+export function getAssistantTools(): Record<string, Tool> {
   const mcpService = MCPService.getInstance()
   const mcpTools = mcpService.getAISDKTools()
 

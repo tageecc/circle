@@ -3,6 +3,7 @@
  */
 
 import type { ModelMessage, Tool } from '@ai-sdk/provider-utils'
+import type { NativeAgentStreamPart } from './native-agent-stream-parts'
 import type { ConfigService } from '../../services/config.service'
 import type { ToolContext } from '../../services/tool-context'
 import {
@@ -19,8 +20,7 @@ export type RunNativeAgentLoopParams = {
   configService: ConfigService
   systemPrompt: string
   initialMessages: ModelMessage[]
-  /** Built-in tools use `Tool`; MCP tools are plain `{ parameters, execute, ... }`. */
-  tools: Record<string, Tool | Record<string, unknown>>
+  tools: Record<string, Tool>
   toolContext: ToolContext
   temperature: number
   maxSteps: number
@@ -30,7 +30,7 @@ export type RunNativeAgentLoopParams = {
 
 export async function* runNativeAgentLoop(
   params: RunNativeAgentLoopParams
-): AsyncGenerator<Record<string, unknown>, void, undefined> {
+): AsyncGenerator<NativeAgentStreamPart, void, undefined> {
   const { modelId, configService } = params
 
   const openai = resolveOpenAICompatibleEndpoint(modelId, configService)

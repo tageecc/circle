@@ -13,18 +13,19 @@ import type {
   ToolExecutionOptions,
   ToolResultPart
 } from '@ai-sdk/provider-utils'
-import type { JSONValue } from '@ai-sdk/provider'
 import type { ToolContext } from '../../services/tool-context'
 import { modelMessagesToGeminiContents } from './model-messages-to-gemini'
 import { toolsToGeminiDeclarations } from './gemini-tools'
 import { stripReasoningFromModelMessages } from './strip-reasoning-messages'
+import type { NativeAgentStreamPart } from './native-agent-stream-parts'
+import { toolOutputToResultPart } from './tool-output-part'
 
 export type NativeGoogleLoopOptions = {
   apiKey: string
   model: string
   systemPrompt: string
   initialMessages: ModelMessage[]
-  tools: Record<string, Tool | Record<string, unknown>>
+  tools: Record<string, Tool>
   toolContext: ToolContext
   temperature: number
   maxSteps: number
@@ -32,18 +33,9 @@ export type NativeGoogleLoopOptions = {
   prepareStepMessages?: (messages: ModelMessage[]) => ModelMessage[]
 }
 
-type StreamPart = Record<string, unknown>
-
-function toolOutputToResultPart(output: unknown): ToolResultPart['output'] {
-  if (typeof output === 'string') {
-    return { type: 'text', value: output }
-  }
-  return { type: 'json', value: output as JSONValue }
-}
-
 export async function* runNativeGoogleAgentLoop(
   options: NativeGoogleLoopOptions
-): AsyncGenerator<StreamPart> {
+): AsyncGenerator<NativeAgentStreamPart, void, undefined> {
   const {
     apiKey,
     model: modelName,
@@ -52,7 +44,8 @@ export async function* runNativeGoogleAgentLoop(
     toolContext,
     temperature,
     maxSteps,
-    prepareStepMessages
+    prepareStepMessages,
+    abortSignal
   } = options
 
   const genAI = new GoogleGenerativeAI(apiKey)
@@ -75,10 +68,13 @@ export async function* runNativeGoogleAgentLoop(
     const stepMessages = prepare(working)
     const contents = modelMessagesToGeminiContents(stepMessages)
 
-    const { stream, response } = await model.generateContentStream({
-      contents,
-      generationConfig: { temperature }
-    })
+    const { stream, response } = await model.generateContentStream(
+      {
+        contents,
+        generationConfig: { temperature }
+      },
+      abortSignal ? { signal: abortSignal } : undefined
+    )
 
     let prevLen = 0
     let assistantText = ''

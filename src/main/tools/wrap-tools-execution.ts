@@ -3,6 +3,7 @@
  * parallel_safe tools are not wrapped — they can still run concurrently when the model batches them.
  */
 
+import type { Tool } from '@ai-sdk/provider-utils'
 import { getToolConcurrencyGroup } from './tool-policy'
 
 class ExclusiveGate {
@@ -20,9 +21,10 @@ class ExclusiveGate {
 
 const gate = new ExclusiveGate()
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function wrapToolsForExclusiveSerialization(tools: Record<string, any>): Record<string, any> {
-  const out: Record<string, any> = {}
+export function wrapToolsForExclusiveSerialization(
+  tools: Record<string, Tool>
+): Record<string, Tool> {
+  const out: Record<string, Tool> = {}
   for (const [name, t] of Object.entries(tools)) {
     if (!t || typeof t.execute !== 'function') {
       out[name] = t

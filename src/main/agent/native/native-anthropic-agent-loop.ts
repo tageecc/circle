@@ -12,18 +12,19 @@ import type {
   ToolExecutionOptions,
   ToolResultPart
 } from '@ai-sdk/provider-utils'
-import type { JSONValue } from '@ai-sdk/provider'
 import type { ToolContext } from '../../services/tool-context'
 import { modelMessagesToAnthropic } from './model-messages-to-anthropic'
 import { stripReasoningFromModelMessages } from './strip-reasoning-messages'
 import { toolsToAnthropicAPI } from './anthropic-tools'
+import type { NativeAgentStreamPart } from './native-agent-stream-parts'
+import { toolOutputToResultPart } from './tool-output-part'
 
 export type NativeAnthropicLoopOptions = {
   apiKey: string
   model: string
   systemPrompt: string
   initialMessages: ModelMessage[]
-  tools: Record<string, Tool | Record<string, unknown>>
+  tools: Record<string, Tool>
   toolContext: ToolContext
   temperature: number
   maxSteps: number
@@ -31,18 +32,9 @@ export type NativeAnthropicLoopOptions = {
   prepareStepMessages?: (messages: ModelMessage[]) => ModelMessage[]
 }
 
-type StreamPart = Record<string, unknown>
-
-function toolOutputToResultPart(output: unknown): ToolResultPart['output'] {
-  if (typeof output === 'string') {
-    return { type: 'text', value: output }
-  }
-  return { type: 'json', value: output as JSONValue }
-}
-
 export async function* runNativeAnthropicAgentLoop(
   options: NativeAnthropicLoopOptions
-): AsyncGenerator<StreamPart> {
+): AsyncGenerator<NativeAgentStreamPart, void, undefined> {
   const {
     apiKey,
     model,
