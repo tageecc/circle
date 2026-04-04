@@ -41,8 +41,7 @@ mac:
     - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
   # When APPLE_API_KEY* (or APPLE_ID + app password) and CSC_* are set in CI, notarization runs; otherwise skipped.
-  notarize: false
-afterSign: scripts/notarize.js
+  notarize: true
 protocols:
   - name: Circle URL Scheme
     schemes:

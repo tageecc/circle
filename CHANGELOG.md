@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.11] - 2026-04-04
+
+### Fixed
+
+- Use correct Developer ID Application certificate instead of Apple Development cert
+- Re-enable built-in electron-builder notarization (removed custom afterSign)
+- Certificate exported with correct identity from keychain
+
 ## [1.0.10] - 2026-04-04
 
 ### Fixed
