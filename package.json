@@ -101,7 +101,7 @@
     "media-chrome": "^4.17.2",
     "minimatch": "^10.1.1",
     "mitt": "^3.0.1",
-    "monaco-editor": "^0.54.0",
+    "monaco-editor": "^0.55.1",
     "motion": "^12.29.0",
     "nanoid": "^5.1.6",
     "node-pty": "^1.0.0",
