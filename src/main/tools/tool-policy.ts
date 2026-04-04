@@ -1,5 +1,5 @@
 /**
- * Tool concurrency policy (Claude Code partitionToolCalls / isConcurrencySafe parity).
+ * Tool concurrency policy for determining which tools can run in parallel.
  * AI SDK executes tools per provider rules; we document + telemetry conflicting patterns.
  */
 

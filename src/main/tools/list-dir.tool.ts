@@ -1,10 +1,17 @@
 import { defineTool } from './define-tool'
 import { z } from 'zod'
 import { promises as fs } from 'fs'
+import { minimatch } from 'minimatch'
 import { resolveFilePath } from './utils'
 
 const inputSchema = z.object({
-  target_directory: z.string().describe('Path to directory to list contents of.'),
+  target_directory: z
+    .string()
+    .optional()
+    .default('.')
+    .describe(
+      'Path to directory to list (relative to open project, or absolute). Defaults to workspace root.'
+    ),
   ignore_globs: z
     .array(z.string())
     .optional()
@@ -103,7 +110,7 @@ list_dir("src/services")
 
 ### Parameters
 
-- **target_directory**: Path to list (. for current, relative or absolute)
+- **target_directory** (optional, defaults to dot = project-relative root): Path to list; relative to open project or absolute
 - **ignore_globs** (optional): Patterns to exclude (e.g., ["*.test.ts", "**/__tests__/**"])
 
 ### Important Notes
@@ -112,13 +119,21 @@ list_dir("src/services")
 - Returns "(empty directory)" if folder has no visible contents
 - Use glob_file_search for deep recursive searches`,
   inputSchema,
-  execute: async ({ target_directory }) => {
+  execute: async ({ target_directory, ignore_globs }) => {
     try {
-      const absolutePath = target_directory ? resolveFilePath(target_directory) : process.cwd()
+      const absolutePath = resolveFilePath(target_directory)
 
       const entries = await fs.readdir(absolutePath, { withFileTypes: true })
       // 过滤 dot-files 和 dot-directories
-      const filtered = entries.filter((entry) => !entry.name.startsWith('.'))
+      const filtered = entries.filter((entry) => {
+        if (entry.name.startsWith('.')) return false
+        if (!ignore_globs?.length) return true
+        const name = entry.name
+        return !ignore_globs.some((raw) => {
+          const pattern = raw.startsWith('**/') ? raw : `**/${raw}`
+          return minimatch(name, pattern) || minimatch(`**/${name}`, pattern)
+        })
+      })
 
       // 格式化输出：目录用 d，文件用 f
       const formatted = filtered

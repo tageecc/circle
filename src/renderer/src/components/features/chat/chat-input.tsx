@@ -90,40 +90,53 @@ export function ChatInput({
   const [configuredModels, setConfiguredModels] = useState<ModelConfig[]>([])
   const [isLoadingModels, setIsLoadingModels] = useState(true)
 
+  const onModelChangeRef = useRef(onModelChange)
+  const selectionRef = useRef({ providerId: '', modelId: '' })
+  useEffect(() => {
+    onModelChangeRef.current = onModelChange
+  })
+
   useEffect(() => {
     const loadModels = async () => {
       try {
         const models = await window.api.modelConfig.getAll()
         setConfiguredModels(models)
 
-        const defaultModel = models.find((m) => m.isDefault)
-        if (defaultModel) {
-          setSelectedProvider(defaultModel.providerId)
-          setSelectedModel(defaultModel.modelId)
-          onModelChange?.(defaultModel.providerId, defaultModel.modelId)
-        } else if (models.length > 0) {
-          setSelectedProvider(models[0].providerId)
-          setSelectedModel(models[0].modelId)
-          onModelChange?.(models[0].providerId, models[0].modelId)
+        const { providerId: prevP, modelId: prevM } = selectionRef.current
+        const stillValid =
+          Boolean(prevP && prevM) &&
+          models.some((m) => m.providerId === prevP && m.modelId === prevM)
+
+        if (stillValid) {
+          return
         }
+
+        const pick = models.find((m) => m.isDefault) ?? (models.length > 0 ? models[0] : undefined)
+        if (!pick) {
+          return
+        }
+
+        selectionRef.current = { providerId: pick.providerId, modelId: pick.modelId }
+        setSelectedProvider(pick.providerId)
+        setSelectedModel(pick.modelId)
+        onModelChangeRef.current?.(pick.providerId, pick.modelId)
       } catch (error) {
         console.error('Failed to load models:', error)
       } finally {
         setIsLoadingModels(false)
       }
     }
-    loadModels()
+    void loadModels()
 
-    // Listen for model updates
-    const handleModelsUpdated = () => {
-      loadModels()
+    const handleModelsUpdated = (): void => {
+      void loadModels()
     }
     eventBus.on('models-updated', handleModelsUpdated)
 
     return () => {
       eventBus.off('models-updated', handleModelsUpdated)
     }
-  }, [onModelChange])
+  }, [])
 
   // Group models by provider
   const modelsByProvider = useMemo(() => {
@@ -148,21 +161,19 @@ export function ChatInput({
 
   const selectedModelName = useMemo(() => {
     if (!hasConfiguredModels) return t('chat.no_model')
-    const modelInfo = getModelInfo(selectedModel)
+    const modelInfo = getModelInfo(selectedModel, selectedProvider)
     return modelInfo?.name || selectedModel
-  }, [selectedModel, hasConfiguredModels, t])
+  }, [selectedModel, selectedProvider, hasConfiguredModels, t])
 
   const hasContent = value.trim() || pastedImages.length > 0 || attachments.length > 0
   const showStopButton = isSending && onStop && !hasContent
 
-  const handleModelChange = useCallback(
-    (provider: string, modelId: string) => {
-      setSelectedProvider(provider)
-      setSelectedModel(modelId)
-      onModelChange?.(provider, modelId)
-    },
-    [onModelChange]
-  )
+  const handleModelChange = useCallback((provider: string, modelId: string) => {
+    selectionRef.current = { providerId: provider, modelId }
+    setSelectedProvider(provider)
+    setSelectedModel(modelId)
+    onModelChangeRef.current?.(provider, modelId)
+  }, [])
 
   return (
     <div style={minHeight ? { minHeight } : undefined}>
@@ -253,7 +264,7 @@ export function ChatInput({
                           </span>
                         </DropdownMenuLabel>
                         {providerModels.map((model) => {
-                          const modelInfo = getModelInfo(model.modelId)
+                          const modelInfo = getModelInfo(model.modelId, model.providerId)
                           const modelName = modelInfo?.name || model.modelId
                           const contextWindow = modelInfo?.contextWindow
                             ? modelInfo.contextWindow >= 1000000

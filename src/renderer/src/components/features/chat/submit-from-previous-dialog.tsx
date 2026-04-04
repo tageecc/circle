@@ -1,6 +1,6 @@
 /**
  * Submit from Previous Message Dialog
- * 参考 Cursor 设计：当用户编辑历史消息并重新提交时显示
+ * When user edits and resubmits historical messages, show confirmation dialog
  */
 
 import { useState } from 'react'

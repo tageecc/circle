@@ -218,7 +218,7 @@ export function ModelsSettingsContent() {
 
                 <div className="space-y-2">
                   {providerModels.map((model) => {
-                    const modelInfo = getModelInfo(model.modelId)
+                    const modelInfo = getModelInfo(model.modelId, model.providerId)
                     return (
                       <div
                         key={model.id}

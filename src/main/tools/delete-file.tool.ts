@@ -3,6 +3,7 @@ import { defineTool } from './define-tool'
 import { z } from 'zod'
 import { promises as fs } from 'fs'
 import { getToolContext } from '../services/tool-context'
+import { guardAgainstPlanMode } from './plan-mode-guard'
 import * as path from 'path'
 
 const inputSchema = z.object({
@@ -88,10 +89,15 @@ After deletion:
 2. **User reviews**: Can Accept (commit) or Reject (restore)
 3. **Directories**: Deleted immediately, no pending state`,
   inputSchema,
-  execute: async ({ target_file }, options: ToolCallOptions) => {
-    const { workspaceRoot } = getToolContext(options)
+  execute: async ({ target_file, explanation }, options: ToolCallOptions) => {
+    const ctx = getToolContext(options)
+    const { workspaceRoot } = ctx
 
     try {
+      // Check if in Plan Mode - file deletion is not allowed
+      const guardResult = await guardAgainstPlanMode(options, 'File deletion')
+      if (guardResult) return guardResult
+
       // 解析文件路径为绝对路径
       const absolutePath = path.isAbsolute(target_file)
         ? target_file
@@ -111,7 +117,8 @@ After deletion:
           success: true,
           message: `Directory deleted: ${target_file}`,
           file: target_file,
-          isDirectory: true
+          isDirectory: true,
+          ...(explanation ? { explanation } : {})
         })
       } else {
         // 文件删除：备份内容，删除文件，添加到 pending edits
@@ -137,7 +144,8 @@ After deletion:
             linesRemoved: linesRemoved,
             linesTotal: 0
           },
-          message: `File deleted: ${target_file} (pending user confirmation)`
+          message: `File deleted: ${target_file} (pending user confirmation)`,
+          ...(explanation ? { explanation } : {})
         })
       }
     } catch (error: unknown) {

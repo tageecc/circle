@@ -201,9 +201,7 @@ export function useChatMessages(
             parts.push(t('chat.context_notice_summarized'))
           }
           if (prunedMessageCount > 0) {
-            parts.push(
-              t('chat.context_notice_pruned', { count: prunedMessageCount })
-            )
+            parts.push(t('chat.context_notice_pruned', { count: prunedMessageCount }))
           }
           if (toolResultsTruncated) {
             parts.push(t('chat.context_notice_tool_truncated'))
@@ -394,7 +392,11 @@ export function useChatMessages(
           if (chunk.type === 'session-id') return
 
           // Phase F: oversized tool rows — resolve ref then same as message-start
-          if (chunk.type === 'message-start' && chunk.payloadRef && window.api.chat.getStreamPayload) {
+          if (
+            chunk.type === 'message-start' &&
+            chunk.payloadRef &&
+            window.api.chat.getStreamPayload
+          ) {
             void window.api.chat.getStreamPayload(chunk.payloadRef).then((json) => {
               if (!json) return
               try {
@@ -650,11 +652,19 @@ export function useChatMessages(
     }
   }
 
-  const submitUserQuestionAnswer = useCallback(async (answer: string) => {
-    if (!userQuestion) return
-    await window.api.chat.submitUserQuestionAnswer(userQuestion.questionId, answer)
-    setUserQuestion(null)
-  }, [userQuestion])
+  const submitUserQuestionAnswer = useCallback(
+    async (
+      result:
+        | { type: 'answered'; answers: Record<string, string>; annotations?: Record<string, any> }
+        | { type: 'skipped' }
+        | { type: 'rejected'; feedback: string }
+    ) => {
+      if (!userQuestion) return
+      await window.api.chat.submitUserQuestionAnswer(userQuestion.questionId, result)
+      setUserQuestion(null)
+    },
+    [userQuestion]
+  )
 
   return {
     sessions,

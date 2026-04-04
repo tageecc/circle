@@ -11,21 +11,21 @@ export const PROVIDERS: {
     name: 'Anthropic (Claude)',
     baseURL: 'https://api.anthropic.com',
     keyUrl: 'https://console.anthropic.com/settings/keys',
-    modelHint: 'claude-3-5-sonnet-20241022'
+    modelHint: 'claude-opus-4-6'
   },
   {
     id: 'openai',
     name: 'OpenAI (GPT)',
     baseURL: 'https://api.openai.com/v1',
     keyUrl: 'https://platform.openai.com/api-keys',
-    modelHint: 'gpt-4o'
+    modelHint: 'gpt-5.4'
   },
   {
     id: 'google',
     name: 'Google (Gemini)',
     baseURL: 'https://generativelanguage.googleapis.com/v1beta',
     keyUrl: 'https://aistudio.google.com/apikey',
-    modelHint: 'gemini-2.0-flash-exp'
+    modelHint: 'gemini-3.1-pro-preview'
   },
   {
     id: 'deepseek',
@@ -45,7 +45,7 @@ export const PROVIDERS: {
     name: 'xAI (Grok)',
     baseURL: 'https://api.x.ai/v1',
     keyUrl: 'https://console.x.ai/',
-    modelHint: 'grok-beta'
+    modelHint: 'grok-4.20-0309-reasoning'
   },
   {
     id: 'mistral',
@@ -59,13 +59,14 @@ export const PROVIDERS: {
     name: 'Groq',
     baseURL: 'https://api.groq.com/openai/v1',
     keyUrl: 'https://console.groq.com/keys',
-    modelHint: 'llama-3.3-70b-versatile'
+    modelHint: 'openai/gpt-oss-120b'
   },
   {
     id: 'together',
     name: 'Together AI',
     baseURL: 'https://api.together.xyz/v1',
-    keyUrl: 'https://api.together.ai/settings/api-keys'
+    keyUrl: 'https://api.together.ai/settings/api-keys',
+    modelHint: 'openai/gpt-oss-120b'
   },
   {
     id: 'cerebras',
@@ -78,41 +79,42 @@ export const PROVIDERS: {
     name: 'Alibaba DashScope',
     baseURL: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
     keyUrl: 'https://dashscope.console.aliyun.com/',
-    modelHint: 'qwen-max'
+    modelHint: 'qwen3.6-plus-2026-04-02'
   },
   {
     id: 'alibaba-cn',
     name: 'Alibaba Bailian (国内)',
     baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
     keyUrl: 'https://bailian.console.aliyun.com/',
-    modelHint: 'qwen3-max'
+    modelHint: 'qwen3.6-plus-2026-04-02'
   },
   {
     id: 'moonshot',
     name: 'Moonshot (Kimi)',
     baseURL: 'https://api.moonshot.ai/v1',
     keyUrl: 'https://platform.moonshot.cn/console/api-keys',
-    modelHint: 'moonshot-v1-128k'
+    modelHint: 'kimi-k2.5'
   },
   {
     id: 'zhipu',
     name: 'Zhipu (GLM)',
     baseURL: 'https://open.bigmodel.cn/api/paas/v4',
     keyUrl: 'https://open.bigmodel.cn/usercenter/apikeys',
-    modelHint: 'glm-4-plus'
+    modelHint: 'glm-5'
   },
   {
     id: 'perplexity',
     name: 'Perplexity',
     baseURL: 'https://api.perplexity.ai',
     keyUrl: 'https://www.perplexity.ai/settings/api',
-    modelHint: 'llama-3.1-sonar-large-128k-online'
+    modelHint: 'sonar-reasoning-pro'
   },
   {
     id: 'fireworks',
     name: 'Fireworks AI',
     baseURL: 'https://api.fireworks.ai/inference/v1',
-    keyUrl: 'https://fireworks.ai/account/api-keys'
+    keyUrl: 'https://fireworks.ai/account/api-keys',
+    modelHint: 'accounts/fireworks/models/llama-v3p3-70b-instruct'
   },
   {
     id: 'ollama',

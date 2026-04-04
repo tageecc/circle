@@ -1,5 +1,5 @@
 /**
- * Extension points (Claude Code pre/post/stop hook parity, simplified).
+ * Extension points for pre/post/stop hooks in agent sessions.
  */
 
 import type { AgentSessionContext } from './agent-session.types'

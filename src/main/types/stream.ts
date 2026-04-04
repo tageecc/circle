@@ -40,7 +40,7 @@ export interface StreamChunk {
     | 'error'
     | 'usage'
     | 'context-notice'
-    /** Phase A: chain metadata + protocol version (Claude Code queryTracking-style) */
+    /** Phase A: chain metadata + protocol version for orchestration tracking */
     | 'orchestration'
     /** Phase A: explicit agentic step boundary for UI/telemetry */
     | 'agent-step'
@@ -62,7 +62,7 @@ export interface StreamChunk {
     modelId: string
   }
 
-  /** Phase A: step telemetry (CC-style explicit transitions) */
+  /** Phase A: step telemetry with explicit transitions */
   agentStep?: {
     chainId: string
     /** Monotonic within this stream */

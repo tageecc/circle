@@ -1,5 +1,5 @@
 /**
- * Pre-prune conversation compaction (CC-style lightweight compact):
+ * Pre-prune conversation compaction with lightweight optimization:
  * replace older turns with a single summary user message, then prune/truncate as usual.
  */
 

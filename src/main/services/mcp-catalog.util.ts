@@ -1,5 +1,5 @@
 /**
- * MCP tool catalog fingerprint + human-readable delta (Claude Code-style mcp_instructions_delta semantics).
+ * MCP tool catalog fingerprint + human-readable delta for tracking tool changes.
  */
 
 export function mcpCatalogSignature(tools: Record<string, unknown>): string {

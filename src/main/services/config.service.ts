@@ -120,7 +120,7 @@ interface ServiceSettings {
   maxContextInputTokens?: number
   /** Extra reserve subtracted from input budget for long assistant completions */
   contextReserveOutputTokens?: number
-  /** When true (default), long history may be LLM-summarized before prune (CC-style compact) */
+  /** When true (default), long history may be LLM-summarized before prune */
   contextSummarizationEnabled?: boolean
 }
 
@@ -621,14 +621,17 @@ export class ConfigService {
    * 获取用户默认模型 (格式: provider/model)
    */
   getDefaultModel(): string {
-    return this.db.getUIState<string>('settings.defaultModel', 'Alibaba (China)/qwen-turbo')
+    return this.db.getUIState<string>(
+      'settings.defaultModel',
+      'Alibaba (China)/qwen3.6-plus-2026-04-02'
+    )
   }
 
   /**
    * 获取代码补全专用模型（快速模型）
    */
   getCompletionModel(): string {
-    return this.db.getUIState<string>('settings.completionModel', 'Alibaba (China)/qwen-turbo')
+    return this.db.getUIState<string>('settings.completionModel', 'Alibaba (China)/qwen3.5-flash')
   }
 
   /**

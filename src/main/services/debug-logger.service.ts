@@ -151,6 +151,27 @@ class DebugLoggerService {
   getLogsDir(): string {
     return this.logsDir
   }
+
+  /**
+   * Temporary: append one JSON line per native agent event (OpenAI-compatible loop debugging).
+   * File: native-agent-trace-<sessionId>.log under userData/logs/
+   */
+  async logNativeAgentTrace(sessionId: string, record: Record<string, unknown>): Promise<void> {
+    if (!this.enabled) return
+    try {
+      await this.ensureLogsDir()
+      const safe = sessionId.replace(/[^a-zA-Z0-9_-]/g, '_')
+      const filepath = path.join(this.logsDir, `native-agent-trace-${safe}.log`)
+      const line = JSON.stringify({ ts: new Date().toISOString(), sessionId, ...record }) + '\n'
+      await fs.appendFile(filepath, line, 'utf-8')
+      if (process.env.CIRCLE_DEBUG_NATIVE_TRACE === '1') {
+        const phase = typeof record.phase === 'string' ? record.phase : 'event'
+        console.log(`[NativeAgentTrace] ${phase}`, { ...record, sessionId: sessionId.slice(-12) })
+      }
+    } catch (e) {
+      console.error('[DebugLogger] logNativeAgentTrace failed:', e)
+    }
+  }
 }
 
 export const debugLogger = new DebugLoggerService()

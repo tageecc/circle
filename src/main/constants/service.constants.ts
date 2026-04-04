@@ -108,7 +108,7 @@ export const AI_MODEL = {
 } as const
 
 // ============================================================================
-// Agent harness (context window, MCP deltas, parity with CC-style budgeting)
+// Agent harness (context window, MCP deltas, smart context budgeting)
 // ============================================================================
 
 export const AGENT_HARNESS = {
@@ -137,7 +137,22 @@ export const AGENT_HARNESS = {
   /** Run summary when estimated message tokens exceed this fraction of budget */
   SUMMARY_TRIGGER_BUDGET_RATIO: 0.55,
   /** Max chars per message for plain text / text & reasoning parts (single huge paste guard) */
-  MAX_MESSAGE_TEXT_CHARS_IN_CONTEXT: 96_000
+  MAX_MESSAGE_TEXT_CHARS_IN_CONTEXT: 96_000,
+
+  /** OpenAI-compatible chat.completions: max output tokens per request (reduces mid-stream truncation) */
+  OPENAI_MAX_COMPLETION_TOKENS: 16_384,
+
+  /** Single streaming HTTP request timeout (model can be slow; keep above generic NETWORK.REQUEST_TIMEOUT) */
+  NATIVE_CHAT_FETCH_TIMEOUT_MS: 180_000,
+
+  /** After finish_reason length (or equivalent), append messages and re-request up to this many times */
+  MAX_OUTPUT_LENGTH_RECOVERIES: 5,
+
+  /**
+   * If the last context message before the model call was tool output and the model returns
+   * stop with text only (no tool calls), inject one continuation user message — improves models that "plan then stop".
+   */
+  POST_TOOL_SOFT_NUDGE_MAX_PER_ROUND: 1
 } as const
 
 // ============================================================================

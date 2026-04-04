@@ -1,5 +1,5 @@
 /**
- * Sub-agent / sidechain task (Claude Code AgentTool / runAgent parity — data model only).
+ * Sub-agent / sidechain task data model for tracking delegated agent runs.
  */
 
 import type { AgentChainId } from './agent-session.types'
@@ -18,4 +18,18 @@ export type SubAgentTask = {
   status: SubAgentTaskStatus
   /** Future: forked message list path or blob ref */
   resultSummary?: string
+  /** Subagent type (general, review, security, etc.) */
+  subagentType?: string
+  subagentName?: string
+  /** Progress tracking */
+  startedAt?: number
+  completedAt?: number
+  durationMs?: number
+  progress?: {
+    filesExplored: number
+    searches: number
+    edits: number
+    toolCalls: number
+  }
+  currentOperation?: string
 }

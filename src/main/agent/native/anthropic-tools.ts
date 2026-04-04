@@ -6,7 +6,9 @@ import { toolEntryToJsonSchema } from './tool-json-schema'
 export async function toolsToAnthropicAPI(tools: CircleToolSet): Promise<AnthropicAPITool[]> {
   const out: AnthropicAPITool[] = []
   for (const [name, t] of Object.entries(tools)) {
-    const input_schema = (await toolEntryToJsonSchema(t as Tool)) as AnthropicAPITool['input_schema']
+    const input_schema = (await toolEntryToJsonSchema(
+      t as Tool
+    )) as AnthropicAPITool['input_schema']
     out.push({
       name,
       description: t.description,

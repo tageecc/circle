@@ -68,7 +68,7 @@ export class ContextEnrichmentService {
   }
 
   /**
-   * Short CC-style git snapshot (branch + short status) for coding awareness.
+   * Short git snapshot (branch + short status) for coding awareness.
    */
   private async getGitWorkingState(workspaceRoot: string): Promise<string | null> {
     try {

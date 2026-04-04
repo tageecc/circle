@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo, type ReactElement } from 'react'
 import { Check, ChevronsUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -11,87 +11,35 @@ import {
 } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useTranslation } from 'react-i18next'
+import { MODELS_DATABASE } from '@/constants/models'
 
-// 各提供商支持的模型列表
-const PROVIDER_MODELS: Record<string, string[]> = {
-  OpenAI: [
-    'gpt-4o',
-    'gpt-4o-mini',
-    'gpt-4-turbo',
-    'gpt-4',
-    'gpt-3.5-turbo',
-    'o1',
-    'o1-mini',
-    'o1-preview'
-  ],
-  Anthropic: [
-    'claude-3-5-sonnet-20241022',
-    'claude-3-5-haiku-20241022',
-    'claude-3-opus-20240229',
-    'claude-3-sonnet-20240229',
-    'claude-3-haiku-20240307'
-  ],
-  Google: [
-    'gemini-2.0-flash-exp',
-    'gemini-1.5-pro',
-    'gemini-1.5-flash',
-    'gemini-1.5-flash-8b',
-    'gemini-pro'
-  ],
-  DeepSeek: ['deepseek-chat', 'deepseek-reasoner'],
-  Groq: [
-    'llama-3.3-70b-versatile',
-    'llama-3.1-70b-versatile',
-    'llama-3.1-8b-instant',
-    'mixtral-8x7b-32768',
-    'gemma2-9b-it'
-  ],
-  Mistral: [
-    'mistral-large-latest',
-    'mistral-medium-latest',
-    'mistral-small-latest',
-    'mistral-tiny'
-  ],
-  xAI: ['grok-beta', 'grok-vision-beta'],
-  Alibaba: [
-    'qwen-max',
-    'qwen-plus',
-    'qwen-turbo',
-    'qwen2.5-72b-instruct',
-    'qwen2.5-32b-instruct',
-    'qwen2.5-14b-instruct',
-    'qwen2.5-7b-instruct',
-    'qwen-vl-max',
-    'qwen-vl-plus'
-  ],
-  'Alibaba (China)': [
-    'qwen3-max',
-    'qwen-plus',
-    'qwen-turbo',
-    'qwen-flash',
-    'qwen-long',
-    'qwen2-5-72b-instruct',
-    'qwen2-5-32b-instruct',
-    'qwen2-5-14b-instruct',
-    'qwen2-5-7b-instruct',
-    'qwen3-next-80b-a3b-thinking',
-    'qwq-32b',
-    'qwq-plus',
-    'deepseek-r1',
-    'deepseek-v3'
-  ],
-  'Fireworks AI': [
-    'accounts/fireworks/models/llama-v3p3-70b-instruct',
-    'accounts/fireworks/models/llama-v3p1-70b-instruct',
-    'accounts/fireworks/models/llama-v3p1-8b-instruct'
-  ],
-  'Together AI': [
-    'meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo',
-    'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo',
-    'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo'
-  ],
-  Perplexity: ['llama-3.1-sonar-large-128k-online', 'llama-3.1-sonar-small-128k-online']
+const PROVIDER_LABEL: Record<string, string> = {
+  openai: 'OpenAI',
+  anthropic: 'Anthropic',
+  google: 'Google',
+  deepseek: 'DeepSeek',
+  groq: 'Groq',
+  mistral: 'Mistral',
+  xai: 'xAI',
+  alibaba: 'Alibaba',
+  'alibaba-cn': 'Alibaba (China)',
+  fireworks: 'Fireworks AI',
+  together: 'Together AI',
+  perplexity: 'Perplexity',
+  moonshot: 'Moonshot AI',
+  zhipu: 'Zhipu AI'
 }
+
+const PROVIDER_MODELS: Record<string, string[]> = (() => {
+  const acc: Record<string, string[]> = {}
+  for (const m of MODELS_DATABASE) {
+    const label = PROVIDER_LABEL[m.provider]
+    if (!label) continue
+    if (!acc[label]) acc[label] = []
+    acc[label].push(m.id)
+  }
+  return acc
+})()
 
 interface ModelSelectProps {
   provider: string
@@ -100,11 +48,19 @@ interface ModelSelectProps {
   disabled?: boolean
 }
 
-export function ModelSelect({ provider, value, onChange, disabled }: ModelSelectProps) {
+export function ModelSelect({
+  provider,
+  value,
+  onChange,
+  disabled
+}: ModelSelectProps): ReactElement {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
-  const availableModels = provider ? PROVIDER_MODELS[provider] || [] : []
+  const availableModels = useMemo(
+    () => (provider ? PROVIDER_MODELS[provider] || [] : []),
+    [provider]
+  )
   const hasModels = availableModels.length > 0
 
   return (

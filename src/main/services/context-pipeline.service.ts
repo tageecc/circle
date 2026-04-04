@@ -1,5 +1,5 @@
 /**
- * Context preparation + reactive recovery (Claude Code autocompact / reactive retry parity, AI-SDK adapted).
+ * Context preparation + reactive recovery with automatic compaction and retry logic (AI-SDK adapted).
  */
 
 import type { CoreLikeMessage } from './context-budget.service'
@@ -101,7 +101,7 @@ export function isLikelyContextOverflowError(error: unknown): boolean {
 
 /**
  * Reactive recovery: drop oldest half of messages (keep last N) + force summarize path on retry.
- * CC uses full reactive compact; we apply a deterministic shrink for one retry.
+ * Apply deterministic context shrinking for one retry when context limit is exceeded.
  */
 export function shrinkMessagesForReactiveRetry(
   messages: CoreLikeMessage[],

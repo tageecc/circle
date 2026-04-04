@@ -6,6 +6,48 @@ declare global {
     api: {
       i18nextElectronBackend: any
       getSystemLocale: () => Promise<string>
+      invoke: (channel: string, ...args: any[]) => Promise<any>
+      on: (channel: string, callback: (...args: any[]) => void) => void
+      off: (channel: string, callback: (...args: any[]) => void) => void
+
+      // Delegate task events
+      onDelegateStart: (
+        callback: (data: {
+          taskId: string
+          sessionId: string
+          description: string
+          subagentType: string
+          subagentName: string
+          icon: string
+          color: string
+        }) => void
+      ) => () => void
+      onDelegateProgress: (
+        callback: (data: {
+          taskId: string
+          sessionId: string
+          filesExplored: number
+          searches: number
+          edits: number
+          toolCalls: number
+          currentOperation?: string
+        }) => void
+      ) => () => void
+      onDelegateComplete: (
+        callback: (data: {
+          taskId: string
+          sessionId: string
+          result?: string
+          error?: string
+          durationMs: number
+          progress?: {
+            filesExplored: number
+            searches: number
+            edits: number
+            toolCalls: number
+          }
+        }) => void
+      ) => () => void
       chat: {
         stream: (
           options: {
@@ -103,12 +145,33 @@ declare global {
             questionId: string
             sessionId: string
             assistantMessageId: number
-            question: string
-            options?: string[]
-            allowFreeText: boolean
+            questions: Array<{
+              question: string
+              header: string
+              options: Array<{
+                label: string
+                description: string
+                preview?: string
+              }>
+              multiSelect: boolean
+            }>
+            metadata?: {
+              source?: string
+            }
+            isInPlanMode?: boolean
           }) => void
         ) => () => void
-        submitUserQuestionAnswer: (questionId: string, answer: string) => Promise<void>
+        submitUserQuestionAnswer: (
+          questionId: string,
+          result:
+            | {
+                type: 'answered'
+                answers: Record<string, string>
+                annotations?: Record<string, any>
+              }
+            | { type: 'skipped' }
+            | { type: 'rejected'; feedback: string }
+        ) => Promise<void>
         getStreamPayload: (ref: string) => Promise<string | null>
       }
       sessions: {

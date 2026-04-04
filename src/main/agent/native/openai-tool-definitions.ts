@@ -11,9 +11,7 @@ export type OpenAIFunctionTool = {
   }
 }
 
-export async function toolsToOpenAIFunctions(
-  tools: CircleToolSet
-): Promise<OpenAIFunctionTool[]> {
+export async function toolsToOpenAIFunctions(tools: CircleToolSet): Promise<OpenAIFunctionTool[]> {
   const out: OpenAIFunctionTool[] = []
   for (const [name, t] of Object.entries(tools)) {
     const parameters = await toolEntryToJsonSchema(t as Tool)

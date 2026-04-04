@@ -250,55 +250,55 @@ Step 3: Call tool with action=update, knowledge_to_store="User name is Li Si", e
     try {
       if (action === 'delete') {
         if (!existing_knowledge_id) {
-          return {
+          return JSON.stringify({
             success: false,
             error: 'existing_knowledge_id is required for delete action'
-          }
+          })
         }
         await memoryService.deleteMemory(existing_knowledge_id)
-        return {
+        return JSON.stringify({
           success: true,
           message: `Memory deleted successfully`,
           memoryId: existing_knowledge_id
-        }
+        })
       }
 
       if (action === 'update') {
         if (!existing_knowledge_id || !knowledge_to_store) {
-          return {
+          return JSON.stringify({
             success: false,
             error: 'existing_knowledge_id and knowledge_to_store are required for update'
-          }
+          })
         }
         await memoryService.updateMemory(existing_knowledge_id, knowledge_to_store)
-        return {
+        return JSON.stringify({
           success: true,
           message: `Memory updated`,
           memoryId: existing_knowledge_id,
           content: knowledge_to_store
-        }
+        })
       }
 
       // action === 'create'
       if (!knowledge_to_store) {
-        return {
+        return JSON.stringify({
           success: false,
           error: 'knowledge_to_store is required for create'
-        }
+        })
       }
       const memoryId = await memoryService.createMemory(knowledge_to_store)
-      return {
+      return JSON.stringify({
         success: true,
         message: `Memory created`,
         memoryId,
         content: knowledge_to_store
-      }
+      })
     } catch (error) {
       console.error('[UpdateMemoryTool] Error:', error)
-      return {
+      return JSON.stringify({
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
-      }
+      })
     }
   }
 })

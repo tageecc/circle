@@ -5,8 +5,13 @@ import { resolveFilePath } from './utils'
 
 const inputSchema = z.object({
   target_file: z.string().describe('The path of the file to read'),
-  offset: z.number().optional().describe('The line number to start reading from'),
-  limit: z.number().optional().describe('The number of lines to read')
+  offset: z
+    .number()
+    .optional()
+    .describe(
+      '0-based line index to start from (first line is 0). Displayed line numbers in output are still 1-based.'
+    ),
+  limit: z.number().optional().describe('Maximum number of lines to return after the offset')
 })
 
 /**
@@ -65,8 +70,8 @@ This makes it easy to reference specific lines when discussing or editing code.
 ### Parameters
 
 - **target_file** (required): Absolute or relative path to the file
-- **offset** (optional): Line number to start reading from (0-based)
-- **limit** (optional): Number of lines to read
+- **offset** (optional): 0-based line index (first line = 0). Output line labels remain 1-based.
+- **limit** (optional): Max lines to return after that offset
 
 ### Examples
 

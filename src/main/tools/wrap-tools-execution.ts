@@ -1,5 +1,5 @@
 /**
- * Serialize exclusive (mutating / side-effect) tool execution (Claude Code runTools serial path parity).
+ * Serialize exclusive (mutating / side-effect) tool execution to prevent conflicts.
  * parallel_safe tools are not wrapped — they can still run concurrently when the model batches them.
  */
 

@@ -1,10 +1,13 @@
+import { execFile } from 'child_process'
+import { promisify } from 'util'
+import type { ToolCallOptions } from '@ai-sdk/provider-utils'
 import { defineTool } from './define-tool'
 import { z } from 'zod'
-import { exec } from 'child_process'
-import { promisify } from 'util'
-import { resolveFilePath } from './utils'
+import { getToolContext } from '../services/tool-context'
+import { resolveRipgrepExecutable } from './ripgrep-path'
+import { getCurrentProjectDir, resolveFilePath } from './utils'
 
-const execAsync = promisify(exec)
+const execFileAsync = promisify(execFile)
 
 const inputSchema = z.object({
   pattern: z.string().describe('The regular expression pattern to search for'),
@@ -39,7 +42,7 @@ Skip grep for:
 - **Finding files by name** → use \`glob_file_search\` (faster for filenames)
 
 ### Key Features
-- Lightning fast (powered by ripgrep, 10x+ faster than standard grep)
+- Lightning fast (ripgrep; Circle bundles a binary via \`@vscode/ripgrep\`, with PATH \`rg\` as fallback)
 - Full regex support (capture groups, lookaheads, etc.)
 - Auto-ignores node_modules, .git, dist directories
 - Multiple output modes for different use cases
@@ -133,29 +136,38 @@ grep(pattern="TODO:", output_mode="count")
 grep(pattern="catch\\s*\\(", output_mode="content")
 \`\`\``,
   inputSchema,
-  execute: async ({ pattern, path, output_mode, head_limit }) => {
+  execute: async ({ pattern, path, output_mode, head_limit }, options: ToolCallOptions) => {
     try {
-      const searchPath = path ? resolveFilePath(path) : process.cwd()
+      const { workspaceRoot } = getToolContext(options)
+      const searchPath = path ? resolveFilePath(path) : workspaceRoot || getCurrentProjectDir()
       const mode = output_mode || 'content'
 
-      let cmd = `rg --color never`
-
+      const args = [
+        '--color',
+        'never',
+        '--glob',
+        '!node_modules/**',
+        '--glob',
+        '!.git/**',
+        '--glob',
+        '!dist/**'
+      ]
       if (mode === 'files_with_matches') {
-        cmd += ' -l'
+        args.push('-l')
       } else if (mode === 'count') {
-        cmd += ' -c'
+        args.push('-c')
       }
-
-      cmd += ` "${pattern.replace(/"/g, '\\"')}" "${searchPath}"`
-      cmd += ' --glob "!node_modules/**" --glob "!.git/**" --glob "!dist/**"'
-
-      if (head_limit) {
-        cmd += ` | head -n ${head_limit}`
-      }
+      args.push(pattern, searchPath)
 
       try {
-        const { stdout } = await execAsync(cmd, { maxBuffer: 1024 * 1024 * 10 })
-        return stdout || 'No matches found'
+        const rgBin = resolveRipgrepExecutable()
+        const { stdout } = await execFileAsync(rgBin, args, { maxBuffer: 1024 * 1024 * 10 })
+        let out = stdout.toString()
+        if (head_limit !== undefined && head_limit > 0) {
+          const lines = out.split('\n')
+          out = lines.slice(0, head_limit).join('\n')
+        }
+        return out || 'No matches found'
       } catch (error: unknown) {
         const err = error as { code?: number }
         if (err.code === 1) {

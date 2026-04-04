@@ -211,10 +211,9 @@ todo_write({
   execute: async ({ merge, todos }, options: ToolCallOptions) => {
     try {
       const { sessionId } = getToolContext(options)
-      const sessionService = new SessionService()
 
       // 1. 获取现有 todos（从 session metadata）
-      const session = await sessionService.getSession(sessionId)
+      const session = await SessionService.getSession(sessionId)
       if (!session) {
         throw new Error(`Session ${sessionId} not found`)
       }
@@ -248,7 +247,7 @@ todo_write({
       }
 
       // 3. 持久化到数据库（session metadata）
-      await sessionService.updateSessionMetadata(sessionId, {
+      await SessionService.updateSessionMetadata(sessionId, {
         ...metadata,
         todos: updatedTodos
       })
@@ -300,18 +299,14 @@ todo_write({
         cancelled: updatedTodos.filter((t) => t.status === 'cancelled').length
       }
 
-      return JSON.stringify(
-        {
-          success: true,
-          action: merge ? 'updated' : 'created',
-          message: `Task list ${merge ? 'updated' : 'created'} successfully. Persisted to database.`,
-          summary,
-          todos: todosList,
-          totalTodos: updatedTodos.length
-        },
-        null,
-        2
-      )
+      return JSON.stringify({
+        success: true,
+        action: merge ? 'updated' : 'created',
+        message: `Task list ${merge ? 'updated' : 'created'} successfully. Persisted to database.`,
+        summary,
+        todos: todosList,
+        totalTodos: updatedTodos.length
+      })
     } catch (error: unknown) {
       const err = error as Error
       console.error('[TodoWrite] Error:', err)

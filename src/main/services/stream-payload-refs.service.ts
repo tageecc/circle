@@ -1,5 +1,5 @@
 /**
- * Large payload indirection for IPC (Phase F — Claude Code tool result budget / ref parity).
+ * Large payload indirection for IPC to avoid message size limits.
  */
 
 import { randomUUID } from 'crypto'

@@ -8,6 +8,7 @@ import { getConfigService } from '../index'
 import { sendToRenderer } from '../utils/ipc'
 import { SessionService } from '../services/session.service'
 import { mainI18n as i18n } from '../i18n'
+import { guardAgainstPlanMode } from './plan-mode-guard'
 
 // 常量
 const DEFAULT_SHELL = '/bin/bash'
@@ -78,8 +79,8 @@ async function requestApproval(
 
   // ✅ 持久化审批状态到数据库（直接使用 messageId，无需查询）
   // 关键：确保隐藏/刷新页面后，审批按钮不丢失
-  const sessionService = new SessionService()
-  await sessionService.updateToolApprovalStatus(assistantMessageId, toolCallId, {
+
+  await SessionService.updateToolApprovalStatus(assistantMessageId, toolCallId, {
     needsApproval: true,
     approvalStatus: 'pending',
     state: 'pending'
@@ -266,6 +267,10 @@ In using these tools, adhere to the following guidelines:
     const context = getToolContext(options)
     const workspaceRoot = context.workspaceRoot || getCurrentProjectDir()
     const toolCallId = options.toolCallId || `run_terminal_cmd_${Date.now()}`
+
+    // Check if in Plan Mode - terminal commands are not allowed
+    const guardResult = await guardAgainstPlanMode(options, 'Terminal commands')
+    if (guardResult) return guardResult
 
     if (needsApproval(command)) {
       console.log('[run_terminal_cmd] 🔍 Command needs approval:', command)

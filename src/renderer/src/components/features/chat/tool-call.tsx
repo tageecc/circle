@@ -280,10 +280,9 @@ export function ToolCall({
               value={progress}
               className={cn(
                 'h-1.5',
-                // 使用项目标准色系，添加平滑过渡
-                '[&>[data-slot=progress-indicator]]:transition-all',
-                '[&>[data-slot=progress-indicator]]:duration-500',
-                '[&>[data-slot=progress-indicator]]:ease-out'
+                '*:data-[slot=progress-indicator]:transition-all',
+                '*:data-[slot=progress-indicator]:duration-500',
+                '*:data-[slot=progress-indicator]:ease-out'
               )}
             />
           )}
@@ -301,8 +300,14 @@ export function ToolCall({
 
   // ask_user: blocking question (modal answers in renderer)
   if (tool.name === 'ask_user') {
-    const question = tool.args?.question || ''
+    const questions = tool.args?.questions || []
     const awaiting = tool.isLoading || (!tool.result && !tool.isError)
+    const resultObj = tool.result
+      ? typeof tool.result === 'string'
+        ? JSON.parse(tool.result)
+        : tool.result
+      : null
+
     return (
       <div
         className={cn(
@@ -312,15 +317,55 @@ export function ToolCall({
       >
         <div className="flex items-center gap-2 text-muted-foreground">
           <MessageCircle className="size-3.5 shrink-0" />
-          <span>ask_user</span>
+          <span>
+            ask_user ({questions.length} question{questions.length > 1 ? 's' : ''})
+          </span>
         </div>
-        <p className="text-foreground leading-relaxed">{question}</p>
+
+        {/* Questions summary */}
+        <div className="space-y-1">
+          {questions.map((q: any, idx: number) => (
+            <div key={idx} className="flex items-start gap-2">
+              <span className="text-muted-foreground">Q{idx + 1}:</span>
+              <span className="text-foreground leading-relaxed">{q.question}</span>
+            </div>
+          ))}
+        </div>
+
         {awaiting ? (
-          <span className="text-amber-600 dark:text-amber-400">{t('chat.user_question_awaiting')}</span>
-        ) : tool.result ? (
-          <pre className="mt-1 whitespace-pre-wrap font-mono text-[11px] text-muted-foreground">
-            {typeof tool.result === 'string' ? tool.result : JSON.stringify(tool.result, null, 2)}
-          </pre>
+          <span className="text-amber-600 dark:text-amber-400">
+            {t('chat.user_question_awaiting')}
+          </span>
+        ) : resultObj ? (
+          <div className="mt-1 space-y-1">
+            {resultObj.skipped && (
+              <span className="text-muted-foreground italic">User skipped</span>
+            )}
+            {resultObj.rejected && (
+              <div className="text-muted-foreground">
+                <span className="italic">User wants clarification:</span>
+                <div className="mt-1 text-foreground">{resultObj.feedback}</div>
+              </div>
+            )}
+            {resultObj.answers && (
+              <div className="space-y-1">
+                {Object.entries(resultObj.answers).map(([question, answer], idx) => (
+                  <div key={idx} className="border-l-2 border-primary/30 pl-2">
+                    <div className="text-muted-foreground text-[10px]">{question}</div>
+                    <div className="text-foreground font-medium">{String(answer)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {resultObj.annotations && Object.keys(resultObj.annotations).length > 0 && (
+              <details className="text-[10px] text-muted-foreground">
+                <summary className="cursor-pointer">Annotations</summary>
+                <pre className="mt-1 whitespace-pre-wrap">
+                  {JSON.stringify(resultObj.annotations, null, 2)}
+                </pre>
+              </details>
+            )}
+          </div>
         ) : null}
       </div>
     )

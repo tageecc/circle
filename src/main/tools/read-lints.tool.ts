@@ -1,6 +1,9 @@
+import type { ToolCallOptions } from '@ai-sdk/provider-utils'
 import { defineTool } from './define-tool'
 import { z } from 'zod'
 import { DiagnosticsService } from '../services/diagnostics.service'
+import { getToolContext } from '../services/tool-context'
+import { getCurrentProjectDir } from './utils'
 import * as path from 'path'
 import * as fs from 'fs/promises'
 
@@ -191,8 +194,10 @@ Skips these directories:
 - Pre-existing errors may appear - focus on ones from your edits
 - Fix errors immediately after detection - don't accumulate technical debt`,
   inputSchema,
-  execute: async ({ paths }) => {
+  execute: async ({ paths }, toolOptions: ToolCallOptions) => {
     try {
+      const { workspaceRoot } = getToolContext(toolOptions)
+      const root = workspaceRoot || getCurrentProjectDir()
       const diagnosticsService = DiagnosticsService.getInstance()
       const allDiagnostics: DiagnosticResult[] = []
 
@@ -211,7 +216,7 @@ Skips these directories:
       for (const targetPath of paths) {
         const absolutePath = path.isAbsolute(targetPath)
           ? targetPath
-          : path.resolve(process.cwd(), targetPath)
+          : path.resolve(root, targetPath)
 
         try {
           const stat = await fs.stat(absolutePath)
@@ -219,7 +224,7 @@ Skips these directories:
           if (stat.isFile()) {
             const diagnostics = await diagnosticsService.getDiagnostics(absolutePath)
             allDiagnostics.push({
-              filePath: targetPath,
+              filePath: path.relative(root, absolutePath),
               diagnostics: diagnostics.map((d) => ({
                 line: d.line,
                 column: d.column,
@@ -235,7 +240,7 @@ Skips these directories:
               const diagnostics = await diagnosticsService.getDiagnostics(filePath)
               if (diagnostics.length > 0) {
                 allDiagnostics.push({
-                  filePath: path.relative(process.cwd(), filePath),
+                  filePath: path.relative(root, filePath),
                   diagnostics: diagnostics.map((d) => ({
                     line: d.line,
                     column: d.column,

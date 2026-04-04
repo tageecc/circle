@@ -1,6 +1,6 @@
 {
   "name": "circle",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Local-first AI-native desktop IDE: Monaco editor, Git, terminal, native multi-provider agent (OpenAI-compatible, Anthropic, Google), MCP, SQLite.",
   "main": "./out/main/index.js",
   "author": "Circle",
@@ -65,7 +65,9 @@
     "@tiptap/pm": "^2.13.1",
     "@tiptap/react": "^2.13.1",
     "@tiptap/starter-kit": "^2.13.1",
+    "@types/dompurify": "^3.2.0",
     "@types/uuid": "^11.0.0",
+    "@vscode/ripgrep": "^1.17.1",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/addon-web-links": "^0.11.0",
     "@xterm/xterm": "^5.5.0",
@@ -78,6 +80,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "diff": "^8.0.2",
+    "dompurify": "^3.3.3",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.44.7",
     "electron-log": "^5.4.3",
@@ -94,6 +97,7 @@
     "lucide-react": "^0.552.0",
     "markdownlint": "^0.39.0",
     "markdownlint-rule-helpers": "^0.30.0",
+    "marked": "^17.0.5",
     "media-chrome": "^4.17.2",
     "minimatch": "^10.1.1",
     "mitt": "^3.0.1",
@@ -157,6 +161,7 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@vscode/ripgrep",
       "better-sqlite3",
       "electron",
       "esbuild",

@@ -1,5 +1,5 @@
 /**
- * Coding session stream helpers (Claude Code explicit chain / step events).
+ * Coding session stream helpers with explicit chain and step event tracking.
  */
 
 import { randomUUID } from 'crypto'
@@ -12,10 +12,7 @@ export function createChainId(): string {
   return randomUUID()
 }
 
-export function withProtocolChunk(
-  chunk: StreamChunk,
-  chainId: string
-): StreamChunk {
+export function withProtocolChunk(chunk: StreamChunk, chainId: string): StreamChunk {
   return { ...chunk, v: STREAM_CHUNK_PROTOCOL_VERSION, chainId }
 }
 
@@ -31,10 +28,7 @@ export function buildOrchestrationChunk(
   }
 }
 
-export function buildAgentStepChunk(
-  payload: AgentStepPayload,
-  chainId: string
-): StreamChunk {
+export function buildAgentStepChunk(payload: AgentStepPayload, chainId: string): StreamChunk {
   return {
     type: 'agent-step',
     v: STREAM_CHUNK_PROTOCOL_VERSION,

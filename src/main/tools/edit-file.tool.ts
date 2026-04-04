@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { defineTool } from './define-tool'
 import { generateTextOneShot } from '../agent/llm-one-shot'
 import { getToolContext } from '../services/tool-context'
+import { checkPlanMode } from './plan-mode-guard'
 import * as path from 'path'
 
 const inputSchema = z.object({
@@ -154,19 +155,43 @@ export function parseDate(str: string): Date {
 
 1. **You provide**: target_file, instructions, code_edit
 2. **System reads**: the original file (if it exists)
-3. **Smart model applies**: your edit by understanding context
-4. **Result**: Complete new file content with your changes applied
+3. **With \`// ... existing code ...\` markers**: the configured default model merges the sketch into the full file (up to two attempts). **If merge fails, the tool returns \`edit_file_failed\` JSON and does not write the file** — fix the sketch or use a full-file replace without markers.
+4. **Without markers** (or new file): your \`code_edit\` is written as the full new content
+5. **Success**: \`applied-file-edit\` payload and file written to disk
 
 ### Parameter Order
 Specify arguments in this order: [target_file, instructions, code_edit]`,
   inputSchema,
   execute: async ({ target_file, instructions, code_edit }, options: ToolCallOptions) => {
-    const { workspaceRoot } = getToolContext(options)
+    const ctx = getToolContext(options)
+    const { workspaceRoot } = ctx
 
     // 解析文件路径为绝对路径
     const absolutePath = path.isAbsolute(target_file)
       ? target_file
       : path.resolve(workspaceRoot, target_file)
+
+    // Check if in Plan Mode and restrict edits to plan file only
+    const { isInPlanMode, planFilePath } = await checkPlanMode(options)
+
+    if (isInPlanMode) {
+      if (!planFilePath) {
+        return JSON.stringify({
+          success: false,
+          error: 'In plan mode but no plan file found. This should not happen.'
+        })
+      }
+
+      const allowedPath = path.resolve(workspaceRoot, planFilePath)
+
+      if (absolutePath !== allowedPath) {
+        return JSON.stringify({
+          success: false,
+          error: `In plan mode, you can only edit the plan file (${planFilePath}). To edit code files, exit plan mode first by calling exit_plan_mode.`,
+          hint: 'Use read-only tools (read_file, grep, codebase_search) to explore. When your plan is ready, call exit_plan_mode to request user approval.'
+        })
+      }
+    }
 
     // 读取原文件
     let originalContent = ''
@@ -178,10 +203,20 @@ Specify arguments in this order: [target_file, instructions, code_edit]`,
       fileExists = false
     }
 
-    // 应用编辑
-    const newContent = await applyEdit(originalContent, code_edit, instructions)
+    const applied = await applyEdit(originalContent, code_edit, instructions)
+    if (!applied.ok) {
+      return JSON.stringify({
+        type: 'edit_file_failed',
+        success: false,
+        reason: applied.reason,
+        message: applied.detail,
+        filePath: target_file,
+        hint: applied.hint
+      })
+    }
 
-    // 写入文件
+    const newContent = applied.content
+
     const dir = path.dirname(absolutePath)
     await fs.mkdir(dir, { recursive: true })
     await fs.writeFile(absolutePath, newContent, 'utf-8')
@@ -209,85 +244,133 @@ Specify arguments in this order: [target_file, instructions, code_edit]`,
   }
 })
 
+type ApplyEditOk = { ok: true; content: string }
+type ApplyEditFail = {
+  ok: false
+  reason: 'model_empty' | 'model_error' | 'merge_unchanged'
+  detail: string
+  hint: string
+}
+type ApplyEditResult = ApplyEditOk | ApplyEditFail
+
+const FAIL_HINT =
+  'Options: (1) Simplify the sketch or add clearer context around edits; (2) Remove "// ... existing code ..." markers and put the full file body in code_edit; (3) Split into smaller edit_file calls.'
+
+function sketchImpliesChanges(sketch: string): boolean {
+  return sketch.split('\n').some((line) => {
+    const t = line.trim()
+    if (!t) return false
+    if (/\/\/\s*\.\.\.\s*existing\s+code\s*\.\.\./i.test(t)) return false
+    if (/#\s*\.\.\.\s*existing\s+code\s*\.\.\./i.test(t)) return false
+    return true
+  })
+}
+
+function buildMergePrompt(originalContent: string, codeEdit: string, instructions: string): string {
+  return `You are a code merge assistant. Apply the edit sketch to the original file and output exactly one complete new file.
+
+## Original file
+\`\`\`
+${originalContent}
+\`\`\`
+
+## Instruction
+${instructions}
+
+## Edit sketch (lines "// ... existing code ..." or "# ... existing code ..." mean keep that region from the original)
+\`\`\`
+${codeEdit}
+\`\`\`
+
+## Rules
+1. Preserve original code where the sketch shows an "existing code" marker.
+2. Insert or replace other regions as implied by the sketch.
+3. Output only the full file source: no markdown fences, no commentary.
+
+Complete file:`
+}
+
 /**
- * 应用编辑
- *
- * 策略：
- * 1. 新文件 → 直接使用 code_edit
- * 2. 无 existing code 标记 → 完整文件替换
- * 3. 有 existing code 标记 → 调用小模型应用
+ * 1. New file → use code_edit as full content
+ * 2. No markers → full file replace from code_edit
+ * 3. Markers → merge via the configured default model (with explicit failure if merge cannot be applied)
  */
 async function applyEdit(
   originalContent: string,
   codeEdit: string,
   instructions: string
-): Promise<string> {
+): Promise<ApplyEditResult> {
   const cleanedEdit = cleanMarkdown(codeEdit)
 
-  // 新文件：直接使用 AI 生成的原始内容
   if (!originalContent.trim()) {
-    return cleanedEdit
+    return { ok: true, content: cleanedEdit }
   }
 
-  // 编辑现有文件
   if (!hasExistingCodeMarker(cleanedEdit)) {
-    // 无 existing code 标记：完整文件替换，直接使用 AI 输出
-    return cleanedEdit
-  } else {
-    // 有 existing code 标记：调用小模型应用编辑，直接使用模型输出
-    return await applyWithModel(originalContent, cleanedEdit, instructions)
+    return { ok: true, content: cleanedEdit }
   }
+
+  return applyWithModel(originalContent, cleanedEdit, instructions)
 }
 
-/** 使用小模型应用编辑 */
 async function applyWithModel(
   originalContent: string,
   codeEdit: string,
   instructions: string
-): Promise<string> {
-  const prompt = `你是一个代码编辑助手。将编辑内容应用到原始文件，输出完整的新文件。
+): Promise<ApplyEditResult> {
+  const { getConfigService } = await import('../index.js')
+  const config = getConfigService()
+  const modelId = config.getDefaultModel()
+  const prompt = buildMergePrompt(originalContent, codeEdit, instructions)
 
-## 原始文件
-\`\`\`
-${originalContent}
-\`\`\`
+  let lastFailure: 'empty' | 'unchanged' | 'error' = 'empty'
+  let lastErrorDetail = ''
 
-## 编辑说明
-${instructions}
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const text = await generateTextOneShot({
+        modelId,
+        configService: config,
+        prompt,
+        temperature: attempt === 0 ? 0 : 0.15
+      })
+      const content = cleanMarkdown(text)
 
-## 编辑内容
-\`\`\`
-${codeEdit}
-\`\`\`
+      if (!content.trim()) {
+        lastFailure = 'empty'
+        continue
+      }
 
-## 规则
-1. \`// ... existing code ...\` 表示保留原文件对应位置的代码
-2. 其他内容是要插入或替换的新代码
-3. 输出完整文件，不要遗漏任何代码
-4. 只输出代码，不要解释，不要 markdown 标记
+      if (sketchImpliesChanges(codeEdit) && content.trim() === originalContent.trim()) {
+        lastFailure = 'unchanged'
+        continue
+      }
 
-直接输出：`
-
-  try {
-    const { getConfigService } = await import('../index.js')
-    const config = getConfigService()
-    const text = await generateTextOneShot({
-      modelId: 'Alibaba (China)/qwen-coder-plus-latest',
-      configService: config,
-      prompt,
-      temperature: 0
-    })
-
-    const content = cleanMarkdown(text)
-
-    if (!content) {
-      console.warn('[edit_file] 模型返回空内容，保持原文件')
-      return originalContent
+      return { ok: true, content }
+    } catch (error) {
+      lastFailure = 'error'
+      lastErrorDetail = error instanceof Error ? error.message : String(error)
+      console.error('[edit_file] merge model attempt failed:', error)
     }
+  }
 
-    return content
-  } catch (error) {
-    console.error('[edit_file] 模型调用失败:', error)
-    return originalContent // 失败时保持原文件不变
+  if (lastFailure === 'unchanged') {
+    return {
+      ok: false,
+      reason: 'merge_unchanged',
+      detail:
+        'Merge model returned text identical to the original while the sketch contained new code. Use a full-file code_edit without markers, or simplify the sketch.',
+      hint: FAIL_HINT
+    }
+  }
+
+  return {
+    ok: false,
+    reason: lastFailure === 'error' ? 'model_error' : 'model_empty',
+    detail:
+      lastFailure === 'error'
+        ? lastErrorDetail
+        : 'The merge model returned empty output after two attempts.',
+    hint: FAIL_HINT
   }
 }

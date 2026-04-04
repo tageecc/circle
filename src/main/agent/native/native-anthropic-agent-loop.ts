@@ -18,6 +18,9 @@ import { stripReasoningFromModelMessages } from './strip-reasoning-messages'
 import { toolsToAnthropicAPI } from './anthropic-tools'
 import type { NativeAgentStreamPart } from './native-agent-stream-parts'
 import { toolOutputToResultPart } from './tool-output-part'
+import { AGENT_HARNESS } from '../../constants/service.constants'
+import { abortSignalForNativeChatFetch } from './merge-abort-signal'
+import { lastPreparedMessageRole } from './model-message-helpers'
 
 export type NativeAnthropicLoopOptions = {
   apiKey: string
@@ -57,69 +60,135 @@ export async function* runNativeAnthropicAgentLoop(
   while (round < maxSteps) {
     round += 1
     yield { type: 'start-step', request: {} }
-    const stepMessages = prepare(working)
-    const anthropicMessages = modelMessagesToAnthropic(stepMessages)
-    const anthropicTools = await toolsToAnthropicAPI(tools)
 
-    const stream = await client.messages.create({
-      model,
-      max_tokens: 16_384,
-      system: systemPrompt,
-      messages: anthropicMessages,
-      tools: anthropicTools,
-      temperature,
-      stream: true
-    })
-
+    let lengthRecoveries = 0
+    let softNudgesThisRound = 0
+    let sr = 'end_turn'
     let assistantText = ''
     const toolByIndex = new Map<number, { id: string; name: string; inputJson: string }>()
     let lastStopReason: string | null = null
     let reasoningOpen = false
 
-    for await (const ev of stream) {
-      switch (ev.type) {
-        case 'content_block_start': {
-          const block = ev.content_block
-          if (block.type === 'tool_use') {
-            toolByIndex.set(ev.index, { id: block.id, name: block.name, inputJson: '' })
+    requestLoop: while (true) {
+      toolByIndex.clear()
+      assistantText = ''
+      lastStopReason = null
+      reasoningOpen = false
+
+      const stepMessages = prepare(working)
+      const anthropicMessages = modelMessagesToAnthropic(stepMessages)
+      const anthropicTools = await toolsToAnthropicAPI(tools)
+
+      const fetchSignal = abortSignalForNativeChatFetch(abortSignal)
+
+      const stream = await client.messages.create(
+        {
+          model,
+          max_tokens: 16_384,
+          system: systemPrompt,
+          messages: anthropicMessages,
+          tools: anthropicTools,
+          temperature,
+          stream: true
+        },
+        { signal: fetchSignal }
+      )
+
+      for await (const ev of stream) {
+        switch (ev.type) {
+          case 'content_block_start': {
+            const block = ev.content_block
+            if (block.type === 'tool_use') {
+              toolByIndex.set(ev.index, { id: block.id, name: block.name, inputJson: '' })
+            }
+            if (block.type === 'thinking' && !reasoningOpen) {
+              reasoningOpen = true
+              yield { type: 'reasoning-start' }
+            }
+            break
           }
-          if (block.type === 'thinking' && !reasoningOpen) {
-            reasoningOpen = true
-            yield { type: 'reasoning-start' }
+          case 'content_block_delta': {
+            const d = ev.delta
+            if (d.type === 'text_delta') {
+              assistantText += d.text
+              yield { type: 'text-delta', text: d.text }
+            } else if (d.type === 'thinking_delta') {
+              yield { type: 'reasoning-delta', text: d.thinking }
+            } else if (d.type === 'input_json_delta') {
+              const t = toolByIndex.get(ev.index)
+              if (t) t.inputJson += d.partial_json
+            }
+            break
           }
-          break
+          case 'message_delta': {
+            if (ev.delta.stop_reason) lastStopReason = ev.delta.stop_reason
+            if (ev.usage) {
+              cumulativeIn += ev.usage.input_tokens ?? 0
+              cumulativeOut += ev.usage.output_tokens ?? 0
+            }
+            break
+          }
+          default:
+            break
         }
-        case 'content_block_delta': {
-          const d = ev.delta
-          if (d.type === 'text_delta') {
-            assistantText += d.text
-            yield { type: 'text-delta', text: d.text }
-          } else if (d.type === 'thinking_delta') {
-            yield { type: 'reasoning-delta', text: d.thinking }
-          } else if (d.type === 'input_json_delta') {
-            const t = toolByIndex.get(ev.index)
-            if (t) t.inputJson += d.partial_json
-          }
-          break
-        }
-        case 'message_delta': {
-          if (ev.delta.stop_reason) lastStopReason = ev.delta.stop_reason
-          if (ev.usage) {
-            cumulativeIn += ev.usage.input_tokens ?? 0
-            cumulativeOut += ev.usage.output_tokens ?? 0
-          }
-          break
-        }
-        default:
-          break
       }
+
+      if (reasoningOpen) {
+        yield { type: 'reasoning-end' }
+        reasoningOpen = false
+      }
+
+      sr = lastStopReason ?? 'end_turn'
+
+      if (sr === 'max_tokens') {
+        if (lengthRecoveries >= AGENT_HARNESS.MAX_OUTPUT_LENGTH_RECOVERIES) {
+          break requestLoop
+        }
+        lengthRecoveries += 1
+        if (assistantText) {
+          working = [
+            ...working,
+            {
+              role: 'assistant',
+              content: [{ type: 'text', text: assistantText }]
+            } as ModelMessage
+          ]
+        }
+        working = [
+          ...working,
+          {
+            role: 'user',
+            content: [{ type: 'text', text: 'Continue.' }]
+          } as ModelMessage
+        ]
+        continue requestLoop
+      }
+
+      if (
+        sr === 'end_turn' &&
+        toolByIndex.size === 0 &&
+        assistantText.length > 0 &&
+        lastPreparedMessageRole(stepMessages) === 'tool' &&
+        softNudgesThisRound < AGENT_HARNESS.POST_TOOL_SOFT_NUDGE_MAX_PER_ROUND
+      ) {
+        softNudgesThisRound += 1
+        working = [
+          ...working,
+          {
+            role: 'assistant',
+            content: [{ type: 'text', text: assistantText }]
+          } as ModelMessage,
+          {
+            role: 'user',
+            content: [{ type: 'text', text: 'Continue.' }]
+          } as ModelMessage
+        ]
+        continue requestLoop
+      }
+
+      break requestLoop
     }
 
-    if (reasoningOpen) {
-      yield { type: 'reasoning-end' }
-    }
-
-    const sr = lastStopReason ?? 'end_turn'
     if (sr === 'end_turn' || sr === 'max_tokens') {
       yield {
         type: 'finish',
@@ -166,6 +235,8 @@ export async function* runNativeAnthropicAgentLoop(
       yield { type: 'error', error: new Error('Anthropic stop_reason tool_use but no tool blocks') }
       return
     }
+
+    const messagesForToolExec = prepare(working)
 
     const assistantContent: Array<TextPart | ToolCallPart> = []
     if (assistantText) {
@@ -227,7 +298,7 @@ export async function* runNativeAnthropicAgentLoop(
 
       const execOpts: ToolExecutionOptions = {
         toolCallId: c.id,
-        messages: stepMessages,
+        messages: messagesForToolExec,
         abortSignal,
         experimental_context: toolContext
       }

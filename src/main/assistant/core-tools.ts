@@ -15,6 +15,11 @@ import { updateMemoryTool } from '../tools/update-memory.tool'
 import { todoWriteTool } from '../tools/todo-write.tool'
 import { getSkillDetailsTool } from '../tools/get-skill-details.tool'
 import { askUserTool } from '../tools/ask-user.tool'
+import { enterPlanModeTool } from '../tools/enter-plan-mode.tool'
+import { exitPlanModeTool } from '../tools/exit-plan-mode.tool'
+import { taskListTool } from '../tools/task-list.tool'
+import { taskGetTool } from '../tools/task-get.tool'
+import { taskStopTool } from '../tools/task-stop.tool'
 import type { CircleToolSet } from '../types/circle-tool-set'
 
 export function getCoreTools(): CircleToolSet {
@@ -31,6 +36,11 @@ export function getCoreTools(): CircleToolSet {
     update_memory: updateMemoryTool,
     todo_write: todoWriteTool,
     get_skill_details: getSkillDetailsTool,
-    ask_user: askUserTool
+    ask_user: askUserTool,
+    enter_plan_mode: enterPlanModeTool,
+    exit_plan_mode: exitPlanModeTool,
+    task_list: taskListTool,
+    task_get: taskGetTool,
+    task_stop: taskStopTool
   }
 }

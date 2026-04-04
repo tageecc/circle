@@ -1,6 +1,6 @@
 /**
  * Structured harness events for debugging and production metrics (no PII in payloads).
- * Aligns with Claude Code-style observability: one JSON line per notable step.
+ * Provides detailed observability: one JSON line per notable step.
  */
 
 export function logHarnessEvent(

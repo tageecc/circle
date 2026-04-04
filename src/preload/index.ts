@@ -144,9 +144,19 @@ const api = {
         questionId: string
         sessionId: string
         assistantMessageId: number
-        question: string
-        options?: string[]
-        allowFreeText: boolean
+        questions: Array<{
+          question: string
+          header: string
+          options: Array<{
+            label: string
+            description: string
+            preview?: string
+          }>
+          multiSelect: boolean
+        }>
+        metadata?: {
+          source?: string
+        }
       }) => void
     ) => {
       const listener = (
@@ -155,17 +165,32 @@ const api = {
           questionId: string
           sessionId: string
           assistantMessageId: number
-          question: string
-          options?: string[]
-          allowFreeText: boolean
+          questions: Array<{
+            question: string
+            header: string
+            options: Array<{
+              label: string
+              description: string
+              preview?: string
+            }>
+            multiSelect: boolean
+          }>
+          metadata?: {
+            source?: string
+          }
         }
       ) => callback(data)
       ipcRenderer.on('chat:user-question', listener)
       return () => ipcRenderer.removeListener('chat:user-question', listener)
     },
 
-    submitUserQuestionAnswer: (questionId: string, answer: string) =>
-      ipcRenderer.invoke('chat:user-question:answer', { questionId, answer }),
+    submitUserQuestionAnswer: (
+      questionId: string,
+      result:
+        | { type: 'answered'; answers: Record<string, string>; annotations?: Record<string, any> }
+        | { type: 'skipped' }
+        | { type: 'rejected'; feedback: string }
+    ) => ipcRenderer.invoke('chat:user-question:answer', { questionId, result }),
 
     /** Phase F: resolve large tool payloads stored by ref in main process */
     getStreamPayload: (ref: string) =>
@@ -938,6 +963,16 @@ const api = {
       ipcRenderer.on('update-error', (_event, error) => callback(error))
       return () => ipcRenderer.removeAllListeners('update-error')
     }
+  },
+
+  // Generic IPC methods (for Plan Mode and other custom events)
+  invoke: (channel: string, ...args: any[]) => ipcRenderer.invoke(channel, ...args),
+  on: (channel: string, callback: (...args: any[]) => void) => {
+    const subscription = (_event: any, ...args: any[]) => callback(...args)
+    ipcRenderer.on(channel, subscription)
+  },
+  off: (channel: string, callback: (...args: any[]) => void) => {
+    ipcRenderer.removeListener(channel, callback as any)
   }
 }
 

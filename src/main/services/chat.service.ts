@@ -47,12 +47,10 @@ type ChatAgentStreamPart = NativeAgentStreamPart
 export class ChatService {
   private contextEnrichmentService = ContextEnrichmentService.getInstance()
   private configService: ConfigService
-  private sessionService: SessionService
   private snapshotService = MessageSnapshotService.getInstance()
 
   constructor(configService: ConfigService) {
     this.configService = configService
-    this.sessionService = new SessionService()
   }
 
   async *streamChat(options: {
@@ -85,9 +83,9 @@ export class ChatService {
       if (textContent) {
         content.push({ type: 'text', text: textContent })
       }
-      await this.sessionService
-        .updateMessage(assistantMessageId, { content, metadata })
-        .catch((err) => console.error('[ChatService] Save failed:', err))
+      await SessionService.updateMessage(assistantMessageId, { content, metadata }).catch((err) =>
+        console.error('[ChatService] Save failed:', err)
+      )
     }
 
     // 辅助函数：关闭流状态
@@ -115,7 +113,7 @@ export class ChatService {
       const modelId = this.configService.getDefaultModel()
       console.log(`[ChatService] Using model: ${modelId}`)
 
-      const session = await this.sessionService.getSession(sessionId)
+      const session = await SessionService.getSession(sessionId)
       const totalUsage = (session?.metadata?.totalUsage as any) || {
         inputTokens: 0,
         outputTokens: 0,
@@ -123,25 +121,25 @@ export class ChatService {
       }
 
       // 1. 先保存消息获取真实 ID
-      userMessageId = await this.sessionService.saveMessage(sessionId, {
+      userMessageId = await SessionService.saveMessage(sessionId, {
         role: 'user',
         content: message
       })
 
-      assistantMessageId = await this.sessionService.saveMessage(sessionId, {
+      assistantMessageId = await SessionService.saveMessage(sessionId, {
         role: 'assistant',
         content: []
       })
 
       // 2. 加载历史消息（排除刚保存的消息）
-      const historyMessages = await this.sessionService.getMessages(sessionId)
+      const historyMessages = await SessionService.getMessages(sessionId)
 
       // ✅ 检查并清理pending approval的tool-calls
       // 当用户发送新消息时，自动为所有pending的tool添加"cancelled"的tool-result
       await this.cleanupPendingToolCalls(sessionId, historyMessages)
 
       // 3. 重新加载消息（包含添加的tool-result）
-      const updatedHistoryMessages = await this.sessionService.getMessages(sessionId)
+      const updatedHistoryMessages = await SessionService.getMessages(sessionId)
 
       // 4. 构造 AI 上下文（排除刚保存的消息）
       const messages = updatedHistoryMessages
@@ -480,7 +478,7 @@ export class ChatService {
                 }
 
                 // ✅ 保存tool-result消息（AI SDK标准）
-                const toolMessageId = await this.sessionService.saveMessage(sessionId, {
+                const toolMessageId = await SessionService.saveMessage(sessionId, {
                   role: 'tool',
                   content: [toolResultPart]
                 })
@@ -601,7 +599,7 @@ export class ChatService {
                   }
                 }
 
-                const toolErrorMessageId = await this.sessionService.saveMessage(sessionId, {
+                const toolErrorMessageId = await SessionService.saveMessage(sessionId, {
                   role: 'tool',
                   content: [toolResultPart]
                 })
@@ -652,7 +650,7 @@ export class ChatService {
                       (totalUsage.reasoningTokens || 0) + part.totalUsage.reasoningTokens
                   }
 
-                  await this.sessionService.updateSessionMetadata(sessionId, {
+                  await SessionService.updateSessionMetadata(sessionId, {
                     lastUsage: part.totalUsage,
                     totalUsage,
                     mcpToolCatalogSignature: mcpSig
@@ -663,7 +661,7 @@ export class ChatService {
                     usage: part.totalUsage
                   })
                 } else {
-                  await this.sessionService.updateSessionMetadata(sessionId, {
+                  await SessionService.updateSessionMetadata(sessionId, {
                     mcpToolCatalogSignature: mcpSig
                   })
                 }
@@ -739,7 +737,7 @@ export class ChatService {
       })
 
       // 异步生成标题（不阻塞流完成）
-      this.sessionService.maybeGenerateTitle(sessionId).catch((error) => {
+      SessionService.maybeGenerateTitle(sessionId).catch((error) => {
         console.error('[ChatService] Failed to generate title:', error)
       })
     } catch (error) {
@@ -774,12 +772,15 @@ export class ChatService {
     let parsedContent = resultStr
     let isApplied = false
     let appliedAction: any
+    let isErrorResult = false
 
     try {
       const parsed = JSON.parse(resultStr)
 
-      // Applied file edit (Cursor 风格：已直接写入磁盘)
-      if (parsed.type === 'applied-file-edit') {
+      if (parsed.type === 'edit_file_failed' && toolName === 'edit_file') {
+        isErrorResult = true
+        parsedContent = `edit_file failed (${String(parsed.reason)}): ${parsed.message}${parsed.hint ? ` — ${parsed.hint}` : ''}`
+      } else if (parsed.type === 'applied-file-edit') {
         isApplied = true
         appliedAction = {
           type: 'file-edit',
@@ -830,7 +831,7 @@ export class ChatService {
       toolResult: {
         tool_call_id: toolCallId,
         content: parsedContent,
-        isError: false,
+        isError: isErrorResult,
         isApplied,
         appliedAction
       }
@@ -846,15 +847,16 @@ export class ChatService {
     toolCallId: string,
     approved: boolean
   ): Promise<void> {
-    await this.sessionService.updateToolApprovalStatus(messageId, toolCallId, {
+    await SessionService.updateToolApprovalStatus(messageId, toolCallId, {
       needsApproval: true,
       approvalStatus: approved ? 'approved' : 'rejected',
       state: approved ? 'running' : 'error'
     })
   }
 
-  getSessionService(): SessionService {
-    return this.sessionService
+  // Note: SessionService is now all static methods
+  getSessionService(): typeof SessionService {
+    return SessionService
   }
 
   cleanup(): void {
@@ -870,7 +872,7 @@ export class ChatService {
    * 用于用户停止流式响应时立即清理
    */
   async cleanupPendingTools(sessionId: string): Promise<void> {
-    const historyMessages = await this.sessionService.getMessages(sessionId)
+    const historyMessages = await SessionService.getMessages(sessionId)
     await this.cleanupPendingToolCalls(sessionId, historyMessages)
   }
 
@@ -937,7 +939,7 @@ export class ChatService {
         }
       }
 
-      await this.sessionService.saveMessage(sessionId, {
+      await SessionService.saveMessage(sessionId, {
         role: 'tool',
         content: [toolResultPart]
       })
@@ -945,7 +947,7 @@ export class ChatService {
       // 更新 approval 状态（如果有）
       const metadata = historyMessages.find((m) => m.id === messageId)?.metadata
       if (metadata?.toolStates?.[toolCallId]?.needsApproval) {
-        await this.sessionService.updateToolApprovalStatus(messageId, toolCallId, {
+        await SessionService.updateToolApprovalStatus(messageId, toolCallId, {
           needsApproval: false,
           approvalStatus: 'skipped'
         })

@@ -1,5 +1,5 @@
 /**
- * Agent session orchestration types (Claude Code queryLoop / queryTracking parity).
+ * Agent session orchestration types for query loop and tracking.
  */
 
 import { STREAM_CHUNK_PROTOCOL_VERSION } from '../types/stream'

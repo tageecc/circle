@@ -1,5 +1,6 @@
 import { ipcMain, BrowserWindow, dialog, shell, app } from 'electron'
 import { ChatService } from '../services/chat.service'
+import { SessionService } from '../services/session.service'
 import { FileService } from '../services/file.service'
 import { FileWatcherService } from '../services/file-watcher.service'
 import { GitWatcherService } from '../services/git-watcher.service'
@@ -10,6 +11,7 @@ import { TerminalService } from '../services/terminal.service'
 import { WindowService } from '../services/window.service'
 import { handleApprovalDecision } from '../tools/run-terminal-cmd.tool'
 import { resolveUserQuestionAnswer } from '../tools/ask-user.tool'
+import { resolvePlanApproval } from '../tools/exit-plan-mode.tool'
 import { RecentFilesService } from '../services/recent-files.service'
 import { BugReportService } from '../services/bug-report.service'
 import { MessageSnapshotService } from '../services/message-snapshot.service'
@@ -137,17 +139,25 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(
     'chat:user-question:answer',
-    async (_, payload: { questionId: string; answer: string }): Promise<void> => {
-      resolveUserQuestionAnswer(payload.questionId, payload.answer)
+    async (
+      _,
+      payload: {
+        questionId: string
+        result:
+          | { type: 'answered'; answers: Record<string, string>; annotations?: Record<string, any> }
+          | { type: 'skipped' }
+          | { type: 'rejected'; feedback: string }
+      }
+    ): Promise<void> => {
+      resolveUserQuestionAnswer(payload.questionId, payload.result)
     }
   )
 
-  // Session handlers (使用 SessionService)
-  const sessionService = chatService.getSessionService()
+  // Session handlers (使用 SessionService 静态方法)
 
   ipcMain.handle('sessions:create', async (_, modelId: string, projectPath: string) => {
     try {
-      return await sessionService.createSession(modelId, projectPath)
+      return await SessionService.createSession(modelId, projectPath)
     } catch (error) {
       console.error('Failed to create session:', error)
       throw error
@@ -156,7 +166,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('sessions:getByProject', async (_, projectPath: string) => {
     try {
-      return await sessionService.getProjectSessions(projectPath)
+      return await SessionService.getProjectSessions(projectPath)
     } catch (error) {
       console.error('Failed to get sessions:', error)
       throw error
@@ -165,7 +175,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('sessions:getWithMessages', async (_, sessionId: string) => {
     try {
-      return await sessionService.getSessionHistory(sessionId)
+      return await SessionService.getSessionHistory(sessionId)
     } catch (error) {
       console.error('Failed to get session:', error)
       throw error
@@ -176,7 +186,7 @@ export function registerIpcHandlers(): void {
     try {
       // 清理该会话的 pending edits
       chatService.onSessionDeleted(sessionId)
-      await sessionService.deleteSession(sessionId)
+      await SessionService.deleteSession(sessionId)
     } catch (error) {
       console.error('Failed to delete session:', error)
       throw error
@@ -187,7 +197,7 @@ export function registerIpcHandlers(): void {
     'sessions:deleteMessagesAfter',
     async (_, sessionId: string, messageId: number) => {
       try {
-        const deletedCount = await sessionService.deleteMessagesAfter(sessionId, messageId)
+        const deletedCount = await SessionService.deleteMessagesAfter(sessionId, messageId)
         return { success: true, deletedCount }
       } catch (error) {
         console.error('Failed to delete messages after:', error)
@@ -198,7 +208,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('sessions:update', async (_, sessionId: string, updates: { title?: string }) => {
     try {
-      await sessionService.updateSession(sessionId, updates)
+      await SessionService.updateSession(sessionId, updates)
     } catch (error) {
       console.error('Failed to update session:', error)
       throw error
@@ -208,7 +218,7 @@ export function registerIpcHandlers(): void {
   // Todo handlers
   ipcMain.handle('todo:get', async (_, sessionId: string) => {
     try {
-      const session = await sessionService.getSession(sessionId)
+      const session = await SessionService.getSession(sessionId)
       if (!session) {
         return []
       }
@@ -1594,8 +1604,8 @@ export function registerIpcHandlers(): void {
         const window = BrowserWindow.fromWebContents(event.sender)
 
         // 创建新的 session，使用默认模型
-        const defaultModelId = 'Alibaba (China)/qwen-plus'
-        const sessionId = await sessionService.createSession(defaultModelId, projectPath)
+        const defaultModelId = 'Alibaba (China)/qwen3.6-plus-2026-04-02'
+        const sessionId = await SessionService.createSession(defaultModelId, projectPath)
 
         const stream = chatService.streamChat({
           sessionId,
@@ -2321,6 +2331,20 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('system:getLocale', async () => {
     return app.getLocale()
   })
+
+  // Plan Mode: Resolve plan approval
+  ipcMain.handle(
+    'plan:resolve-approval',
+    async (
+      _,
+      payload: {
+        approvalId: string
+        result: { type: 'approved'; feedback?: string } | { type: 'rejected'; feedback: string }
+      }
+    ): Promise<void> => {
+      resolvePlanApproval(payload.approvalId, payload.result)
+    }
+  )
 
   console.log('✅ IPC handlers registered')
 }

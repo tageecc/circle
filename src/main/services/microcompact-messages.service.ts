@@ -1,5 +1,5 @@
 /**
- * Micro-compact old tool results (Claude Code microCompact parity — in-process projection).
+ * Micro-compact old tool results to preserve more conversation history.
  * Replaces bulky tool-result text in messages *older than the tail window* so prune drops less history.
  */
 
@@ -19,7 +19,8 @@ const MICROCOMPACT_TOOL_NAMES = new Set([
   'get_skill_details'
 ])
 
-const PLACEHOLDER = '[Earlier tool output omitted for context — call the tool again if you need it.]'
+const PLACEHOLDER =
+  '[Earlier tool output omitted for context — call the tool again if you need it.]'
 
 function compactToolMessageContent(content: unknown): { content: unknown; changed: boolean } {
   if (!Array.isArray(content)) return { content, changed: false }

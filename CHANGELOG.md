@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.7] - 2026-04-03
+
+### Added
+
+- Plan mode with user approval; subagent delegation, task registry, and related chat UI
+- Ignore Apple signing material in `.gitignore` (`*.p12`, `/*.cer`)
+
+### Removed
+
+- `claude-code-best` git submodule reference; obsolete docs under `docs/`
+
+### Changed
+
+- Native agent loops, tools, IPC, and settings/models UI updates for delegation and planning
+
+## [1.0.6]
+
 ### Added
 
 - Open-source governance: `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `SUPPORT.md`

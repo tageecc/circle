@@ -2,7 +2,7 @@ import { defineTool } from './define-tool'
 import { z } from 'zod'
 import { glob as globFunc } from 'glob'
 import { promises as fs } from 'fs'
-import { resolveFilePath } from './utils'
+import { getCurrentProjectDir, resolveFilePath } from './utils'
 
 const inputSchema = z.object({
   glob_pattern: z
@@ -14,7 +14,7 @@ const inputSchema = z.object({
     .string()
     .optional()
     .describe(
-      'Path to directory to search for files in. If not provided, defaults to Cursor workspace roots.'
+      'Directory to search under. If omitted, uses the open project root (same as other file tools).'
     )
 })
 
@@ -157,12 +157,12 @@ glob_file_search("*.config.*") // Find all config files
   inputSchema,
   execute: async ({ glob_pattern, target_directory }) => {
     try {
-      const cwd = target_directory ? resolveFilePath(target_directory) : process.cwd()
+      const cwd = target_directory ? resolveFilePath(target_directory) : getCurrentProjectDir()
 
       const files = await globFunc(glob_pattern, {
         cwd,
         ignore: ['**/node_modules/**', '**/.git/**', '**/dist/**', '**/build/**'],
-        nodir: false
+        nodir: true
       })
 
       if (files.length === 0) {

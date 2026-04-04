@@ -19,6 +19,8 @@ import { toolsToGeminiDeclarations } from './gemini-tools'
 import { stripReasoningFromModelMessages } from './strip-reasoning-messages'
 import type { NativeAgentStreamPart } from './native-agent-stream-parts'
 import { toolOutputToResultPart } from './tool-output-part'
+import { AGENT_HARNESS } from '../../constants/service.constants'
+import { lastPreparedMessageRole } from './model-message-helpers'
 
 export type NativeGoogleLoopOptions = {
   apiKey: string
@@ -65,37 +67,103 @@ export async function* runNativeGoogleAgentLoop(
   while (round < maxSteps) {
     round += 1
     yield { type: 'start-step', request: {} }
-    const stepMessages = prepare(working)
-    const contents = modelMessagesToGeminiContents(stepMessages)
 
-    const { stream, response } = await model.generateContentStream(
-      {
-        contents,
-        generationConfig: { temperature }
-      },
-      abortSignal ? { signal: abortSignal } : undefined
-    )
-
-    let prevLen = 0
+    let lengthRecoveries = 0
+    let softNudgesThisRound = 0
+    let calls: Array<{ name: string; args?: Record<string, unknown> }> = []
     let assistantText = ''
-    for await (const chunk of stream) {
-      const full = chunk.text()
-      const delta = full.slice(prevLen)
-      prevLen = full.length
-      assistantText = full
-      if (delta) {
-        yield { type: 'text-delta', text: delta }
+
+    requestLoop: while (true) {
+      assistantText = ''
+
+      const stepMessages = prepare(working)
+      const contents = modelMessagesToGeminiContents(stepMessages)
+
+      const { stream, response } = await model.generateContentStream(
+        {
+          contents,
+          generationConfig: {
+            temperature,
+            maxOutputTokens: 8192
+          }
+        },
+        abortSignal ? { signal: abortSignal } : undefined
+      )
+
+      let prevLen = 0
+      for await (const chunk of stream) {
+        const full = chunk.text()
+        const delta = full.slice(prevLen)
+        prevLen = full.length
+        assistantText = full
+        if (delta) {
+          yield { type: 'text-delta', text: delta }
+        }
       }
+
+      const final = await response
+      const usage = final.usageMetadata
+      if (usage) {
+        cumulativeIn += usage.promptTokenCount ?? 0
+        cumulativeOut += usage.candidatesTokenCount ?? 0
+      }
+
+      calls = (final.functionCalls?.() ?? []) as Array<{
+        name: string
+        args?: Record<string, unknown>
+      }>
+
+      const finishReason = (final as { candidates?: Array<{ finishReason?: string }> })
+        .candidates?.[0]?.finishReason
+
+      if (finishReason === 'MAX_TOKENS') {
+        if (lengthRecoveries >= AGENT_HARNESS.MAX_OUTPUT_LENGTH_RECOVERIES) {
+          break requestLoop
+        }
+        lengthRecoveries += 1
+        if (assistantText) {
+          working = [
+            ...working,
+            {
+              role: 'assistant',
+              content: [{ type: 'text', text: assistantText }]
+            } as ModelMessage
+          ]
+        }
+        working = [
+          ...working,
+          {
+            role: 'user',
+            content: [{ type: 'text', text: 'Continue.' }]
+          } as ModelMessage
+        ]
+        continue requestLoop
+      }
+
+      if (
+        calls.length === 0 &&
+        assistantText.length > 0 &&
+        lastPreparedMessageRole(stepMessages) === 'tool' &&
+        softNudgesThisRound < AGENT_HARNESS.POST_TOOL_SOFT_NUDGE_MAX_PER_ROUND
+      ) {
+        softNudgesThisRound += 1
+        working = [
+          ...working,
+          {
+            role: 'assistant',
+            content: [{ type: 'text', text: assistantText }]
+          } as ModelMessage,
+          {
+            role: 'user',
+            content: [{ type: 'text', text: 'Continue.' }]
+          } as ModelMessage
+        ]
+        continue requestLoop
+      }
+
+      break requestLoop
     }
 
-    const final = await response
-    const usage = final.usageMetadata
-    if (usage) {
-      cumulativeIn += usage.promptTokenCount ?? 0
-      cumulativeOut += usage.candidatesTokenCount ?? 0
-    }
-
-    const calls = final.functionCalls?.() ?? []
     if (!calls.length) {
       yield {
         type: 'finish',
@@ -115,6 +183,8 @@ export async function* runNativeGoogleAgentLoop(
       name: fc.name,
       input: (fc.args as Record<string, unknown>) ?? {}
     }))
+
+    const messagesForToolExec = prepare(working)
 
     const assistantContent: Array<TextPart | ToolCallPart> = []
     if (assistantText) {
@@ -176,7 +246,7 @@ export async function* runNativeGoogleAgentLoop(
 
       const execOpts: ToolExecutionOptions = {
         toolCallId: c.id,
-        messages: stepMessages,
+        messages: messagesForToolExec,
         abortSignal: options.abortSignal,
         experimental_context: toolContext
       }

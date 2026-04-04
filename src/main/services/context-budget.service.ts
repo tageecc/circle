@@ -1,5 +1,5 @@
 /**
- * Context window budgeting — inspired by Claude Code's compaction mindset:
+ * Context window budgeting with smart compaction strategy:
  * keep the latest user turn reliable, drop oldest history first, soften huge tool payloads.
  */
 
@@ -37,10 +37,7 @@ export function computeMessagesTokenBudget(params: {
   systemPrompt: string
 }): number {
   const { maxInputTokens, reserveOutputTokens, systemPrompt } = params
-  return Math.max(
-    8_000,
-    maxInputTokens - reserveOutputTokens - estimateTokens(systemPrompt)
-  )
+  return Math.max(8_000, maxInputTokens - reserveOutputTokens - estimateTokens(systemPrompt))
 }
 
 function truncationSuffix(removedChars: number): string {
@@ -52,6 +49,7 @@ export function getDefaultMaxInputTokensForModel(modelId: string): number {
   const lower = modelId.toLowerCase()
   if (lower.includes('anthropic') || lower.includes('claude')) return 190_000
   if (lower.includes('gemini') || lower.includes('google')) return 900_000
+  if (lower.includes('gpt-5')) return 900_000
   if (lower.includes('gpt-4') || lower.includes('openai')) return 120_000
   if (lower.includes('qwen') || lower.includes('deepseek')) return 120_000
   return AGENT_HARNESS.DEFAULT_MAX_INPUT_TOKENS
@@ -108,7 +106,7 @@ export function softTruncateToolResultsInMessages(
 const TEXT_LIKE_PART_TYPES = new Set(['text', 'reasoning'])
 
 /**
- * Cap huge pasted code or assistant text blobs (CC-style: tool results are not the only risk).
+ * Cap huge pasted code or assistant text blobs (tool results are not the only risk).
  */
 export function softTruncateLongTextInMessages(
   messages: CoreLikeMessage[],
@@ -181,7 +179,7 @@ export function pruneMessagesForBudget(params: {
     })
   }
 
-  // 1) Soften huge tool payloads first (CC-style: tool budget before dropping turns)
+  // 1) Soften huge tool payloads first (tool budget before dropping turns)
   const firstPass = softTruncateToolResultsInMessages(
     messages,
     AGENT_HARNESS.MAX_TOOL_RESULT_CHARS_IN_CONTEXT

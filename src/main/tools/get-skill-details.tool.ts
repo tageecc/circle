@@ -1,3 +1,4 @@
+import type { ToolCallOptions } from '@ai-sdk/provider-utils'
 import { defineTool } from './define-tool'
 import { z } from 'zod'
 import { SkillsService } from '../services/skills.service'
@@ -21,32 +22,32 @@ export const getSkillDetailsTool = defineTool({
 
   inputSchema,
 
-  execute: async ({ skill_name }, options) => {
+  execute: async ({ skill_name }, options: ToolCallOptions) => {
     try {
       const { workspaceRoot } = getToolContext(options)
       const skillsService = SkillsService.getInstance()
       const skill = await skillsService.getSkillByName(skill_name, workspaceRoot || undefined)
 
       if (!skill) {
-        return {
+        return JSON.stringify({
           success: false,
           error: `Skill "${skill_name}" not found. Check the available skills list in the system prompt and ensure the name matches exactly (case-sensitive).`
-        }
+        })
       }
 
-      return {
+      return JSON.stringify({
         success: true,
         skill: {
           name: skill.metadata.name,
           instructions: skill.instructions
         }
-      }
+      })
     } catch (error) {
       console.error('[GetSkillDetails] Error:', error)
-      return {
+      return JSON.stringify({
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred'
-      }
+      })
     }
   }
 })

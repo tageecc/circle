@@ -6,6 +6,9 @@ import { ChatHeader } from './chat-header'
 import { ChatMessages } from './chat-messages'
 import { MessageQueue } from './message-queue'
 import { UserQuestionDialog } from './user-question-dialog'
+import { PlanModeIndicator } from './plan-mode-indicator'
+import { ExitPlanApprovalDialog } from './exit-plan-approval-dialog'
+import { DelegateTaskCard } from './delegate-task-card'
 import { useChatMessages } from '@/hooks/use-chat-messages'
 import type { PendingFileEdit } from '@/types/ide'
 import { useChatSession } from '@/hooks/use-chat-session'
@@ -53,6 +56,45 @@ export function ChatSidebar({
   const [selectedProvider, setSelectedProvider] = useState('')
   const [selectedModel, setSelectedModel] = useState('')
 
+  // Plan Mode state
+  const [planModeState, setPlanModeState] = useState<
+    Record<string, { mode: 'default' | 'plan'; planFilePath?: string }>
+  >({})
+  const [pendingPlanApproval, setPendingPlanApproval] = useState<{
+    approvalId: string
+    planContent: string
+    planFilePath: string
+  } | null>(null)
+
+  // Delegate Task state - using SubAgentTask type from backend
+  type DelegateTaskState = Omit<
+    {
+      id: string
+      description: string
+      subagentType?: string
+      subagentName?: string
+      icon?: string
+      color?: string
+      status: 'pending' | 'running' | 'completed' | 'failed'
+      createdAt: number
+      startedAt?: number
+      completedAt?: number
+      progress: {
+        filesExplored: number
+        searches: number
+        edits: number
+        toolCalls: number
+      }
+      currentOperation?: string
+      result?: string
+      error?: string
+      durationMs?: number
+    },
+    never
+  >
+
+  const [delegateTasks, setDelegateTasks] = useState<Record<string, DelegateTaskState>>({})
+
   // 会话管理
   const {
     sessions,
@@ -68,9 +110,9 @@ export function ChatSidebar({
 
   const maxTokens = useMemo(() => {
     if (!selectedModel) return undefined
-    const modelInfo = getModelInfo(selectedModel)
+    const modelInfo = getModelInfo(selectedModel, selectedProvider)
     return modelInfo?.contextWindow
-  }, [selectedModel])
+  }, [selectedModel, selectedProvider])
 
   const usageData = useMemo(() => {
     const { lastUsage, totalUsage } = currentSession?.metadata || {}
@@ -81,8 +123,14 @@ export function ChatSidebar({
   }, [currentSession])
 
   // 消息处理
-  const { isStreaming, sendMessage, stopStreaming, onApprovalDecision, userQuestion, submitUserQuestionAnswer } =
-    useChatMessages(currentSessionId, markSessionAsLoaded)
+  const {
+    isStreaming,
+    sendMessage,
+    stopStreaming,
+    onApprovalDecision,
+    userQuestion,
+    submitUserQuestionAnswer
+  } = useChatMessages(currentSessionId, markSessionAsLoaded)
 
   // 消息队列处理标志
   const isProcessingQueue = useRef(false)
@@ -206,9 +254,193 @@ export function ChatSidebar({
     )
   }
 
+  // Listen for Plan Mode and Delegate Task events
+  useEffect(() => {
+    const handleModeChanged = (data: {
+      sessionId: string
+      mode: 'default' | 'plan'
+      planFilePath: string | null
+    }) => {
+      setPlanModeState((prev) => ({
+        ...prev,
+        [data.sessionId]: {
+          mode: data.mode,
+          planFilePath: data.planFilePath || undefined
+        }
+      }))
+    }
+
+    const handlePlanApprovalRequired = (data: {
+      approvalId: string
+      sessionId: string
+      assistantMessageId: number
+      planContent: string
+      planFilePath: string
+    }) => {
+      setPendingPlanApproval({
+        approvalId: data.approvalId,
+        planContent: data.planContent,
+        planFilePath: data.planFilePath
+      })
+    }
+
+    window.api.on('session:mode-changed', handleModeChanged)
+    window.api.on('plan:approval-required', handlePlanApprovalRequired)
+
+    // Delegate task event handlers
+    const handleDelegateStart = (data: {
+      taskId: string
+      sessionId: string
+      description: string
+      subagentType: string
+      subagentName: string
+      icon: string
+      color: string
+    }) => {
+      setDelegateTasks((prev) => ({
+        ...prev,
+        [data.taskId]: {
+          id: data.taskId,
+          description: data.description,
+          subagentType: data.subagentType,
+          subagentName: data.subagentName,
+          icon: data.icon,
+          color: data.color,
+          status: 'running',
+          createdAt: Date.now(),
+          startedAt: Date.now(),
+          progress: {
+            filesExplored: 0,
+            searches: 0,
+            edits: 0,
+            toolCalls: 0
+          }
+        }
+      }))
+    }
+
+    const handleDelegateProgress = (data: {
+      taskId: string
+      sessionId: string
+      filesExplored: number
+      searches: number
+      edits: number
+      toolCalls: number
+      currentOperation?: string
+    }) => {
+      setDelegateTasks((prev) => {
+        const task = prev[data.taskId]
+        if (!task) return prev
+        return {
+          ...prev,
+          [data.taskId]: {
+            ...task,
+            progress: {
+              filesExplored: data.filesExplored,
+              searches: data.searches,
+              edits: data.edits,
+              toolCalls: data.toolCalls
+            },
+            currentOperation: data.currentOperation
+          }
+        }
+      })
+    }
+
+    const handleDelegateComplete = (data: {
+      taskId: string
+      sessionId: string
+      result?: string
+      error?: string
+      durationMs: number
+      progress?: {
+        filesExplored: number
+        searches: number
+        edits: number
+        toolCalls: number
+      }
+    }) => {
+      setDelegateTasks((prev) => {
+        const task = prev[data.taskId]
+        if (!task) return prev
+        return {
+          ...prev,
+          [data.taskId]: {
+            ...task,
+            status: data.error ? 'failed' : 'completed',
+            completedAt: Date.now(),
+            durationMs: data.durationMs,
+            result: data.result,
+            error: data.error,
+            progress: data.progress || task.progress
+          }
+        }
+      })
+    }
+
+    const cleanupDelegateStart = window.api.onDelegateStart(handleDelegateStart)
+    const cleanupDelegateProgress = window.api.onDelegateProgress(handleDelegateProgress)
+    const cleanupDelegateComplete = window.api.onDelegateComplete(handleDelegateComplete)
+
+    return () => {
+      window.api.off('session:mode-changed', handleModeChanged)
+      window.api.off('plan:approval-required', handlePlanApprovalRequired)
+      cleanupDelegateStart()
+      cleanupDelegateProgress()
+      cleanupDelegateComplete()
+    }
+  }, [])
+
+  // Get current session Plan Mode state
+  const currentPlanMode = currentSessionId ? planModeState[currentSessionId] : undefined
+  const isInPlanMode = currentPlanMode?.mode === 'plan'
+  const currentPlanFilePath = currentPlanMode?.planFilePath
+
+  // Get delegate tasks for current session
+  const currentSessionDelegateTasks = Object.values(delegateTasks).filter(
+    (task) => currentSessionId && task.id.startsWith(currentSessionId.slice(0, 8))
+  )
+
   return (
     <div className="flex h-full w-full flex-col border-l border-sidebar-border/50 bg-sidebar">
-      <UserQuestionDialog payload={userQuestion} onSubmit={submitUserQuestionAnswer} />
+      {/* Plan Mode Indicator */}
+      {isInPlanMode && currentPlanFilePath && (
+        <PlanModeIndicator planFilePath={currentPlanFilePath} />
+      )}
+
+      {/* Delegate Task Progress Cards */}
+      {currentSessionDelegateTasks.length > 0 && (
+        <div className="px-4 py-2 space-y-2 border-b border-border/50 bg-muted/30">
+          {currentSessionDelegateTasks.map((task) => (
+            <DelegateTaskCard key={task.id} task={task} />
+          ))}
+        </div>
+      )}
+
+      {/* User Question Dialog */}
+      {userQuestion && (
+        <UserQuestionDialog
+          questionId={userQuestion.questionId}
+          sessionId={userQuestion.sessionId}
+          questions={userQuestion.questions}
+          metadata={userQuestion.metadata}
+          isInPlanMode={userQuestion.isInPlanMode}
+          onSubmit={submitUserQuestionAnswer}
+          onClose={() => {
+            submitUserQuestionAnswer({ type: 'skipped' })
+          }}
+        />
+      )}
+
+      {/* Plan Approval Dialog */}
+      {pendingPlanApproval && (
+        <ExitPlanApprovalDialog
+          approvalId={pendingPlanApproval.approvalId}
+          planContent={pendingPlanApproval.planContent}
+          planFilePath={pendingPlanApproval.planFilePath}
+          onClose={() => setPendingPlanApproval(null)}
+        />
+      )}
 
       {/* Header with Session Tabs */}
       <ChatHeader

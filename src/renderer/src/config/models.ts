@@ -20,15 +20,30 @@ export const PROVIDER_MODELS: Record<string, ProviderConfig> = {
     nameKey: 'models.providers.alibaba_china',
     models: [
       {
-        id: 'qwen-plus',
-        name: 'Qwen Plus',
+        id: 'qwen3.6-plus-2026-04-02',
+        name: 'Qwen3.6 Plus (2026-04-02)',
         descriptionKey: 'models.descriptions.qwen_plus',
         contextWindow: '1M',
-        capabilityKeys: ['models.caps.text_generation', 'models.caps.code', 'models.caps.reasoning']
+        capabilityKeys: [
+          'models.caps.complex_reasoning',
+          'models.caps.code',
+          'models.caps.long_context'
+        ]
       },
       {
-        id: 'qwen-max',
-        name: 'Qwen Max',
+        id: 'qwen3.6-plus',
+        name: 'Qwen3.6 Plus',
+        descriptionKey: 'models.descriptions.qwen_plus',
+        contextWindow: '1M',
+        capabilityKeys: [
+          'models.caps.complex_reasoning',
+          'models.caps.code',
+          'models.caps.long_context'
+        ]
+      },
+      {
+        id: 'qwen3-max',
+        name: 'Qwen3 Max',
         descriptionKey: 'models.descriptions.qwen_max',
         contextWindow: '256K',
         capabilityKeys: [
@@ -38,8 +53,22 @@ export const PROVIDER_MODELS: Record<string, ProviderConfig> = {
         ]
       },
       {
-        id: 'qwen-turbo',
-        name: 'Qwen Turbo',
+        id: 'qwen3.5-plus',
+        name: 'Qwen3.5 Plus',
+        descriptionKey: 'models.descriptions.qwen_plus',
+        contextWindow: '1M',
+        capabilityKeys: ['models.caps.text_generation', 'models.caps.code', 'models.caps.reasoning']
+      },
+      {
+        id: 'qwen-plus',
+        name: 'Qwen Plus',
+        descriptionKey: 'models.descriptions.qwen_plus',
+        contextWindow: '1M',
+        capabilityKeys: ['models.caps.text_generation', 'models.caps.code', 'models.caps.reasoning']
+      },
+      {
+        id: 'qwen-flash',
+        name: 'Qwen Flash',
         descriptionKey: 'models.descriptions.qwen_turbo',
         contextWindow: '1M',
         capabilityKeys: ['models.caps.fast_response', 'models.caps.daily_tasks']
@@ -55,7 +84,7 @@ export const PROVIDER_MODELS: Record<string, ProviderConfig> = {
         id: 'deepseek-r1',
         name: 'DeepSeek R1',
         descriptionKey: 'models.descriptions.deepseek_r1',
-        contextWindow: '128K',
+        contextWindow: '64K',
         capabilityKeys: ['models.caps.reasoning', 'models.caps.math', 'models.caps.code']
       }
     ]
@@ -63,6 +92,13 @@ export const PROVIDER_MODELS: Record<string, ProviderConfig> = {
   OpenAI: {
     nameKey: 'models.providers.openai',
     models: [
+      {
+        id: 'gpt-5.4',
+        name: 'GPT-5.4',
+        descriptionKey: 'models.descriptions.gpt_4o',
+        contextWindow: '1M',
+        capabilityKeys: ['models.caps.vision', 'models.caps.code', 'models.caps.reasoning']
+      },
       {
         id: 'gpt-4o',
         name: 'GPT-4o',
@@ -86,20 +122,13 @@ export const PROVIDER_MODELS: Record<string, ProviderConfig> = {
         id: 'o1',
         name: 'O1',
         descriptionKey: 'models.descriptions.o1',
-        contextWindow: '128K',
+        contextWindow: '200K',
         capabilityKeys: [
           'models.caps.deep_reasoning',
           'models.caps.science',
           'models.caps.math',
           'models.caps.programming'
         ]
-      },
-      {
-        id: 'o1-mini',
-        name: 'O1 Mini',
-        descriptionKey: 'models.descriptions.o1_mini',
-        contextWindow: '128K',
-        capabilityKeys: ['models.caps.reasoning', 'models.caps.code', 'models.caps.math']
       }
     ]
   },
@@ -107,10 +136,10 @@ export const PROVIDER_MODELS: Record<string, ProviderConfig> = {
     nameKey: 'models.providers.anthropic',
     models: [
       {
-        id: 'claude-3-5-sonnet-20241022',
-        name: 'Claude 3.5 Sonnet',
-        descriptionKey: 'models.descriptions.claude_35_sonnet',
-        contextWindow: '200K',
+        id: 'claude-opus-4-6',
+        name: 'Claude Opus 4.6',
+        descriptionKey: 'models.descriptions.claude_3_opus',
+        contextWindow: '1M',
         capabilityKeys: [
           'models.caps.complex_reasoning',
           'models.caps.code',
@@ -119,22 +148,23 @@ export const PROVIDER_MODELS: Record<string, ProviderConfig> = {
         ]
       },
       {
-        id: 'claude-3-5-haiku-20241022',
-        name: 'Claude 3.5 Haiku',
+        id: 'claude-sonnet-4-6',
+        name: 'Claude Sonnet 4.6',
+        descriptionKey: 'models.descriptions.claude_35_sonnet',
+        contextWindow: '1M',
+        capabilityKeys: [
+          'models.caps.complex_reasoning',
+          'models.caps.code',
+          'models.caps.long_context',
+          'models.caps.analysis'
+        ]
+      },
+      {
+        id: 'claude-haiku-4-5',
+        name: 'Claude Haiku 4.5',
         descriptionKey: 'models.descriptions.claude_35_haiku',
         contextWindow: '200K',
         capabilityKeys: ['models.caps.fast_response', 'models.caps.daily_tasks']
-      },
-      {
-        id: 'claude-3-opus-20240229',
-        name: 'Claude 3 Opus',
-        descriptionKey: 'models.descriptions.claude_3_opus',
-        contextWindow: '200K',
-        capabilityKeys: [
-          'models.caps.complex_tasks',
-          'models.caps.creative',
-          'models.caps.analysis'
-        ]
       }
     ]
   },
@@ -142,21 +172,10 @@ export const PROVIDER_MODELS: Record<string, ProviderConfig> = {
     nameKey: 'models.providers.google',
     models: [
       {
-        id: 'gemini-2.0-flash-exp',
-        name: 'Gemini 2.0 Flash',
+        id: 'gemini-3.1-pro-preview',
+        name: 'Gemini 3.1 Pro Preview',
         descriptionKey: 'models.descriptions.gemini_20_flash',
         contextWindow: '1M',
-        capabilityKeys: [
-          'models.caps.ultra_long_context',
-          'models.caps.multimodal',
-          'models.caps.fast_response'
-        ]
-      },
-      {
-        id: 'gemini-1.5-pro',
-        name: 'Gemini 1.5 Pro',
-        descriptionKey: 'models.descriptions.gemini_15_pro',
-        contextWindow: '2M',
         capabilityKeys: [
           'models.caps.ultra_long_context',
           'models.caps.multimodal',
@@ -164,8 +183,41 @@ export const PROVIDER_MODELS: Record<string, ProviderConfig> = {
         ]
       },
       {
-        id: 'gemini-1.5-flash',
-        name: 'Gemini 1.5 Flash',
+        id: 'gemini-3-flash-preview',
+        name: 'Gemini 3 Flash Preview',
+        descriptionKey: 'models.descriptions.gemini_15_flash',
+        contextWindow: '1M',
+        capabilityKeys: [
+          'models.caps.long_context',
+          'models.caps.multimodal',
+          'models.caps.fast_response'
+        ]
+      },
+      {
+        id: 'gemini-3.1-flash-lite-preview',
+        name: 'Gemini 3.1 Flash-Lite Preview',
+        descriptionKey: 'models.descriptions.gemini_15_flash',
+        contextWindow: '1M',
+        capabilityKeys: [
+          'models.caps.long_context',
+          'models.caps.multimodal',
+          'models.caps.fast_response'
+        ]
+      },
+      {
+        id: 'gemini-2.5-pro',
+        name: 'Gemini 2.5 Pro',
+        descriptionKey: 'models.descriptions.gemini_15_pro',
+        contextWindow: '1M',
+        capabilityKeys: [
+          'models.caps.ultra_long_context',
+          'models.caps.multimodal',
+          'models.caps.reasoning'
+        ]
+      },
+      {
+        id: 'gemini-2.5-flash',
+        name: 'Gemini 2.5 Flash',
         descriptionKey: 'models.descriptions.gemini_15_flash',
         contextWindow: '1M',
         capabilityKeys: [
