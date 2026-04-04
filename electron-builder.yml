@@ -17,6 +17,7 @@ asarUnpack:
   - resources/**
   - node_modules/sqlite-vec/**
   - '**/node_modules/@vscode/ripgrep/**'
+  - '**/node_modules/font-list/**'
 win:
   executableName: circle
 nsis:
@@ -26,20 +27,22 @@ nsis:
   createDesktopShortcut: always
 mac:
   hardenedRuntime: true
+  gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
   target:
     - target: dmg
       arch:
         - x64
         - arm64
-  entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
     - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
     - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
   # When APPLE_API_KEY* (or APPLE_ID + app password) and CSC_* are set in CI, notarization runs; otherwise skipped.
-  notarize: true
+  notarize: false
+afterSign: scripts/notarize.js
 protocols:
   - name: Circle URL Scheme
     schemes:
