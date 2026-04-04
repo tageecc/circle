@@ -1,42 +1,47 @@
 const { notarize } = require('@electron/notarize')
 const { execSync } = require('child_process')
 const path = require('path')
-const fs = require('fs')
 
 // Deep sign all binaries in the app bundle
-function deepSignBinaries(appPath) {
+function deepSignBinaries(appPath, identity) {
   console.log('Deep signing binaries in:', appPath)
+  console.log(`Using signing identity: ${identity}`)
 
-  // Find all Mach-O binaries
+  // Find all Mach-O binaries - use a more reliable method
   try {
-    const findCmd = `find "${appPath}" -type f \\( -perm +111 -o -name "*.dylib" -o -name "*.so" \\) -print0 | xargs -0 file | grep "Mach-O" | cut -d: -f1`
-    const binaries = execSync(findCmd, { encoding: 'utf-8' }).split('\n').filter(Boolean)
+    const findCmd = `find "${appPath}" -type f \\( -perm +111 -o -name "*.dylib" -o -name "*.so" -o -name "*.node" \\)`
+    let binaries = execSync(findCmd, { encoding: 'utf-8' }).split('\n').filter(Boolean)
 
-    console.log(`Found ${binaries.length} binaries to sign`)
+    // Filter to only Mach-O files
+    binaries = binaries.filter((binary) => {
+      try {
+        const fileType = execSync(`file "${binary}"`, { encoding: 'utf-8' })
+        return fileType.includes('Mach-O')
+      } catch {
+        return false
+      }
+    })
+
+    console.log(`Found ${binaries.length} Mach-O binaries to process`)
 
     // Sign each binary
     for (const binary of binaries) {
       try {
-        // Check if already signed
-        try {
-          execSync(`codesign --verify --verbose "${binary}"`, { stdio: 'pipe' })
-          console.log(`Already signed: ${path.basename(binary)}`)
-          continue
-        } catch {
-          // Not signed, proceed
-        }
-
         console.log(`Signing: ${path.basename(binary)}`)
         execSync(
-          `codesign --sign "${process.env.CSC_NAME || '-'}" --force --timestamp --options=runtime --deep "${binary}"`,
-          { stdio: 'inherit' }
+          `codesign --sign "${identity}" --force --timestamp --options=runtime "${binary}"`,
+          { stdio: 'pipe' }
         )
       } catch (err) {
-        console.warn(`Warning: Failed to sign ${binary}:`, err.message)
+        // Some binaries might already be properly signed or fail for other reasons
+        console.warn(`Note: ${path.basename(binary)}: ${err.message.split('\n')[0]}`)
       }
     }
+
+    console.log('Deep signing complete')
   } catch (err) {
     console.error('Deep signing failed:', err.message)
+    throw err
   }
 }
 
@@ -60,8 +65,28 @@ exports.default = async function (context) {
     return
   }
 
-  // Perform deep signing before notarization
-  deepSignBinaries(appPath)
+  // Get signing identity
+  const identity = process.env.CSC_NAME || process.env.CSC_IDENTITY
+  if (!identity) {
+    // Try to find Developer ID Application cert
+    try {
+      const identities = execSync('security find-identity -v -p codesigning', {
+        encoding: 'utf-8'
+      })
+      const match = identities.match(/Developer ID Application: ([^(]+)/)
+      if (match) {
+        const foundIdentity = match[0]
+        console.log(`Found identity: ${foundIdentity}`)
+        // Perform deep signing with found identity
+        deepSignBinaries(appPath, foundIdentity)
+      }
+    } catch (err) {
+      console.error('Could not find signing identity:', err.message)
+    }
+  } else {
+    // Perform deep signing before notarization
+    deepSignBinaries(appPath, identity)
+  }
 
   console.log('Starting notarization for:', appPath)
 

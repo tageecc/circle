@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.10] - 2026-04-04
+
+### Fixed
+
+- Fix afterSign script to properly find and use Developer ID certificate
+- Improve Mach-O binary detection and signing logic
+- Auto-discover signing identity from keychain when CSC_NAME not set
+
 ## [1.0.9] - 2026-04-04
 
 ### Fixed
