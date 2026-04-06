@@ -108,7 +108,7 @@
     "qwen-ai-provider-v5": "^2.1.0",
     "react-i18next": "^16.6.6",
     "react-markdown": "^10.1.0",
-    "react-resizable-panels": "^3.0.6",
+    "react-resizable-panels": "^4.9.0",
     "rehype-raw": "^7.0.0",
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
