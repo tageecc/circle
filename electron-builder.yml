@@ -6,7 +6,6 @@ publish:
   repo: circle
 directories:
   buildResources: build
-forceCodeSigning: true
 files:
   - '!**/.vscode/*'
   - '!src/*'
@@ -30,6 +29,7 @@ nsis:
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
 mac:
+  forceCodeSigning: true
   hardenedRuntime: true
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
