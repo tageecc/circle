@@ -20,9 +20,6 @@ import { AvatarService } from './services/avatar.service'
 import { MenuService } from './services/menu.service'
 import { autoUpdaterService } from './services/auto-updater.service'
 import { initMainI18n } from './i18n'
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const i18nextBackend = require('i18next-electron-fs-backend')
-import * as fs from 'fs'
 
 // 全局配置服务实例（在应用启动时初始化）
 let configService: ConfigService
@@ -130,9 +127,6 @@ function createWindow(): void {
   menuService = new MenuService(configService)
   menuService.createMenu()
 
-  // 初始化 i18n backend bindings
-  i18nextBackend.mainBindings(ipcMain, mainWindow, fs)
-
   // 初始化窗口状态管理器
   const windowStateManager = new WindowStateManager(mainWindow, configService)
   windowStateManager.initialize()
@@ -150,12 +144,12 @@ function createWindow(): void {
     autoUpdaterService.startAutoCheck(4)
 
     const currentProject = configService.getCurrentProject()
-      if (currentProject) {
-        console.log(`🎯 Auto-starting FileWatcher for current project: ${currentProject}`)
-        FileWatcherService.startWatching(currentProject, mainWindow)
+    if (currentProject) {
+      console.log(`🎯 Auto-starting FileWatcher for current project: ${currentProject}`)
+      FileWatcherService.startWatching(currentProject, mainWindow)
 
-        GitWatcherService.startWatching(currentProject, mainWindow.webContents.id)
-      }
+      GitWatcherService.startWatching(currentProject, mainWindow.webContents.id)
+    }
   }
 
   // ⭐ 监听全屏状态变化（macOS 优化：全屏时移除红绿灯预留空间）
