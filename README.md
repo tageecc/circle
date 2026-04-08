@@ -71,7 +71,7 @@ Visit [GitHub Releases](https://github.com/tageecc/circle/releases) to download 
 - **macOS**: `circle-{version}.dmg`
 - **Linux**: `circle-{version}.AppImage` / `.deb` / `.snap`
 
-> The first official release is coming soon. To experience the latest features, please refer to [Quick Start](#quick-start) below to build from source.
+Maintainers: push a `v*` tag to publish a release, or rerun the **Release** workflow with the same tag to refresh assets in place.
 
 ---
 
