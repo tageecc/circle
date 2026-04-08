@@ -20,11 +20,7 @@ import { getConfigService, rebuildApplicationMenu } from '../index'
 import { mainI18n, syncMainI18nFromConfig } from '../i18n'
 import { getDb } from '../database/db'
 import { getStreamPayload } from '../services/stream-payload-refs.service'
-import {
-  parsePatternList,
-  scoreQuickOpenCandidate,
-  walkProjectFiles
-} from '../utils/project-files'
+import { parsePatternList, scoreQuickOpenCandidate, walkProjectFiles } from '../utils/project-files'
 import { getSystemFonts } from '../utils/system-fonts'
 import * as fs from 'fs/promises'
 import * as nodePath from 'path'
@@ -1556,25 +1552,6 @@ export function registerIpcHandlers(): void {
     }
   })
 
-  // Debug handler - 用于调试配置
-  ipcMain.handle('config:debug', async () => {
-    try {
-      const config = configService.getConfig()
-      const dbPath = configService.getDatabasePath()
-      console.log('🔍 Debug Config Info:')
-      console.log('   Database:', dbPath)
-      console.log('   Current Project:', config.currentProject)
-      console.log('   Recent Projects:', config.recentProjects)
-      return {
-        path: dbPath,
-        config
-      }
-    } catch (error) {
-      console.error('Failed to debug config:', error)
-      throw error
-    }
-  })
-
   // AI project bootstrap (welcome flow)
   ipcMain.handle('project-create:selectProjectFolder', async (event) => {
     try {
@@ -1987,7 +1964,9 @@ export function registerIpcHandlers(): void {
       return new RegExp(pattern, caseSensitive ? 'g' : 'gi')
     } catch (error) {
       throw new Error(
-        error instanceof Error ? `Invalid search pattern: ${error.message}` : 'Invalid search pattern'
+        error instanceof Error
+          ? `Invalid search pattern: ${error.message}`
+          : 'Invalid search pattern'
       )
     }
   }
@@ -2070,7 +2049,9 @@ export function registerIpcHandlers(): void {
       throw error
     }
 
-    results.sort((a, b) => a.relativePath.localeCompare(b.relativePath, undefined, { numeric: true }))
+    results.sort((a, b) =>
+      a.relativePath.localeCompare(b.relativePath, undefined, { numeric: true })
+    )
     return results
   })
 

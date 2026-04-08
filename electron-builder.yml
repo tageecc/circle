@@ -6,6 +6,7 @@ publish:
   repo: circle
 directories:
   buildResources: build
+forceCodeSigning: true
 files:
   - '!**/.vscode/*'
   - '!src/*'

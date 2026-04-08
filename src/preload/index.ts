@@ -247,7 +247,6 @@ const api = {
     // Layout State APIs
     getLayoutState: () => ipcRenderer.invoke('config:getLayoutState'),
     setLayoutState: (layout: any) => ipcRenderer.invoke('config:setLayoutState', layout),
-    debug: () => ipcRenderer.invoke('config:debug'),
     // API Keys
     getApiKeys: () => ipcRenderer.invoke('config:getApiKeys'),
     getApiKey: (provider: string) => ipcRenderer.invoke('config:getApiKey', provider),
@@ -630,19 +629,12 @@ const api = {
     onApprovalRequired: (
       callback: (event: { toolCallId: string; command: string; is_background: boolean }) => void
     ) => {
-      console.log('[Preload] 🎧 Registering onApprovalRequired listener')
       const listener = (
         _: any,
         event: { toolCallId: string; command: string; is_background: boolean }
-      ) => {
-        console.log('[Preload] 📥 Received tool:approval-required:', event)
-        callback(event)
-      }
+      ) => callback(event)
       ipcRenderer.on('tool:approval-required', listener)
-      return () => {
-        console.log('[Preload] 🔇 Unregistering onApprovalRequired listener')
-        ipcRenderer.removeListener('tool:approval-required', listener)
-      }
+      return () => ipcRenderer.removeListener('tool:approval-required', listener)
     },
 
     // Tool 相关事件：terminal 创建（后台任务）

@@ -183,7 +183,6 @@ declare global {
           activeLeftTab?: 'explorer' | 'search' | 'changes' | 'history' | 'mcp' | 'skills'
           panelLayout?: { fileTreeSize?: number; chatPanelSize?: number }
         }) => Promise<void>
-        debug: () => Promise<{ path: string; config: any }>
         // API Keys
         getApiKeys: () => Promise<Record<string, string>>
         getApiKey: (provider: string) => Promise<string | undefined>
