@@ -42,6 +42,7 @@ export function useChatMessages(
   const sessions = useChatStore((state) => state.sessions)
   const setSessions = useChatStore((state) => state.setSessions)
   const addSession = useChatStore((state) => state.addSession)
+  const updateSession = useChatStore((state) => state.updateSession)
 
   const [isStreaming, setIsStreaming] = useState(false)
 
@@ -344,6 +345,16 @@ export function useChatMessages(
 
     // ✅ 更新 activeSessionId，确保后续流式响应更新到正确的 session
     setCurrentSessionId(sessionId)
+
+    const existingSession = sessions.find((session) => session.id === sessionId)
+    if (existingSession?.modelId !== modelId) {
+      try {
+        await window.api.sessions.update(sessionId, { modelId })
+        updateSession(sessionId, { modelId })
+      } catch (error) {
+        console.error('更新会话模型失败:', error)
+      }
+    }
 
     // 开始流式响应
     setIsStreaming(true)

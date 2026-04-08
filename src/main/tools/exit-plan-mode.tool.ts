@@ -148,7 +148,7 @@ Returns JSON with approval status and user feedback if provided.`,
         assistantMessageId: ctx.assistantMessageId,
         planContent,
         planFilePath: relativePath
-      })
+      }, ctx.senderWebContentsId ? { webContentsId: ctx.senderWebContentsId } : undefined)
 
       // Wait for user decision
       const result = await new Promise<PlanApprovalResult>((resolve) => {
@@ -170,7 +170,7 @@ Returns JSON with approval status and user feedback if provided.`,
           sessionId: ctx.sessionId,
           mode: 'default',
           planFilePath: null
-        })
+        }, ctx.senderWebContentsId ? { webContentsId: ctx.senderWebContentsId } : undefined)
 
         await SessionService.updateToolApprovalStatus(ctx.assistantMessageId, approvalId, {
           needsApproval: false,

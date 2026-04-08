@@ -63,6 +63,12 @@ function accumulateDelegateOutput(part: NativeAgentStreamPart, state: DelegateSt
   }
 }
 
+function getRendererTarget(ctx: ToolContext): { webContentsId: number } | undefined {
+  return typeof ctx.senderWebContentsId === 'number'
+    ? { webContentsId: ctx.senderWebContentsId }
+    : undefined
+}
+
 interface ExecuteDelegateParams {
   taskId: string
   task: string
@@ -110,6 +116,7 @@ async function executeDelegateTask(params: ExecuteDelegateParams): Promise<Deleg
 
   const systemPrompt = getSubagentSystemPrompt(subagentType)
   let lastProgressUpdate = 0
+  const rendererTarget = getRendererTarget(ctx)
 
   try {
     for await (const part of runNativeAgentLoop({
@@ -137,7 +144,7 @@ async function executeDelegateTask(params: ExecuteDelegateParams): Promise<Deleg
           edits: state.edits,
           toolCalls: state.toolCalls,
           currentOperation: part.toolName || undefined
-        })
+        }, rendererTarget)
 
         updateTaskRun(taskId, {
           progress: {
@@ -177,7 +184,7 @@ async function executeDelegateTask(params: ExecuteDelegateParams): Promise<Deleg
         edits: state.edits,
         toolCalls: state.toolCalls
       }
-    })
+    }, rendererTarget)
 
     if (isBackground) {
       sendToRenderer('system:notification', {
@@ -209,7 +216,7 @@ async function executeDelegateTask(params: ExecuteDelegateParams): Promise<Deleg
       sessionId: ctx.sessionId,
       error: errorMsg,
       durationMs
-    })
+    }, rendererTarget)
 
     if (isBackground) {
       sendToRenderer('system:notification', {
@@ -373,7 +380,7 @@ The JSON result includes \`steps_used\`, \`tool_calls\`, and a \`warning\` if th
       subagentName: subagentDef.name,
       icon: subagentDef.icon,
       color: subagentDef.color
-    })
+    }, getRendererTarget(ctx))
 
     const t0 = Date.now()
     try {

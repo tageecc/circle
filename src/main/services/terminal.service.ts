@@ -7,6 +7,7 @@ interface Terminal {
   ptyProcess: pty.IPty
   cwd: string
   outputBuffer: string // 输出缓冲区，用于 AI 查询
+  targetWebContentsId?: number
   onData?: (data: string) => void
   onExit?: (exitCode: number, signal?: number) => void
 }
@@ -21,31 +22,23 @@ export class TerminalService {
   private static nextTerminalId = 1
   private static readonly MAX_OUTPUT_BUFFER = 50000 // 最大缓冲 50KB
 
-  static createTerminal(cwd: string, callbacks?: TerminalCallbacks): string {
-    const terminalId = `terminal-${this.nextTerminalId++}`
-
-    const shell = process.env.SHELL || (os.platform() === 'win32' ? 'powershell.exe' : '/bin/bash')
-
-    const resolvedCwd = cwd || os.homedir()
-
-    const ptyProcess = pty.spawn(shell, [], {
-      name: 'xterm-256color',
-      cols: 80,
-      rows: 24,
-      cwd: resolvedCwd,
-      env: {
-        ...process.env,
-        TERM: 'xterm-256color',
-        COLORTERM: 'truecolor'
-      } as any
-    })
+  private static registerTerminal(
+    ptyProcess: pty.IPty,
+    cwd: string,
+    callbacks?: TerminalCallbacks,
+    targetWebContentsId?: number,
+    terminalId?: string
+  ): string {
+    const resolvedTerminalId = terminalId || `terminal-${this.nextTerminalId++}`
+    const rendererTarget =
+      typeof targetWebContentsId === 'number' ? { webContentsId: targetWebContentsId } : undefined
 
     ptyProcess.onData((data) => {
       // 发送到 terminal UI
-      sendToRenderer('terminal:data', { terminalId, data })
+      sendToRenderer('terminal:data', { terminalId: resolvedTerminalId, data }, rendererTarget)
 
       // 添加到输出缓冲区（用于 AI 查询）
-      const terminal = this.terminals.get(terminalId)
+      const terminal = this.terminals.get(resolvedTerminalId)
       if (terminal) {
         terminal.outputBuffer += data
         // 限制缓冲区大小（保留最后的内容）
@@ -58,27 +51,94 @@ export class TerminalService {
     })
 
     ptyProcess.onExit(({ exitCode, signal }) => {
-      sendToRenderer('terminal:exit', { terminalId, exitCode, signal })
+      sendToRenderer(
+        'terminal:exit',
+        { terminalId: resolvedTerminalId, exitCode, signal },
+        rendererTarget
+      )
 
       // 调用回调（由调用者决定如何处理）
-      const terminal = this.terminals.get(terminalId)
+      const terminal = this.terminals.get(resolvedTerminalId)
       terminal?.onExit?.(exitCode, signal)
 
-      this.terminals.delete(terminalId)
+      this.terminals.delete(resolvedTerminalId)
     })
 
-    this.terminals.set(terminalId, {
-      id: terminalId,
+    this.terminals.set(resolvedTerminalId, {
+      id: resolvedTerminalId,
       ptyProcess,
-      cwd: resolvedCwd,
-      outputBuffer: '', // 初始化输出缓冲区
+      cwd,
+      outputBuffer: '',
+      targetWebContentsId,
       onData: callbacks?.onData,
       onExit: callbacks?.onExit
     })
 
-    console.log(`✅ Terminal created: ${terminalId} at ${resolvedCwd}`)
+    console.log(`✅ Terminal created: ${resolvedTerminalId} at ${cwd}`)
 
-    return terminalId
+    return resolvedTerminalId
+  }
+
+  static createTerminal(
+    cwd: string,
+    callbacks?: TerminalCallbacks,
+    targetWebContentsId?: number,
+    terminalId?: string
+  ): string {
+    const shell = process.env.SHELL || (os.platform() === 'win32' ? 'powershell.exe' : '/bin/bash')
+    const resolvedCwd = cwd || os.homedir()
+    const ptyProcess = pty.spawn(shell, [], {
+      name: 'xterm-256color',
+      cols: 80,
+      rows: 24,
+      cwd: resolvedCwd,
+      env: {
+        ...process.env,
+        TERM: 'xterm-256color',
+        COLORTERM: 'truecolor'
+      } as any
+    })
+
+    return this.registerTerminal(
+      ptyProcess,
+      resolvedCwd,
+      callbacks,
+      targetWebContentsId,
+      terminalId
+    )
+  }
+
+  static createCommandTerminal(
+    command: string,
+    cwd: string,
+    callbacks?: TerminalCallbacks,
+    targetWebContentsId?: number,
+    terminalId?: string
+  ): string {
+    const shell = process.env.SHELL || (os.platform() === 'win32' ? 'powershell.exe' : '/bin/bash')
+    const resolvedCwd = cwd || os.homedir()
+    const shellArgs =
+      os.platform() === 'win32' ? ['-NoLogo', '-Command', command] : ['-lc', command]
+
+    const ptyProcess = pty.spawn(shell, shellArgs, {
+      name: 'xterm-256color',
+      cols: 80,
+      rows: 24,
+      cwd: resolvedCwd,
+      env: {
+        ...process.env,
+        TERM: 'xterm-256color',
+        COLORTERM: 'truecolor'
+      } as any
+    })
+
+    return this.registerTerminal(
+      ptyProcess,
+      resolvedCwd,
+      callbacks,
+      targetWebContentsId,
+      terminalId
+    )
   }
 
   static write(terminalId: string, data: string): boolean {

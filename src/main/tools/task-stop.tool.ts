@@ -61,7 +61,7 @@ export const taskStopTool = defineTool({
       sessionId: ctx.sessionId,
       error: 'Task stopped by user',
       durationMs: task.startedAt ? Date.now() - task.startedAt : 0
-    })
+    }, ctx.senderWebContentsId ? { webContentsId: ctx.senderWebContentsId } : undefined)
 
     return JSON.stringify({
       success: true,

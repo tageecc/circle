@@ -11,6 +11,7 @@ import * as path from 'path'
 import * as crypto from 'crypto'
 import { eq, and, sql, isNotNull } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
+import { normalizeRelativePath, walkProjectFiles } from '../utils/project-files'
 
 interface SearchResult {
   filePath: string
@@ -55,6 +56,7 @@ export class CodebaseIndexService {
     '.tsx',
     '.js',
     '.jsx',
+    '.json',
     '.py',
     '.java',
     '.cpp',
@@ -72,8 +74,29 @@ export class CodebaseIndexService {
     '.css',
     '.scss',
     '.md',
+    '.yml',
+    '.yaml',
+    '.toml',
     '.sql',
     '.sh'
+  ]
+
+  private readonly SUPPORTED_FILE_NAMES = [
+    '.dockerignore',
+    '.editorconfig',
+    '.env',
+    '.env.example',
+    '.gitignore',
+    '.npmrc',
+    '.nvmrc',
+    '.prettierrc',
+    '.tool-versions',
+    '.yarnrc',
+    'Dockerfile',
+    'Gemfile',
+    'Makefile',
+    'Podfile',
+    'Procfile'
   ]
 
   private readonly IGNORE_DIRS = [
@@ -95,6 +118,7 @@ export class CodebaseIndexService {
     '.tsx': 'typescript',
     '.js': 'javascript',
     '.jsx': 'javascript',
+    '.json': 'json',
     '.py': 'python',
     '.java': 'java',
     '.cpp': 'cpp',
@@ -112,8 +136,29 @@ export class CodebaseIndexService {
     '.css': 'css',
     '.scss': 'scss',
     '.md': 'markdown',
+    '.yml': 'yaml',
+    '.yaml': 'yaml',
+    '.toml': 'toml',
     '.sql': 'sql',
     '.sh': 'shell'
+  }
+
+  private readonly LANGUAGE_BY_FILE_NAME: Record<string, string> = {
+    '.dockerignore': 'plaintext',
+    '.editorconfig': 'ini',
+    '.env': 'dotenv',
+    '.env.example': 'dotenv',
+    '.gitignore': 'gitignore',
+    '.npmrc': 'ini',
+    '.nvmrc': 'plaintext',
+    '.prettierrc': 'json',
+    '.tool-versions': 'plaintext',
+    '.yarnrc': 'yaml',
+    Dockerfile: 'dockerfile',
+    Gemfile: 'ruby',
+    Makefile: 'makefile',
+    Podfile: 'ruby',
+    Procfile: 'plaintext'
   }
 
   private constructor() {}
@@ -125,13 +170,17 @@ export class CodebaseIndexService {
     return this.instance
   }
 
+  private isVectorSearchAvailable(): boolean {
+    return this.embeddingService.isEnabled() && this.db.isSqliteVecAvailable()
+  }
+
   async indexProject(
     projectPath: string,
     onProgress?: (progress: number, total: number, message: string) => void
   ): Promise<IndexStats> {
     console.log('[CodebaseIndex] Starting indexing:', projectPath)
 
-    const vectorEnabled = this.embeddingService.isEnabled()
+    const vectorEnabled = this.isVectorSearchAvailable()
     const db = this.db.getDb()
 
     if (vectorEnabled) {
@@ -264,9 +313,8 @@ export class CodebaseIndexService {
         const content = await FileService.readFile(filePath)
         const contentHash = crypto.createHash('md5').update(content).digest('hex')
         const fileSize = Buffer.byteLength(content, 'utf-8')
-        const ext = path.extname(filePath).toLowerCase()
-        const language = this.LANGUAGE_MAP[ext] || 'unknown'
-        const relativePath = path.relative(projectPath, filePath)
+        const language = this.getLanguage(filePath)
+        const relativePath = normalizeRelativePath(path.relative(projectPath, filePath))
 
         fileMetadata.set(filePath, {
           filePath,
@@ -292,33 +340,27 @@ export class CodebaseIndexService {
   private async collectFiles(dirPath: string): Promise<string[]> {
     const files: string[] = []
 
-    const walk = async (currentPath: string) => {
-      const fs = await import('fs/promises')
-      const items = await fs.readdir(currentPath, { withFileTypes: true })
-
-      for (const item of items) {
-        if (item.name.startsWith('.') || this.IGNORE_DIRS.includes(item.name)) {
-          continue
-        }
-
-        const fullPath = path.join(currentPath, item.name)
-
-        if (item.isDirectory()) {
-          await walk(fullPath)
-        } else if (item.isFile()) {
-          const ext = path.extname(item.name).toLowerCase()
-          if (this.SUPPORTED_EXTS.includes(ext)) {
-            const stats = await fs.stat(fullPath)
-            if (stats.size <= this.MAX_FILE_SIZE) {
-              files.push(fullPath)
-            }
-          }
-        }
-      }
+    for await (const file of walkProjectFiles(dirPath, {
+      ignoreDirs: this.IGNORE_DIRS,
+      supportedExtensions: this.SUPPORTED_EXTS,
+      supportedFileNames: this.SUPPORTED_FILE_NAMES,
+      maxFileSizeBytes: this.MAX_FILE_SIZE
+    })) {
+      files.push(file.fullPath)
     }
 
-    await walk(dirPath)
     return files
+  }
+
+  private getLanguage(filePath: string): string {
+    const fileName = path.basename(filePath)
+    const byFileName = this.LANGUAGE_BY_FILE_NAME[fileName]
+    if (byFileName) {
+      return byFileName
+    }
+
+    const ext = path.extname(filePath).toLowerCase()
+    return this.LANGUAGE_MAP[ext] || 'unknown'
   }
 
   private detectChanges(
@@ -408,7 +450,7 @@ export class CodebaseIndexService {
 
         // Generate embeddings if vector search is enabled
         let embeddings: Float32Array[] = []
-        if (this.embeddingService.isEnabled()) {
+        if (this.isVectorSearchAvailable()) {
           embeddings = await this.embeddingService.generateEmbeddings(chunks)
         }
 
@@ -458,7 +500,7 @@ export class CodebaseIndexService {
 
         processed++
         const progress = 10 + Math.floor((processed / total) * 80)
-        const message = this.embeddingService.isEnabled()
+        const message = this.isVectorSearchAvailable()
           ? `索引文件 (含向量化): ${processed}/${total}`
           : `索引文件: ${processed}/${total}`
         onProgress?.(progress, 100, message)
@@ -644,7 +686,7 @@ export class CodebaseIndexService {
     const { limit = 15, minScore = 0.5 } = options || {}
 
     // If vector search is disabled, use text LIKE search
-    if (!this.embeddingService.isEnabled()) {
+    if (!this.isVectorSearchAvailable()) {
       const results = db
         .select()
         .from(schema.codebaseVectors)

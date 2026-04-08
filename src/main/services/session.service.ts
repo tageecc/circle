@@ -303,7 +303,7 @@ export class SessionService {
 
   static async updateSession(
     sessionId: string,
-    updates: { title?: string; metadata?: Record<string, unknown> }
+    updates: { title?: string; modelId?: string; metadata?: Record<string, unknown> }
   ): Promise<void> {
     const db = SessionService.db.getDb()
     const now = new Date()
@@ -312,6 +312,10 @@ export class SessionService {
 
     if (updates.title !== undefined) {
       updateData.title = updates.title
+    }
+
+    if (updates.modelId !== undefined) {
+      updateData.modelId = updates.modelId
     }
 
     if (updates.metadata !== undefined) {

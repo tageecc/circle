@@ -126,16 +126,16 @@ export function useChatSession(workspaceRoot: string | null) {
     [sessions, updateSession]
   )
 
-  const createNewSession = useCallback(async () => {
+  const createNewSession = useCallback(async (modelId: string) => {
     if (!workspaceRoot) return
 
     try {
-      const sessionId = await window.api.sessions.create('assistant', workspaceRoot)
+      const sessionId = await window.api.sessions.create(modelId, workspaceRoot)
 
       const newSession: Session = {
         id: sessionId,
         title: 'New Chat',
-        modelId: 'assistant',
+        modelId,
         messages: [],
         createdAt: new Date()
       }

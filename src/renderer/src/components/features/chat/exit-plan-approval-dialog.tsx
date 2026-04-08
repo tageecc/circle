@@ -50,7 +50,7 @@ export function ExitPlanApprovalDialog({
     setIsSubmitting(true)
 
     try {
-      await window.api.invoke('plan:resolve-approval', {
+      await window.api.plan.resolveApproval({
         approvalId,
         result: { type: 'approved', feedback: feedback.trim() || undefined }
       })
@@ -76,7 +76,7 @@ export function ExitPlanApprovalDialog({
     setIsSubmitting(true)
 
     try {
-      await window.api.invoke('plan:resolve-approval', {
+      await window.api.plan.resolveApproval({
         approvalId,
         result: { type: 'rejected', feedback: feedback.trim() }
       })

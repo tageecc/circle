@@ -6,6 +6,7 @@ import { drizzle, BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { eq, desc, and, lt } from 'drizzle-orm'
 import * as schema from './schema'
 import * as sqliteVec from 'sqlite-vec'
+import { preferAsarUnpackedPath } from '../utils/asar-path'
 
 /**
  * SQLite 数据库服务
@@ -15,6 +16,7 @@ export class CircleDatabase {
   private sqlite: Database.Database
   private db: BetterSQLite3Database<typeof schema>
   private dbPath: string
+  private sqliteVecAvailable = false
 
   private constructor() {
     const userDataPath = app.getPath('userData')
@@ -32,8 +34,7 @@ export class CircleDatabase {
     this.sqlite.pragma('journal_mode = WAL')
     this.sqlite.pragma('foreign_keys = ON')
 
-    sqliteVec.load(this.sqlite)
-    console.log('   ✓ sqlite-vec loaded')
+    this.sqliteVecAvailable = this.tryLoadSqliteVec()
 
     this.db = drizzle(this.sqlite, { schema })
     this.initTables()
@@ -46,6 +47,18 @@ export class CircleDatabase {
       CircleDatabase.instance = new CircleDatabase()
     }
     return CircleDatabase.instance
+  }
+
+  private tryLoadSqliteVec(): boolean {
+    try {
+      const extensionPath = preferAsarUnpackedPath(sqliteVec.getLoadablePath())
+      this.sqlite.loadExtension(extensionPath)
+      console.log('   ✓ sqlite-vec loaded')
+      return true
+    } catch (error) {
+      console.error('   ✗ sqlite-vec failed to load, falling back to text-only search:', error)
+      return false
+    }
   }
 
   private initTables(): void {
@@ -649,6 +662,10 @@ export class CircleDatabase {
 
   getSqlite(): Database.Database {
     return this.sqlite
+  }
+
+  isSqliteVecAvailable(): boolean {
+    return this.sqliteVecAvailable
   }
 }
 

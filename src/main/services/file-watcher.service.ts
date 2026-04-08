@@ -16,6 +16,7 @@ interface WatcherState {
   pendingChanges: Map<string, FileChangeEvent>
   debounceTimer: NodeJS.Timeout | null
   pausedChanges: Map<string, FileChangeEvent> // 暂停期间的变化
+  targetWebContentsIds: Set<number>
 }
 
 /**
@@ -29,6 +30,7 @@ interface WatcherState {
  */
 export class FileWatcherService {
   private static watchers: Map<string, WatcherState> = new Map()
+  private static projectByWebContentsId: Map<number, string> = new Map()
   private static readonly DEBOUNCE_DELAY = 300 // 增加防抖延迟，减少触发频率
   private static isPaused = false // 暂停状态（窗口失焦时暂停）
 
@@ -67,8 +69,27 @@ export class FileWatcherService {
     'yarn.lock'
   ])
 
+  private static registerWindowCleanup(window: BrowserWindow, projectPath: string): void {
+    const targetWebContentsId = window.webContents.id
+    window.once('closed', () => {
+      void this.stopWatching(projectPath, targetWebContentsId)
+    })
+  }
+
   static startWatching(projectPath: string, window: BrowserWindow): void {
-    this.stopWatching(projectPath)
+    const targetWebContentsId = window.webContents.id
+    const previousProject = this.projectByWebContentsId.get(targetWebContentsId)
+    if (previousProject && previousProject !== projectPath) {
+      void this.stopWatching(previousProject, targetWebContentsId)
+    }
+
+    const existingState = this.watchers.get(projectPath)
+    if (existingState) {
+      existingState.targetWebContentsIds.add(targetWebContentsId)
+      this.projectByWebContentsId.set(targetWebContentsId, projectPath)
+      this.registerWindowCleanup(window, projectPath)
+      return
+    }
 
     console.log(`[FileWatcher] Starting native fs.watch for: ${projectPath}`)
 
@@ -98,7 +119,7 @@ export class FileWatcherService {
           changeType = 'change'
         }
 
-        this.handleChange(projectPath, changeType, fullPath, window)
+        this.handleChange(projectPath, changeType, fullPath)
       }
     )
 
@@ -109,18 +130,21 @@ export class FileWatcherService {
       watcher,
       pendingChanges: new Map(),
       debounceTimer: null,
-      pausedChanges: new Map()
+      pausedChanges: new Map(),
+      targetWebContentsIds: new Set([targetWebContentsId])
     }
 
     this.watchers.set(projectPath, state)
+    this.projectByWebContentsId.set(targetWebContentsId, projectPath)
+    this.registerWindowCleanup(window, projectPath)
+
     console.log(`[FileWatcher] Native watcher started (1 FSWatcher created)`)
   }
 
   private static handleChange(
     projectPath: string,
     type: FileChangeType,
-    filePath: string,
-    _window: BrowserWindow
+    filePath: string
   ): void {
     const state = this.watchers.get(projectPath)
     if (!state) return
@@ -150,8 +174,10 @@ export class FileWatcherService {
     state.debounceTimer = null
 
     // 批量发送变更事件
-    for (const change of changes) {
-      sendToRenderer('file:changed', change)
+    for (const targetWebContentsId of state.targetWebContentsIds) {
+      for (const change of changes) {
+        sendToRenderer('file:changed', change, { webContentsId: targetWebContentsId })
+      }
     }
   }
 
@@ -171,17 +197,38 @@ export class FileWatcherService {
     return this.IGNORED_FILES.has(fileName)
   }
 
-  static async stopWatching(projectPath: string): Promise<void> {
+  static async stopWatching(projectPath: string, targetWebContentsId?: number): Promise<void> {
     const state = this.watchers.get(projectPath)
-    if (state) {
-      if (state.debounceTimer) {
-        clearTimeout(state.debounceTimer)
+    if (!state) return
+
+    if (typeof targetWebContentsId === 'number') {
+      state.targetWebContentsIds.delete(targetWebContentsId)
+      if (this.projectByWebContentsId.get(targetWebContentsId) === projectPath) {
+        this.projectByWebContentsId.delete(targetWebContentsId)
       }
-      // ⭐ 原生 watcher 的 close 是同步的，立即释放
-      state.watcher.close()
-      this.watchers.delete(projectPath)
-      console.log(`[FileWatcher] Watcher stopped for: ${projectPath}`)
+      if (state.targetWebContentsIds.size > 0) {
+        return
+      }
     }
+
+    if (state.debounceTimer) {
+      clearTimeout(state.debounceTimer)
+    }
+    for (const subscribedTargetId of state.targetWebContentsIds) {
+      if (this.projectByWebContentsId.get(subscribedTargetId) === projectPath) {
+        this.projectByWebContentsId.delete(subscribedTargetId)
+      }
+    }
+    // ⭐ 原生 watcher 的 close 是同步的，立即释放
+    state.watcher.close()
+    this.watchers.delete(projectPath)
+    console.log(`[FileWatcher] Watcher stopped for: ${projectPath}`)
+  }
+
+  static async stopWatchingForWebContents(targetWebContentsId: number): Promise<void> {
+    const projectPath = this.projectByWebContentsId.get(targetWebContentsId)
+    if (!projectPath) return
+    await this.stopWatching(projectPath, targetWebContentsId)
   }
 
   static async stopAllWatching(): Promise<void> {
@@ -194,12 +241,13 @@ export class FileWatcherService {
       // ⭐ 原生 watcher.close() 是同步的，立即释放资源
       try {
         state.watcher.close()
-      } catch (err) {
+      } catch {
         // 忽略关闭错误
       }
     }
 
     this.watchers.clear()
+    this.projectByWebContentsId.clear()
     console.log(`[FileWatcher] All watchers stopped`)
   }
 

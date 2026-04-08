@@ -1,3 +1,4 @@
+import { webContents } from 'electron'
 import { watch, FSWatcher, existsSync } from 'fs'
 import * as path from 'path'
 import { sendToRenderer } from '../utils/ipc'
@@ -6,6 +7,7 @@ interface GitWatcherState {
   watchers: FSWatcher[]
   debounceTimer: NodeJS.Timeout | null
   lastTriggerTime: number // 上次触发时间（用于忽略短时间内的重复事件）
+  targetWebContentsIds: Set<number>
 }
 
 /**
@@ -26,17 +28,39 @@ interface GitWatcherState {
  */
 export class GitWatcherService {
   private static watchers: Map<string, GitWatcherState> = new Map()
+  private static projectByWebContentsId: Map<number, string> = new Map()
   private static readonly DEBOUNCE_DELAY = 1500 // 1.5秒防抖（避免频繁触发）
   private static readonly THROTTLE_THRESHOLD = 100 // 100ms内的重复事件直接忽略
   private static isPaused = false // 暂停状态（窗口失焦时暂停）
   private static pendingRefreshProjects = new Set<string>() // 暂停期间需要刷新的项目
 
+  private static registerTargetCleanup(projectPath: string, targetWebContentsId: number): void {
+    const targetContents = webContents.fromId(targetWebContentsId)
+    targetContents?.once('destroyed', () => {
+      this.stopWatching(projectPath, targetWebContentsId)
+    })
+  }
+
   /**
    * 开始监听项目的.git目录
    */
-  static startWatching(projectPath: string): void {
-    // 先停止已有的监听
-    this.stopWatching(projectPath)
+  static startWatching(projectPath: string, targetWebContentsId?: number): void {
+    if (typeof targetWebContentsId === 'number') {
+      const previousProject = this.projectByWebContentsId.get(targetWebContentsId)
+      if (previousProject && previousProject !== projectPath) {
+        this.stopWatching(previousProject, targetWebContentsId)
+      }
+    }
+
+    const existingState = this.watchers.get(projectPath)
+    if (existingState) {
+      if (typeof targetWebContentsId === 'number') {
+        existingState.targetWebContentsIds.add(targetWebContentsId)
+        this.projectByWebContentsId.set(targetWebContentsId, projectPath)
+        this.registerTargetCleanup(projectPath, targetWebContentsId)
+      }
+      return
+    }
 
     const gitDir = path.join(projectPath, '.git')
 
@@ -51,7 +75,9 @@ export class GitWatcherService {
     const state: GitWatcherState = {
       watchers: [],
       debounceTimer: null,
-      lastTriggerTime: 0
+      lastTriggerTime: 0,
+      targetWebContentsIds:
+        typeof targetWebContentsId === 'number' ? new Set([targetWebContentsId]) : new Set()
     }
 
     // ⭐ 关键文件列表（参考VSCode）
@@ -112,8 +138,8 @@ export class GitWatcherService {
       const gitDirWatcher = watch(projectPath, { persistent: false }, (_eventType, filename) => {
         if (filename === '.git' && !existsSync(gitDir)) {
           console.log(`[GitWatcher] .git directory removed`)
+          this.notifyTargets(projectPath)
           this.stopWatching(projectPath)
-          sendToRenderer('git:external-change', { projectPath })
         }
       })
       gitDirWatcher.unref()
@@ -123,6 +149,10 @@ export class GitWatcherService {
     }
 
     this.watchers.set(projectPath, state)
+    if (typeof targetWebContentsId === 'number') {
+      this.projectByWebContentsId.set(targetWebContentsId, projectPath)
+      this.registerTargetCleanup(projectPath, targetWebContentsId)
+    }
     console.log(`[GitWatcher] Watching ${state.watchers.length} paths in ${projectPath}`)
   }
 
@@ -156,23 +186,51 @@ export class GitWatcherService {
     // ⭐ 1.5秒防抖：避免频繁刷新
     state.debounceTimer = setTimeout(() => {
       // 通知renderer进程刷新Git状态
-      sendToRenderer('git:external-change', { projectPath })
+      this.notifyTargets(projectPath)
       state.debounceTimer = null
     }, this.DEBOUNCE_DELAY)
+  }
+
+  private static notifyTargets(projectPath: string): void {
+    const state = this.watchers.get(projectPath)
+
+    if (!state || state.targetWebContentsIds.size === 0) {
+      sendToRenderer('git:external-change', { projectPath })
+      return
+    }
+
+    for (const targetWebContentsId of state.targetWebContentsIds) {
+      sendToRenderer('git:external-change', { projectPath }, { webContentsId: targetWebContentsId })
+    }
   }
 
   /**
    * 停止监听项目的.git目录
    */
-  static stopWatching(projectPath: string): void {
+  static stopWatching(projectPath: string, targetWebContentsId?: number): void {
     const state = this.watchers.get(projectPath)
     if (!state) return
+
+    if (typeof targetWebContentsId === 'number') {
+      state.targetWebContentsIds.delete(targetWebContentsId)
+      if (this.projectByWebContentsId.get(targetWebContentsId) === projectPath) {
+        this.projectByWebContentsId.delete(targetWebContentsId)
+      }
+      if (state.targetWebContentsIds.size > 0) {
+        return
+      }
+    }
 
     console.log(`[GitWatcher] Stopping watch for ${projectPath}`)
 
     // 清除防抖定时器
     if (state.debounceTimer) {
       clearTimeout(state.debounceTimer)
+    }
+    for (const subscribedTargetId of state.targetWebContentsIds) {
+      if (this.projectByWebContentsId.get(subscribedTargetId) === projectPath) {
+        this.projectByWebContentsId.delete(subscribedTargetId)
+      }
     }
 
     // 关闭所有watcher
@@ -185,6 +243,12 @@ export class GitWatcherService {
     })
 
     this.watchers.delete(projectPath)
+  }
+
+  static stopWatchingForWebContents(targetWebContentsId: number): void {
+    const projectPath = this.projectByWebContentsId.get(targetWebContentsId)
+    if (!projectPath) return
+    this.stopWatching(projectPath, targetWebContentsId)
   }
 
   /**
@@ -208,6 +272,7 @@ export class GitWatcherService {
     }
 
     this.watchers.clear()
+    this.projectByWebContentsId.clear()
   }
 
   /**
@@ -230,7 +295,7 @@ export class GitWatcherService {
         `[GitWatcher] Refreshing ${this.pendingRefreshProjects.size} project(s) with changes`
       )
       this.pendingRefreshProjects.forEach((projectPath) => {
-        sendToRenderer('git:external-change', { projectPath })
+        this.notifyTargets(projectPath)
       })
       this.pendingRefreshProjects.clear()
     } else {

@@ -227,7 +227,7 @@ When user skips or wants to clarify, you receive \`rejected: true\` with their f
       questions,
       metadata,
       isInPlanMode
-    })
+    }, ctx.senderWebContentsId ? { webContentsId: ctx.senderWebContentsId } : undefined)
 
     const result = await new Promise<AnswerResult>((resolve) => {
       pendingAnswers.set(questionId, resolve)

@@ -59,9 +59,11 @@ export class ChatService {
     workspaceRoot?: string | null
     onStream?: (chunk: StreamChunk) => void
     abortSignal?: AbortSignal
+    senderWebContentsId?: number
     images?: Array<{ id: string; dataUrl: string; name: string; size: number }>
   }): AsyncGenerator<StreamChunk> {
-    const { sessionId, message, workspaceRoot, onStream, abortSignal, images } = options
+    const { sessionId, message, workspaceRoot, onStream, abortSignal, senderWebContentsId, images } =
+      options
 
     let textContent = ''
     let reasoningContent = ''
@@ -110,10 +112,11 @@ export class ChatService {
         return c
       }
 
-      const modelId = this.configService.getDefaultModel()
-      console.log(`[ChatService] Using model: ${modelId}`)
-
+      const defaultModelId = this.configService.getDefaultModel()
       const session = await SessionService.getSession(sessionId)
+      const modelId =
+        session?.modelId && session.modelId !== 'assistant' ? session.modelId : defaultModelId
+      console.log(`[ChatService] Using model: ${modelId}`)
       const totalUsage = (session?.metadata?.totalUsage as any) || {
         inputTokens: 0,
         outputTokens: 0,
@@ -289,6 +292,7 @@ export class ChatService {
         workspaceRoot,
         assistantMessageId,
         abortSignal,
+        senderWebContentsId,
         modelId,
         delegateDepth: 0
       }

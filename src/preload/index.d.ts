@@ -6,48 +6,6 @@ declare global {
     api: {
       i18nextElectronBackend: any
       getSystemLocale: () => Promise<string>
-      invoke: (channel: string, ...args: any[]) => Promise<any>
-      on: (channel: string, callback: (...args: any[]) => void) => void
-      off: (channel: string, callback: (...args: any[]) => void) => void
-
-      // Delegate task events
-      onDelegateStart: (
-        callback: (data: {
-          taskId: string
-          sessionId: string
-          description: string
-          subagentType: string
-          subagentName: string
-          icon: string
-          color: string
-        }) => void
-      ) => () => void
-      onDelegateProgress: (
-        callback: (data: {
-          taskId: string
-          sessionId: string
-          filesExplored: number
-          searches: number
-          edits: number
-          toolCalls: number
-          currentOperation?: string
-        }) => void
-      ) => () => void
-      onDelegateComplete: (
-        callback: (data: {
-          taskId: string
-          sessionId: string
-          result?: string
-          error?: string
-          durationMs: number
-          progress?: {
-            filesExplored: number
-            searches: number
-            edits: number
-            toolCalls: number
-          }
-        }) => void
-      ) => () => void
       chat: {
         stream: (
           options: {
@@ -178,7 +136,7 @@ declare global {
         create: (modelId: string, projectPath: string) => Promise<string>
         getByProject: (projectPath: string) => Promise<any[]>
         getWithMessages: (sessionId: string) => Promise<any>
-        update: (sessionId: string, updates: { title?: string }) => Promise<void>
+        update: (sessionId: string, updates: { title?: string; modelId?: string }) => Promise<void>
         delete: (sessionId: string) => Promise<void>
         deleteMessagesAfter: (
           sessionId: string,
@@ -658,10 +616,78 @@ declare global {
           callback: (event: { toolCallId: string; command: string }) => void
         ) => () => void
         onOutputStream: (
-          callback: (event: { toolCallId: string; output: string; isError: boolean }) => void
+          callback: (event: {
+            toolCallId: string
+            terminalId?: string
+            output: string
+            isError: boolean
+          }) => void
         ) => () => void
         onOutputComplete: (
-          callback: (event: { toolCallId: string; exitCode: number }) => void
+          callback: (event: { toolCallId: string; terminalId?: string; exitCode: number }) => void
+        ) => () => void
+      }
+
+      plan: {
+        resolveApproval: (payload: {
+          approvalId: string
+          result: { type: 'approved'; feedback?: string } | { type: 'rejected'; feedback: string }
+        }) => Promise<void>
+        onModeChanged: (
+          callback: (data: {
+            sessionId: string
+            mode: 'default' | 'plan'
+            planFilePath: string | null
+          }) => void
+        ) => () => void
+        onApprovalRequired: (
+          callback: (data: {
+            approvalId: string
+            sessionId: string
+            assistantMessageId: number
+            planContent: string
+            planFilePath: string
+          }) => void
+        ) => () => void
+      }
+
+      delegate: {
+        onStart: (
+          callback: (data: {
+            taskId: string
+            sessionId: string
+            description: string
+            subagentType: string
+            subagentName: string
+            icon: string
+            color: string
+          }) => void
+        ) => () => void
+        onProgress: (
+          callback: (data: {
+            taskId: string
+            sessionId: string
+            filesExplored: number
+            searches: number
+            edits: number
+            toolCalls: number
+            currentOperation?: string
+          }) => void
+        ) => () => void
+        onComplete: (
+          callback: (data: {
+            taskId: string
+            sessionId: string
+            result?: string
+            error?: string
+            durationMs: number
+            progress?: {
+              filesExplored: number
+              searches: number
+              edits: number
+              toolCalls: number
+            }
+          }) => void
         ) => () => void
       }
 

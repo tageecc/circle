@@ -121,7 +121,7 @@ Returns JSON with success status and plan file path.`,
         sessionId: ctx.sessionId,
         mode: 'plan',
         planFilePath: relativePath
-      })
+      }, ctx.senderWebContentsId ? { webContentsId: ctx.senderWebContentsId } : undefined)
 
       return JSON.stringify({
         success: true,

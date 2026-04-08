@@ -150,12 +150,12 @@ function createWindow(): void {
     autoUpdaterService.startAutoCheck(4)
 
     const currentProject = configService.getCurrentProject()
-    if (currentProject) {
-      console.log(`🎯 Auto-starting FileWatcher for current project: ${currentProject}`)
-      FileWatcherService.startWatching(currentProject, mainWindow)
+      if (currentProject) {
+        console.log(`🎯 Auto-starting FileWatcher for current project: ${currentProject}`)
+        FileWatcherService.startWatching(currentProject, mainWindow)
 
-      GitWatcherService.startWatching(currentProject)
-    }
+        GitWatcherService.startWatching(currentProject, mainWindow.webContents.id)
+      }
   }
 
   // ⭐ 监听全屏状态变化（macOS 优化：全屏时移除红绿灯预留空间）

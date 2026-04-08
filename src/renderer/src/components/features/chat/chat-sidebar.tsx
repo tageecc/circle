@@ -180,7 +180,9 @@ export function ChatSidebar({
 
   // 创建新会话
   const handleNewSession = async () => {
-    await createNewSession()
+    const modelId =
+      selectedProvider && selectedModel ? `${selectedProvider}/${selectedModel}` : 'assistant'
+    await createNewSession(modelId)
     setInputValue('')
     setPastedImages([])
     setAttachments([])
@@ -284,8 +286,8 @@ export function ChatSidebar({
       })
     }
 
-    window.api.on('session:mode-changed', handleModeChanged)
-    window.api.on('plan:approval-required', handlePlanApprovalRequired)
+    const cleanupPlanModeChanged = window.api.plan.onModeChanged(handleModeChanged)
+    const cleanupPlanApproval = window.api.plan.onApprovalRequired(handlePlanApprovalRequired)
 
     // Delegate task event handlers
     const handleDelegateStart = (data: {
@@ -378,13 +380,13 @@ export function ChatSidebar({
       })
     }
 
-    const cleanupDelegateStart = window.api.onDelegateStart(handleDelegateStart)
-    const cleanupDelegateProgress = window.api.onDelegateProgress(handleDelegateProgress)
-    const cleanupDelegateComplete = window.api.onDelegateComplete(handleDelegateComplete)
+    const cleanupDelegateStart = window.api.delegate.onStart(handleDelegateStart)
+    const cleanupDelegateProgress = window.api.delegate.onProgress(handleDelegateProgress)
+    const cleanupDelegateComplete = window.api.delegate.onComplete(handleDelegateComplete)
 
     return () => {
-      window.api.off('session:mode-changed', handleModeChanged)
-      window.api.off('plan:approval-required', handlePlanApprovalRequired)
+      cleanupPlanModeChanged()
+      cleanupPlanApproval()
       cleanupDelegateStart()
       cleanupDelegateProgress()
       cleanupDelegateComplete()

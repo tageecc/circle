@@ -210,7 +210,7 @@ todo_write({
   inputSchema,
   execute: async ({ merge, todos }, options: ToolCallOptions) => {
     try {
-      const { sessionId } = getToolContext(options)
+      const { sessionId, senderWebContentsId } = getToolContext(options)
 
       // 1. 获取现有 todos（从 session metadata）
       const session = await SessionService.getSession(sessionId)
@@ -257,7 +257,7 @@ todo_write({
         sessionId,
         todos: updatedTodos,
         action: merge ? 'updated' : 'created'
-      })
+      }, senderWebContentsId ? { webContentsId: senderWebContentsId } : undefined)
 
       // 5. 日志输出
       console.log(

@@ -19,9 +19,13 @@ import { MemoryService } from '../services/memory.service'
 import { getConfigService, rebuildApplicationMenu } from '../index'
 import { mainI18n, syncMainI18nFromConfig } from '../i18n'
 import { getDb } from '../database/db'
-import { sendToRenderer } from '../utils/ipc'
 import { getStreamPayload } from '../services/stream-payload-refs.service'
-import * as fontList from 'font-list'
+import {
+  parsePatternList,
+  scoreQuickOpenCandidate,
+  walkProjectFiles
+} from '../utils/project-files'
+import { getSystemFonts } from '../utils/system-fonts'
 import * as fs from 'fs/promises'
 import * as nodePath from 'path'
 import * as iconv from 'iconv-lite'
@@ -61,6 +65,7 @@ export function registerIpcHandlers(): void {
         message: options.message,
         workspaceRoot: options.workspaceRoot,
         abortSignal: abortController.signal,
+        senderWebContentsId: event.sender.id,
         images: options.images
       })
 
@@ -206,14 +211,17 @@ export function registerIpcHandlers(): void {
     }
   )
 
-  ipcMain.handle('sessions:update', async (_, sessionId: string, updates: { title?: string }) => {
-    try {
-      await SessionService.updateSession(sessionId, updates)
-    } catch (error) {
-      console.error('Failed to update session:', error)
-      throw error
+  ipcMain.handle(
+    'sessions:update',
+    async (_, sessionId: string, updates: { title?: string; modelId?: string }) => {
+      try {
+        await SessionService.updateSession(sessionId, updates)
+      } catch (error) {
+        console.error('Failed to update session:', error)
+        throw error
+      }
     }
-  })
+  )
 
   // Todo handlers
   ipcMain.handle('todo:get', async (_, sessionId: string) => {
@@ -721,7 +729,7 @@ export function registerIpcHandlers(): void {
         if (window) {
           FileWatcherService.startWatching(projectPath, window)
           // ⭐ 同时启动Git监听器
-          GitWatcherService.startWatching(projectPath)
+          GitWatcherService.startWatching(projectPath, event.sender.id)
         }
       }
       return projectPath
@@ -753,12 +761,9 @@ export function registerIpcHandlers(): void {
     try {
       const window = BrowserWindow.fromWebContents(event.sender)
 
-      // 停止之前的监听
-      const currentProject = configService.getCurrentProject()
-      if (currentProject) {
-        await FileWatcherService.stopWatching(currentProject)
-        GitWatcherService.stopWatching(currentProject) // ⭐ 同时停止Git监听器
-      }
+      // 停止当前窗口之前的监听
+      await FileWatcherService.stopWatchingForWebContents(event.sender.id)
+      GitWatcherService.stopWatchingForWebContents(event.sender.id)
 
       // 设置新项目
       configService.setCurrentProject(projectPath)
@@ -777,7 +782,7 @@ export function registerIpcHandlers(): void {
         configService.setConfig({ recentProjects: limited })
         FileWatcherService.startWatching(projectPath, window)
         // ⭐ 同时启动Git监听器
-        GitWatcherService.startWatching(projectPath)
+        GitWatcherService.startWatching(projectPath, event.sender.id)
       }
     } catch (error) {
       console.error('Failed to set current project:', error)
@@ -785,13 +790,10 @@ export function registerIpcHandlers(): void {
     }
   })
 
-  ipcMain.handle('project:close', async () => {
+  ipcMain.handle('project:close', async (event) => {
     try {
-      const currentProject = configService.getCurrentProject()
-      if (currentProject) {
-        await FileWatcherService.stopWatching(currentProject)
-        GitWatcherService.stopWatching(currentProject) // ⭐ 同时停止Git监听器
-      }
+      await FileWatcherService.stopWatchingForWebContents(event.sender.id)
+      GitWatcherService.stopWatchingForWebContents(event.sender.id)
       configService.setCurrentProject(null)
     } catch (error) {
       console.error('Failed to close project:', error)
@@ -848,7 +850,7 @@ export function registerIpcHandlers(): void {
       const window = BrowserWindow.fromWebContents(event.sender)
 
       const clonedPath = await GitService.cloneRepository(repoUrl, targetPath, (message) => {
-        sendToRenderer('git:cloneProgress', { message })
+        event.sender.send('git:cloneProgress', { message })
       })
 
       // 克隆成功后，设置为当前项目
@@ -866,7 +868,7 @@ export function registerIpcHandlers(): void {
         configService.setCurrentProject(clonedPath)
         FileWatcherService.startWatching(clonedPath, window)
         // ⭐ 同时启动Git监听器
-        GitWatcherService.startWatching(clonedPath)
+        GitWatcherService.startWatching(clonedPath, event.sender.id)
       }
 
       return clonedPath
@@ -897,7 +899,7 @@ export function registerIpcHandlers(): void {
         configService.setCurrentProject(projectPath)
         FileWatcherService.startWatching(projectPath, window)
         // ⭐ 同时启动Git监听器
-        GitWatcherService.startWatching(projectPath)
+        GitWatcherService.startWatching(projectPath, event.sender.id)
       }
 
       return projectPath
@@ -1610,12 +1612,13 @@ export function registerIpcHandlers(): void {
         const stream = chatService.streamChat({
           sessionId,
           message: userPrompt,
-          workspaceRoot: projectPath
+          workspaceRoot: projectPath,
+          senderWebContentsId: event.sender.id
         })
 
         for await (const chunk of stream) {
           if (chunk.type === 'text') {
-            sendToRenderer('project-create:stream:chunk', { content: chunk.content })
+            event.sender.send('project-create:stream:chunk', { content: chunk.content })
           }
         }
 
@@ -1635,7 +1638,7 @@ export function registerIpcHandlers(): void {
         if (window) {
           FileWatcherService.startWatching(projectPath, window)
           // ⭐ 同时启动Git监听器
-          GitWatcherService.startWatching(projectPath)
+          GitWatcherService.startWatching(projectPath, event.sender.id)
         }
 
         return {
@@ -1651,9 +1654,9 @@ export function registerIpcHandlers(): void {
   )
 
   // Terminal handlers
-  ipcMain.handle('terminal:create', async (_, cwd: string) => {
+  ipcMain.handle('terminal:create', async (event, cwd: string) => {
     try {
-      const terminalId = TerminalService.createTerminal(cwd)
+      const terminalId = TerminalService.createTerminal(cwd, undefined, event.sender.id)
       return terminalId
     } catch (error) {
       console.error('Failed to create terminal:', error)
@@ -1691,7 +1694,7 @@ export function registerIpcHandlers(): void {
   // System handlers - 获取系统字体列表
   ipcMain.handle('system:getFonts', async () => {
     try {
-      const fonts = await fontList.getFonts({ disableQuoting: true })
+      const fonts = await getSystemFonts()
       // 过滤和排序字体列表
       const uniqueFonts = Array.from(new Set(fonts))
         .filter((font) => {
@@ -1735,7 +1738,7 @@ export function registerIpcHandlers(): void {
       if (!window) throw new Error('No active window')
 
       const index = await indexService.indexProject(projectPath, (progress, total, message) => {
-        sendToRenderer('codebase:index:progress', {
+        event.sender.send('codebase:index:progress', {
           current: progress,
           total,
           file: message,
@@ -1974,70 +1977,65 @@ export function registerIpcHandlers(): void {
     '.eot'
   ])
 
-  async function* walkFiles(dir: string): AsyncGenerator<string> {
-    const entries = await fs.readdir(dir, { withFileTypes: true })
-    for (const entry of entries) {
-      if (entry.name.startsWith('.') && entry.name !== '.') continue
-      const fullPath = nodePath.join(dir, entry.name)
-      if (entry.isDirectory()) {
-        if (!IGNORE_DIRS.has(entry.name)) yield* walkFiles(fullPath)
-      } else if (entry.isFile()) {
-        if (!IGNORE_EXTS.has(nodePath.extname(entry.name).toLowerCase())) yield fullPath
-      }
+  const createSearchRegex = (searchText: string, options?: any): RegExp => {
+    const { caseSensitive, wholeWord, useRegex } = options || {}
+
+    let pattern = useRegex ? searchText : searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    if (wholeWord) pattern = `\\b${pattern}\\b`
+
+    try {
+      return new RegExp(pattern, caseSensitive ? 'g' : 'gi')
+    } catch (error) {
+      throw new Error(
+        error instanceof Error ? `Invalid search pattern: ${error.message}` : 'Invalid search pattern'
+      )
     }
   }
 
-  // 简单的 glob 匹配（支持 *.ext 和 **/path 模式）
-  const matchesGlob = (relativePath: string, pattern: string): boolean => {
-    const p = pattern.trim()
-    if (!p) return true
-    if (p.startsWith('*.')) {
-      // *.ts → 以 .ts 结尾
-      return relativePath.endsWith(p.slice(1))
+  const getSearchWalkOptions = (options?: any) => ({
+    ignoreDirs: IGNORE_DIRS,
+    ignoreExtensions: IGNORE_EXTS,
+    includePatterns: parsePatternList(options?.includePattern),
+    excludePatterns: parsePatternList(options?.excludePattern)
+  })
+
+  const insertQuickOpenResult = (
+    results: Array<{
+      name: string
+      path: string
+      relativePath: string
+      score: number
+    }>,
+    candidate: {
+      name: string
+      path: string
+      relativePath: string
+      score: number
+    },
+    limit: number
+  ): void => {
+    results.push(candidate)
+    results.sort(
+      (a, b) =>
+        b.score - a.score ||
+        a.relativePath.localeCompare(b.relativePath, undefined, { numeric: true })
+    )
+    if (results.length > limit) {
+      results.length = limit
     }
-    if (p.includes('**')) {
-      // src/** → 路径包含 src/
-      const prefix = p.replace('**', '').replace(/\/$/, '')
-      return relativePath.includes(prefix)
-    }
-    // 普通匹配
-    return relativePath.includes(p)
   }
 
   ipcMain.handle('search:find', async (_, projectPath: string, query: string, options?: any) => {
     if (!query?.trim()) return []
 
-    const { caseSensitive, wholeWord, useRegex, includePattern, excludePattern } = options || {}
-
-    // 解析 include/exclude 模式
-    const includes =
-      includePattern
-        ?.split(',')
-        .map((p: string) => p.trim())
-        .filter(Boolean) || []
-    const excludes =
-      excludePattern
-        ?.split(',')
-        .map((p: string) => p.trim())
-        .filter(Boolean) || []
-
-    // 构建正则
-    let pattern = useRegex ? query : query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    if (wholeWord) pattern = `\\b${pattern}\\b`
-    const regex = new RegExp(pattern, caseSensitive ? 'g' : 'gi')
+    const regex = createSearchRegex(query, options)
 
     const results: any[] = []
 
     try {
-      for await (const filePath of walkFiles(projectPath)) {
-        const relativePath = nodePath.relative(projectPath, filePath)
-
-        // 应用 include/exclude 过滤
-        if (includes.length > 0 && !includes.some((p) => matchesGlob(relativePath, p))) continue
-        if (excludes.some((p) => matchesGlob(relativePath, p))) continue
-
+      for await (const file of walkProjectFiles(projectPath, getSearchWalkOptions(options))) {
         try {
-          const content = await fs.readFile(filePath, 'utf-8')
+          const content = await fs.readFile(file.fullPath, 'utf-8')
           const lines = content.split('\n')
           const matches: any[] = []
 
@@ -2057,7 +2055,11 @@ export function registerIpcHandlers(): void {
           }
 
           if (matches.length > 0) {
-            results.push({ filePath, relativePath, matches })
+            results.push({
+              filePath: file.fullPath,
+              relativePath: file.relativePath,
+              matches
+            })
           }
         } catch {
           // 忽略无法读取的文件
@@ -2065,8 +2067,10 @@ export function registerIpcHandlers(): void {
       }
     } catch (error) {
       console.error('Search failed:', error)
+      throw error
     }
 
+    results.sort((a, b) => a.relativePath.localeCompare(b.relativePath, undefined, { numeric: true }))
     return results
   })
 
@@ -2078,12 +2082,7 @@ export function registerIpcHandlers(): void {
     options?: any
   ) => {
     const content = await fs.readFile(filePath, 'utf-8')
-    const { caseSensitive, wholeWord, useRegex } = options || {}
-
-    let pattern = useRegex ? searchText : searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    if (wholeWord) pattern = `\\b${pattern}\\b`
-
-    const regex = new RegExp(pattern, caseSensitive ? 'g' : 'gi')
+    const regex = createSearchRegex(searchText, options)
     const matches = content.match(regex)
     const replacements = matches?.length || 0
 
@@ -2105,21 +2104,17 @@ export function registerIpcHandlers(): void {
     async (_, projectPath: string, searchText: string, replaceText: string, options?: any) => {
       if (!searchText?.trim()) return []
 
-      const { caseSensitive, wholeWord, useRegex } = options || {}
+      const regex = createSearchRegex(searchText, options)
       const results: any[] = []
 
-      // 构建正则
-      let pattern = useRegex ? searchText : searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      if (wholeWord) pattern = `\\b${pattern}\\b`
-      const regex = new RegExp(pattern, caseSensitive ? 'g' : 'gi')
-
       try {
-        for await (const filePath of walkFiles(projectPath)) {
+        for await (const file of walkProjectFiles(projectPath, getSearchWalkOptions(options))) {
           try {
-            const content = await fs.readFile(filePath, 'utf-8')
+            const content = await fs.readFile(file.fullPath, 'utf-8')
+            regex.lastIndex = 0
             if (regex.test(content)) {
               regex.lastIndex = 0
-              const result = await doReplaceInFile(filePath, searchText, replaceText, options)
+              const result = await doReplaceInFile(file.fullPath, searchText, replaceText, options)
               if (result.replacements > 0) results.push(result)
             }
           } catch {
@@ -2145,60 +2140,34 @@ export function registerIpcHandlers(): void {
         name: string
         path: string
         relativePath: string
+        score: number
       }> = []
 
       try {
-        for await (const filePath of walkFiles(projectPath)) {
-          const relativePath = nodePath.relative(projectPath, filePath)
-          const fileName = nodePath.basename(filePath).toLowerCase()
-
-          // 模糊匹配：文件名包含查询字符串，或路径包含查询字符串
-          if (fileName.includes(searchQuery) || relativePath.toLowerCase().includes(searchQuery)) {
-            results.push({
-              name: nodePath.basename(filePath),
-              path: filePath,
-              relativePath
-            })
-
-            // 限制返回数量
-            if (results.length >= limit) break
+        for await (const file of walkProjectFiles(projectPath, {
+          ignoreDirs: IGNORE_DIRS,
+          ignoreExtensions: IGNORE_EXTS
+        })) {
+          const score = scoreQuickOpenCandidate(file.relativePath, searchQuery)
+          if (score !== null) {
+            insertQuickOpenResult(
+              results,
+              {
+                name: file.name,
+                path: file.fullPath,
+                relativePath: file.relativePath,
+                score
+              },
+              limit
+            )
           }
         }
-
-        // 按匹配度排序：完全匹配 > 开头匹配 > 包含匹配
-        results.sort((a, b) => {
-          const aName = a.name.toLowerCase()
-          const bName = b.name.toLowerCase()
-
-          // 完全匹配优先
-          if (aName === searchQuery && bName !== searchQuery) return -1
-          if (bName === searchQuery && aName !== searchQuery) return 1
-
-          // 开头匹配次之
-          const aStartsWith = aName.startsWith(searchQuery)
-          const bStartsWith = bName.startsWith(searchQuery)
-          if (aStartsWith && !bStartsWith) return -1
-          if (bStartsWith && !aStartsWith) return 1
-
-          // 文件名长度短的优先
-          if (a.name.length !== b.name.length) {
-            return a.name.length - b.name.length
-          }
-
-          // 路径深度浅的优先
-          const aDepth = a.relativePath.split('/').length
-          const bDepth = b.relativePath.split('/').length
-          if (aDepth !== bDepth) return aDepth - bDepth
-
-          // 字母顺序
-          return a.name.localeCompare(b.name)
-        })
-
-        return results
       } catch (error) {
         console.error('Quick open search failed:', error)
         return []
       }
+
+      return results.map(({ score: _score, ...result }) => result)
     }
   )
 

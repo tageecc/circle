@@ -7,6 +7,7 @@ import { getToolContext } from '../services/tool-context'
 import { getConfigService } from '../index'
 import { sendToRenderer } from '../utils/ipc'
 import { SessionService } from '../services/session.service'
+import { TerminalService } from '../services/terminal.service'
 import { mainI18n as i18n } from '../i18n'
 import { guardAgainstPlanMode } from './plan-mode-guard'
 
@@ -64,7 +65,8 @@ async function requestApproval(
   assistantMessageId: number,
   toolCallId: string,
   command: string,
-  is_background: boolean
+  is_background: boolean,
+  targetWebContentsId?: number
 ): Promise<UserDecision> {
   console.log('[requestApproval] 📤 Preparing approval request:', {
     assistantMessageId,
@@ -90,7 +92,7 @@ async function requestApproval(
     toolCallId,
     command,
     is_background
-  })
+  }, targetWebContentsId ? { webContentsId: targetWebContentsId } : undefined)
 
   console.log('[requestApproval] 📡 IPC sent:', sent)
 
@@ -279,7 +281,8 @@ In using these tools, adhere to the following guidelines:
         context.assistantMessageId,
         toolCallId,
         command,
-        is_background
+        is_background,
+        context.senderWebContentsId
       )
 
       if (decision === 'reject') {
@@ -302,7 +305,14 @@ In using these tools, adhere to the following guidelines:
       }
     }
 
-    return executeCommand(command, toolCallId, workspaceRoot, is_background, context.abortSignal)
+    return executeCommand(
+      command,
+      toolCallId,
+      workspaceRoot,
+      is_background,
+      context.abortSignal,
+      context.senderWebContentsId
+    )
   }
 })
 
@@ -312,12 +322,13 @@ async function executeCommand(
   toolCallId: string,
   workspaceRoot: string,
   createTerminalTab: boolean,
-  abortSignal?: AbortSignal
+  abortSignal?: AbortSignal,
+  targetWebContentsId?: number
 ): Promise<string> {
   try {
     return createTerminalTab
-      ? await executeInTerminal(command, toolCallId, workspaceRoot, abortSignal)
-      : await executeInline(command, toolCallId, workspaceRoot, abortSignal)
+      ? await executeInTerminal(command, toolCallId, workspaceRoot, abortSignal, targetWebContentsId)
+      : await executeInline(command, toolCallId, workspaceRoot, abortSignal, targetWebContentsId)
   } catch (error) {
     return JSON.stringify({
       success: false,
@@ -333,42 +344,91 @@ async function executeInTerminal(
   command: string,
   toolCallId: string,
   workspaceRoot: string,
-  abortSignal?: AbortSignal
+  abortSignal?: AbortSignal,
+  targetWebContentsId?: number
 ): Promise<string> {
-  const terminalId = `terminal-${Date.now()}`
+  return new Promise((resolve) => {
+    let stdout = ''
+    let resolved = false
+    const terminalId = `terminal-ai-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
-  sendToRenderer('tool:terminal-created', { toolCallId, terminalId, command })
-  sendToRenderer('tool:streaming-started', { toolCallId, command })
+    const resolveOnce = (result: CommandResult) => {
+      if (resolved) return
+      resolved = true
+      sendToRenderer(
+        'tool:output-complete',
+        {
+          toolCallId,
+          terminalId,
+          exitCode: result.exitCode || 0
+        },
+        targetWebContentsId ? { webContentsId: targetWebContentsId } : undefined
+      )
+      resolve(JSON.stringify(result))
+    }
 
-  return spawnCommand({
-    command,
-    toolCallId,
-    workspaceRoot,
-    onOutput: (output, isError) => {
-      // 发送给 Terminal Tab（xterm.js 需要 \r\n）
-      sendToRenderer('terminal:data', { terminalId, data: output.replace(/\n/g, '\r\n') })
-      // 发送给对话流
-      sendToRenderer('tool:output-stream', { toolCallId, terminalId, output, isError })
-    },
-    onComplete: (exitCode) => {
-      sendToRenderer('terminal:exit', { terminalId, exitCode, signal: null })
-    },
-    buildResult: (stdout, stderr, exitCode) => ({
-      success: exitCode === 0,
+    sendToRenderer(
+      'tool:terminal-created',
+      { toolCallId, terminalId, command },
+      targetWebContentsId ? { webContentsId: targetWebContentsId } : undefined
+    )
+    sendToRenderer(
+      'tool:streaming-started',
+      { toolCallId, command },
+      targetWebContentsId ? { webContentsId: targetWebContentsId } : undefined
+    )
+
+    TerminalService.createCommandTerminal(
       command,
-      terminalId,
-      stdout,
-      stderr,
-      exitCode,
-      streaming: true,
-      message: stdout.substring(0, 2000).trim()
-        ? i18n.t('main.terminal.ran_in_terminal_with_output', {
+      workspaceRoot,
+      {
+        onData: (output) => {
+          stdout += output
+          sendToRenderer(
+            'tool:output-stream',
+            { toolCallId, terminalId, output, isError: false },
+            targetWebContentsId ? { webContentsId: targetWebContentsId } : undefined
+          )
+        },
+        onExit: (exitCode) => {
+          resolveOnce({
+            success: exitCode === 0,
+            command,
             terminalId,
-            output: stdout.substring(0, 2000).trim()
+            stdout,
+            exitCode,
+            streaming: true,
+            message: stdout.substring(0, 2000).trim()
+              ? i18n.t('main.terminal.ran_in_terminal_with_output', {
+                  terminalId,
+                  output: stdout.substring(0, 2000).trim()
+                })
+              : i18n.t('main.terminal.ran_in_terminal_background', { terminalId })
           })
-        : i18n.t('main.terminal.ran_in_terminal_background', { terminalId })
-    }),
-    abortSignal
+        }
+      },
+      targetWebContentsId,
+      terminalId
+    )
+
+    if (abortSignal) {
+      abortSignal.addEventListener(
+        'abort',
+        () => {
+          if (resolved) return
+          TerminalService.kill(terminalId)
+          resolveOnce({
+            success: false,
+            command,
+            terminalId,
+            stdout,
+            stderr: i18n.t('main.terminal.command_aborted_by_user'),
+            exitCode: 130
+          })
+        },
+        { once: true }
+      )
+    }
   })
 }
 
@@ -377,16 +437,26 @@ async function executeInline(
   command: string,
   toolCallId: string,
   workspaceRoot: string,
-  abortSignal?: AbortSignal
+  abortSignal?: AbortSignal,
+  targetWebContentsId?: number
 ): Promise<string> {
-  sendToRenderer('tool:streaming-started', { toolCallId, command })
+  sendToRenderer(
+    'tool:streaming-started',
+    { toolCallId, command },
+    targetWebContentsId ? { webContentsId: targetWebContentsId } : undefined
+  )
 
   return spawnCommand({
     command,
     toolCallId,
     workspaceRoot,
+    targetWebContentsId,
     onOutput: (output, isError) => {
-      sendToRenderer('tool:output-stream', { toolCallId, output, isError })
+      sendToRenderer(
+        'tool:output-stream',
+        { toolCallId, output, isError },
+        targetWebContentsId ? { webContentsId: targetWebContentsId } : undefined
+      )
     },
     buildResult: (stdout, stderr, exitCode) => ({
       success: exitCode === 0,
@@ -405,6 +475,7 @@ interface SpawnOptions {
   command: string
   toolCallId: string
   workspaceRoot: string
+  targetWebContentsId?: number
   onOutput: (output: string, isError: boolean) => void
   onComplete?: (exitCode: number) => void
   buildResult: (stdout: string, stderr: string, exitCode: number) => CommandResult
@@ -412,8 +483,16 @@ interface SpawnOptions {
 }
 
 async function spawnCommand(options: SpawnOptions): Promise<string> {
-  const { command, toolCallId, workspaceRoot, onOutput, onComplete, buildResult, abortSignal } =
-    options
+  const {
+    command,
+    toolCallId,
+    workspaceRoot,
+    targetWebContentsId,
+    onOutput,
+    onComplete,
+    buildResult,
+    abortSignal
+  } = options
 
   return new Promise((resolve) => {
     const shell = process.env.SHELL || DEFAULT_SHELL
@@ -442,7 +521,11 @@ async function spawnCommand(options: SpawnOptions): Promise<string> {
         killTimeout = null
       }
 
-      sendToRenderer('tool:output-complete', { toolCallId, exitCode: result.exitCode || 0 })
+      sendToRenderer(
+        'tool:output-complete',
+        { toolCallId, exitCode: result.exitCode || 0 },
+        targetWebContentsId ? { webContentsId: targetWebContentsId } : undefined
+      )
       resolve(JSON.stringify(result))
     }
 

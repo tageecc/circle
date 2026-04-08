@@ -204,7 +204,7 @@ const api = {
     getByProject: (projectPath: string) => ipcRenderer.invoke('sessions:getByProject', projectPath),
     getWithMessages: (sessionId: string) =>
       ipcRenderer.invoke('sessions:getWithMessages', sessionId),
-    update: (sessionId: string, updates: { title?: string }) =>
+    update: (sessionId: string, updates: { title?: string; modelId?: string }) =>
       ipcRenderer.invoke('sessions:update', sessionId, updates),
     delete: (sessionId: string) => ipcRenderer.invoke('sessions:delete', sessionId),
     deleteMessagesAfter: (sessionId: string, messageId: number) =>
@@ -672,14 +672,14 @@ const api = {
     onOutputStream: (
       callback: (event: {
         toolCallId: string
-        terminalId: string
+        terminalId?: string
         output: string
         isError: boolean
       }) => void
     ) => {
       const listener = (
         _: any,
-        event: { toolCallId: string; terminalId: string; output: string; isError: boolean }
+        event: { toolCallId: string; terminalId?: string; output: string; isError: boolean }
       ) => callback(event)
       ipcRenderer.on('tool:output-stream', listener)
       return () => ipcRenderer.removeListener('tool:output-stream', listener)
@@ -689,17 +689,153 @@ const api = {
     onOutputComplete: (
       callback: (event: {
         toolCallId: string
-        terminalId: string
+        terminalId?: string
         exitCode: number
         signal?: number
       }) => void
     ) => {
       const listener = (
         _: any,
-        event: { toolCallId: string; terminalId: string; exitCode: number; signal?: number }
+        event: { toolCallId: string; terminalId?: string; exitCode: number; signal?: number }
       ) => callback(event)
       ipcRenderer.on('tool:output-complete', listener)
       return () => ipcRenderer.removeListener('tool:output-complete', listener)
+    }
+  },
+
+  plan: {
+    resolveApproval: (payload: {
+      approvalId: string
+      result: { type: 'approved'; feedback?: string } | { type: 'rejected'; feedback: string }
+    }) => ipcRenderer.invoke('plan:resolve-approval', payload),
+    onModeChanged: (
+      callback: (data: {
+        sessionId: string
+        mode: 'default' | 'plan'
+        planFilePath: string | null
+      }) => void
+    ) => {
+      const listener = (
+        _: unknown,
+        data: {
+          sessionId: string
+          mode: 'default' | 'plan'
+          planFilePath: string | null
+        }
+      ) => callback(data)
+      ipcRenderer.on('session:mode-changed', listener)
+      return () => ipcRenderer.removeListener('session:mode-changed', listener)
+    },
+    onApprovalRequired: (
+      callback: (data: {
+        approvalId: string
+        sessionId: string
+        assistantMessageId: number
+        planContent: string
+        planFilePath: string
+      }) => void
+    ) => {
+      const listener = (
+        _: unknown,
+        data: {
+          approvalId: string
+          sessionId: string
+          assistantMessageId: number
+          planContent: string
+          planFilePath: string
+        }
+      ) => callback(data)
+      ipcRenderer.on('plan:approval-required', listener)
+      return () => ipcRenderer.removeListener('plan:approval-required', listener)
+    }
+  },
+
+  delegate: {
+    onStart: (
+      callback: (data: {
+        taskId: string
+        sessionId: string
+        description: string
+        subagentType: string
+        subagentName: string
+        icon: string
+        color: string
+      }) => void
+    ) => {
+      const listener = (
+        _: unknown,
+        data: {
+          taskId: string
+          sessionId: string
+          description: string
+          subagentType: string
+          subagentName: string
+          icon: string
+          color: string
+        }
+      ) => callback(data)
+      ipcRenderer.on('delegate:start', listener)
+      return () => ipcRenderer.removeListener('delegate:start', listener)
+    },
+    onProgress: (
+      callback: (data: {
+        taskId: string
+        sessionId: string
+        filesExplored: number
+        searches: number
+        edits: number
+        toolCalls: number
+        currentOperation?: string
+      }) => void
+    ) => {
+      const listener = (
+        _: unknown,
+        data: {
+          taskId: string
+          sessionId: string
+          filesExplored: number
+          searches: number
+          edits: number
+          toolCalls: number
+          currentOperation?: string
+        }
+      ) => callback(data)
+      ipcRenderer.on('delegate:progress', listener)
+      return () => ipcRenderer.removeListener('delegate:progress', listener)
+    },
+    onComplete: (
+      callback: (data: {
+        taskId: string
+        sessionId: string
+        result?: string
+        error?: string
+        durationMs: number
+        progress?: {
+          filesExplored: number
+          searches: number
+          edits: number
+          toolCalls: number
+        }
+      }) => void
+    ) => {
+      const listener = (
+        _: unknown,
+        data: {
+          taskId: string
+          sessionId: string
+          result?: string
+          error?: string
+          durationMs: number
+          progress?: {
+            filesExplored: number
+            searches: number
+            edits: number
+            toolCalls: number
+          }
+        }
+      ) => callback(data)
+      ipcRenderer.on('delegate:complete', listener)
+      return () => ipcRenderer.removeListener('delegate:complete', listener)
     }
   },
 
@@ -963,16 +1099,6 @@ const api = {
       ipcRenderer.on('update-error', (_event, error) => callback(error))
       return () => ipcRenderer.removeAllListeners('update-error')
     }
-  },
-
-  // Generic IPC methods (for Plan Mode and other custom events)
-  invoke: (channel: string, ...args: any[]) => ipcRenderer.invoke(channel, ...args),
-  on: (channel: string, callback: (...args: any[]) => void) => {
-    const subscription = (_event: any, ...args: any[]) => callback(...args)
-    ipcRenderer.on(channel, subscription)
-  },
-  off: (channel: string, callback: (...args: any[]) => void) => {
-    ipcRenderer.removeListener(channel, callback as any)
   }
 }
 
