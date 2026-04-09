@@ -2,16 +2,16 @@
 
 # Circle
 
-**Local-first AI-native Desktop IDE**
+**Local-first AI IDE with human-approved coding agents**
 
-Complete coding, Git, terminal, and AI collaboration in a single window
+Edit code, inspect Git, run terminals, and collaborate with AI in one desktop workspace.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![pnpm](https://img.shields.io/badge/maintained%20with-pnpm-f69220.svg)](https://pnpm.io)
 [![CI](https://github.com/tageecc/circle/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/tageecc/circle/actions/workflows/ci.yml)
 [![GitHub Release](https://img.shields.io/github/v/release/tageecc/circle?label=Latest)](https://github.com/tageecc/circle/releases)
+[![Platforms](https://img.shields.io/badge/Platforms-macOS%20%7C%20Windows%20%7C%20Linux-6b7280)](#download)
 
-[Download](#download) · [Quick Start](#quick-start) · [Core Features](#core-features) · [Tech Stack](#tech-stack) · [Roadmap](#roadmap)
+[Download](#download) · [Why Circle](#why-circle) · [Quick Start](#quick-start) · [Core Features](#core-features) · [Roadmap](#roadmap)
 
 [简体中文](./README.zh-CN.md)
 
@@ -25,147 +25,87 @@ Complete coding, Git, terminal, and AI collaboration in a single window
 
 ---
 
-## Introduction
+## Why Circle
 
-Circle is an Electron-based local desktop IDE that deeply integrates code editing, Git workflow, terminal, and AI dialogue in the same interface. All data and vector indexes are stored locally in SQLite/LibSQL, requiring no self-hosted backend.
+Circle is built for developers who want AI assistance without giving up control of their local workflow. It keeps the full loop in one place: code editing, Git, terminal, MCP tools, and AI collaboration.
 
----
-
-## Core Features
-
-### 🤖 AI-Native Development Experience
-
-- **Natural Language Project Generation**: Describe your requirements on the welcome page, AI automatically generates complete project structure and writes to disk
-- **Inline Ghost Completion**: Dedicated model configuration support, TS/JS Shadow diagnostics, layered with list completion
-- **Codebase Semantic Indexing**: Embedding models provide precise context retrieval for conversations
-- **Human-in-the-loop Confirmation**: Dual-pane Diff comparison before AI modifies files, accept or reject each change
-
-### 🔧 Complete Development Toolchain
-
-- **Monaco Editor**: TypeScript/JavaScript language services, Markdown preview, multi-tab management
-- **Integrated Git**: Workspace status, commit, push, branch switching, Diff, history, Blame visualization
-- **Real Terminal**: node-pty driven multi-tab Shell, supports AI tool command injection and output feedback
-- **Problems Panel**: Aggregates workspace diagnostics, real-time feedback from language services
-
-### 🧩 Extensible AI Tool Ecosystem
-
-- **MCP Protocol**: Configure external MCP servers, automatically sync tools to conversations
-- **Skills**: Mount skill descriptions in user directory and workspace, assistant fetches details on demand (progressive disclosure)
-- **Built-in Toolset**: Semantic search, grep, file operations, terminal commands, web search, task lists, etc.
-
-### 🏠 Local-first & Privacy
-
-- **Local Storage**: SQLite/LibSQL saves business data and vector indexes, no cloud dependencies
-- **Multi-model Support**: Configure API Keys for any provider (OpenAI/Anthropic/Google, etc.)
-- **Offline Available**: Core features like editing, Git, terminal work without network
-
----
-
-## Download
-
-### Pre-built Releases
-
-Visit [GitHub Releases](https://github.com/tageecc/circle/releases) to download the installer for your OS:
-
-- **Windows**: `circle-{version}-setup.exe`
-- **macOS**: `circle-{version}.dmg`
-- **Linux**: `circle-{version}.AppImage` / `.deb` / `.snap`
-
-Maintainers: push a `v*` tag to publish a release, or rerun the **Release** workflow with the same tag to refresh assets in place.
-
----
-
-## Roadmap
-
-**[x]** Completed · **[ ]** Planned
-
-### Project & Workspace
-
-- [x] Open local folder, recent projects list
-- [x] Clone from Git repository
-- [x] Create new empty folder project
-- [x] Welcome page: Describe requirements in natural language, AI generates and saves complete project then auto-opens
-- [x] Multi-tab editing, unsaved file warnings
-- [ ] Multi-root workspace (multiple folders in single window)
-
-### Editor
-
-- [x] Monaco code editing (theme, font, indent, etc. linked with settings)
-- [x] TypeScript/JavaScript language services (diagnostics, completion, navigation, etc.)
-- [x] Markdown & image preview
-- [x] Diff view (including AI file modification comparison confirmation flow)
-- [x] AI inline ghost completion (toggleable, dedicated model configurable; TS/JS optional Shadow diagnostics)
-- [x] Layered with list completion: quickSuggestions disabled to reduce conflicts
-- [x] Git Blame inline decorations (configurable)
-
-### AI & Automation
-
-- [x] Sidebar streaming conversation, tool calls, file editing with human-in-the-loop confirmation
-- [x] Built-in coding assistant: logic in `src/main/assistant/assistant.ts`; model & system prompts configured in **Settings → Models**
-- [x] Codebase semantic indexing (**sqlite-vec** vector search + Embedding API; provider configured in settings)
-- [x] MCP & tool extensions (**Settings → MCP & Tools**); Skills panel manages skill enablement and directories
-
-### Terminal & Diagnostics
-
-- [x] Integrated terminal (node-pty)
-- [x] Problems panel aggregates diagnostics
-- [x] Inject terminal commands from AI tool flow, etc. (implementation dependent on tools)
-
-### Git
-
-- [x] Workspace status, commit, push, pull/fetch, switch branch, create branch
-- [x] Diff, file history, Blame, branch comparison
-
-### Settings & Privacy
-
-- [x] No account system: data & config all local (SQLite/userData)
-- [x] Settings: General, Models, MCP, Skills, Appearance, Editor, Terminal, Shortcuts
-- [x] Global AI user rules, Embedding, inline completion, etc. (model APIs self-configured by user)
-- [x] Feedback written to local `userData/feedback` (not uploaded)
-- [ ] Help menu "Welcome/Docs/About" still placeholders
-
-### Other
-
-- [x] `circle://` URL Scheme to launch app (main process protocol registration)
-- [ ] Remote SSH workspace
-- [ ] Language-level debugger (breakpoints, stepping)
+- **One workspace, not five tabs**: editor, Git, terminal, AI chat, and review flow stay in the same window.
+- **Human-in-the-loop by default**: review file edits and shell commands before they apply.
+- **Local-first architecture**: workspace data, chat history, and vector indexes stay on your machine.
+- **Bring your own models and tools**: configure provider credentials, choose models from the input box, and extend with MCP and Skills.
 
 ---
 
 ## Quick Start
 
-### Prerequisites
+### Download
 
-- **Node.js** 18+
-- **pnpm** (matching `packageManager` field in `package.json`)
+Grab the latest installer from [GitHub Releases](https://github.com/tageecc/circle/releases):
 
-### Installation & Running
+- **Windows**: `circle-{version}-setup.exe`
+- **macOS**: `circle-{version}-{arch}.dmg`
+- **Linux**: `circle-{version}.AppImage` / `.deb`
+
+### First Run
+
+1. Open **Settings → Models** and add the provider credentials you want to use.
+2. Open the model picker in the chat input and choose a model for the current conversation.
+3. Open a local folder, clone a repository, or describe an app on the welcome page to generate a project.
+4. Review AI file edits and shell commands before they execute.
+
+### Run from Source
 
 ```bash
-# Clone repository
 git clone https://github.com/tageecc/circle.git
 cd circle
-
-# Install dependencies
 pnpm install
-
-# Start development mode
 pnpm dev
 ```
 
-### First-time Setup
-
-1. **Configure Models**: Open **Settings → Models**, enter API Key and select provider & model ID
-2. **Generate Project**: Enter project description on welcome page, AI generates complete project and auto-opens
-3. **Daily Development**: File tree on left, editor in center, AI chat on right; terminal & problems panel at bottom
-
-### Build & Package
+### Build Packages
 
 ```bash
-pnpm build:win    # Windows
-pnpm build:mac    # macOS
-pnpm build:linux  # Linux
+pnpm build:win
+pnpm build:mac
+pnpm build:linux
 ```
+
+---
+
+## Core Features
+
+### AI-native coding workflow
+
+- Generate a new project from natural language on the welcome page
+- Stream AI conversations in the sidebar with tool calls and planning
+- Use semantic codebase search backed by local vector indexing
+- Choose models per conversation directly from the chat input
+- Get inline ghost completion with a dedicated completion model
+
+### Safe file and command execution
+
+- Review AI file changes in a diff flow before keeping them
+- Approve, reject, or skip risky terminal commands
+- Track tool output and long-running execution directly in chat
+
+### Full desktop development environment
+
+- Monaco editor with TypeScript/JavaScript language services
+- Integrated Git: status, commit, push, branch switching, diff, history, blame
+- Real terminal powered by `node-pty`
+- Problems panel for diagnostics and language-service feedback
+
+### Extensible by design
+
+- MCP server integration for external tools
+- Skills mounted from user or workspace directories
+- Built-in tools for search, grep, file operations, terminal commands, and more
+
+### Local-first and private
+
+- No required account system
+- No hosted backend required
+- Data and indexes stored locally with SQLite / LibSQL and `sqlite-vec`
 
 ---
 
@@ -177,33 +117,32 @@ pnpm build:linux  # Linux
 | Desktop  | Electron, electron-vite                                                               |
 | Editor   | Monaco Editor                                                                         |
 | AI       | `@ai-sdk/provider` / `provider-utils`, native agent loops, multi-provider models, MCP |
-| Data     | SQLite/LibSQL, Drizzle ORM, **sqlite-vec** (vector search)                            |
+| Data     | SQLite / LibSQL, Drizzle ORM, `sqlite-vec`                                            |
 | Terminal | node-pty                                                                              |
+
+---
+
+## Roadmap
+
+Near-term priorities:
+
+- Remote SSH workspace support
+- Multi-root workspace support
+- Language-level debugger integration
+- Better in-app help and documentation surfaces
 
 ---
 
 ## Contributing
 
-We welcome all forms of contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) to understand the development process and PR guidelines.
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow and PR guidelines.
 
-- **Bug Reports**: [Submit Issue](../../issues)
-- **Feature Requests**: [Submit Feature Request](../../issues)
-- **Code Contributions**: Fork → Branch → PR
-- **Documentation Improvements**: Submit PR or Issue directly
+- **Bug reports**: [Open an issue](../../issues)
+- **Feature requests**: [Open an issue](../../issues)
+- **Code contributions**: Fork → Branch → PR
+- **Docs improvements**: PRs are welcome
 
-Please adhere to our [Code of Conduct](CODE_OF_CONDUCT.md). For security issues, see [SECURITY.md](SECURITY.md).
-
----
-
-## Star History
-
-<a href="https://star-history.com/#tageecc/circle&Date">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=tageecc/circle&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=tageecc/circle&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=tageecc/circle&type=Date" />
- </picture>
-</a>
+Please follow the [Code of Conduct](CODE_OF_CONDUCT.md). For security issues, see [SECURITY.md](SECURITY.md).
 
 ---
 
@@ -215,7 +154,7 @@ Please adhere to our [Code of Conduct](CODE_OF_CONDUCT.md). For security issues,
 
 ## Links
 
-- [📥 Download Installer](https://github.com/tageecc/circle/releases)
-- [📝 Changelog](CHANGELOG.md)
-- [🔒 Security Policy](SECURITY.md)
-- [💬 Get Help](SUPPORT.md)
+- [Releases](https://github.com/tageecc/circle/releases)
+- [Changelog](CHANGELOG.md)
+- [Security Policy](SECURITY.md)
+- [Support](SUPPORT.md)

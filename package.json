@@ -1,10 +1,10 @@
 {
   "name": "circle",
   "version": "1.0.6",
-  "description": "Local-first AI-native desktop IDE: Monaco editor, Git, terminal, native multi-provider agent (OpenAI-compatible, Anthropic, Google), MCP, SQLite.",
+  "description": "Local-first AI IDE with editor, Git, terminal, MCP, and human-in-the-loop coding agents.",
   "main": "./out/main/index.js",
   "author": "Circle",
-  "homepage": "https://circle.com",
+  "homepage": "https://github.com/tageecc/circle",
   "packageManager": "pnpm@10.29.2",
   "scripts": {
     "format": "prettier --write .",
