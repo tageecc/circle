@@ -9,7 +9,6 @@ const require = createRequire(import.meta.url)
 const forceRebuild = process.argv.includes('--force')
 const platform = process.platform
 const expectedArch = process.env.npm_config_arch || process.arch
-const packageManagerCommand = platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
 
 /** @returns {void} */
 function log(message) {
@@ -119,9 +118,21 @@ function inspectNativeDeps() {
 /** @returns {void} */
 function rebuildNativeDeps() {
   log(`Rebuilding Electron native dependencies for ${platform}/${expectedArch}...`)
-  execFileSync(packageManagerCommand, ['exec', 'electron-builder', 'install-app-deps'], {
-    stdio: 'inherit'
-  })
+
+  const packageManagerEntrypoint = process.env.npm_execpath
+  if (!packageManagerEntrypoint) {
+    throw new Error(
+      'npm_execpath is not set; run this script through pnpm so native deps can be rebuilt.'
+    )
+  }
+
+  execFileSync(
+    process.execPath,
+    [packageManagerEntrypoint, 'exec', 'electron-builder', 'install-app-deps'],
+    {
+      stdio: 'inherit'
+    }
+  )
 }
 
 /** @returns {void} */
