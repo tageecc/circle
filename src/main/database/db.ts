@@ -247,16 +247,6 @@ export class CircleDatabase {
         enabled INTEGER NOT NULL DEFAULT 1
       );
 
-      CREATE TABLE IF NOT EXISTS model_configs (
-        id TEXT PRIMARY KEY,
-        provider_id TEXT NOT NULL,
-        model_id TEXT NOT NULL,
-        is_default INTEGER NOT NULL DEFAULT 0,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      );
-      CREATE INDEX IF NOT EXISTS idx_model_configs_provider ON model_configs(provider_id);
-
       CREATE TABLE IF NOT EXISTS provider_api_keys (
         provider_id TEXT PRIMARY KEY,
         api_key TEXT NOT NULL,
@@ -573,6 +563,10 @@ export class CircleDatabase {
         set: { value: JSON.stringify(value), updatedAt: now }
       })
       .run()
+  }
+
+  deleteUIState(key: string): void {
+    this.db.delete(schema.uiState).where(eq(schema.uiState.key, key)).run()
   }
 
   // ==================== 用户规则操作 ====================

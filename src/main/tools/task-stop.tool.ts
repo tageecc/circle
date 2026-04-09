@@ -5,8 +5,11 @@
 import { z } from 'zod'
 import type { ToolCallOptions } from '@ai-sdk/provider-utils'
 import { defineTool } from './define-tool'
-import { getTaskRun, updateTaskRun } from '../agent/task-run-registry'
-import { sendToRenderer } from '../utils/ipc'
+import {
+  abortTaskRun,
+  getTaskRunCompletionPromise,
+  getTaskRunForSession
+} from '../agent/task-run-registry'
 import { getToolContext } from '../services/tool-context'
 
 const inputSchema = z.object({
@@ -30,7 +33,7 @@ export const taskStopTool = defineTool({
   inputSchema,
   execute: async ({ task_id }, options: ToolCallOptions) => {
     const ctx = getToolContext(options)
-    const task = getTaskRun(task_id)
+    const task = getTaskRunForSession(task_id, ctx.sessionId)
 
     if (!task) {
       return JSON.stringify({
@@ -47,27 +50,33 @@ export const taskStopTool = defineTool({
       })
     }
 
-    // Update task status to failed (stopped by user)
-    updateTaskRun(task_id, {
-      status: 'failed',
-      resultSummary: 'Stopped by user request',
-      completedAt: Date.now(),
-      durationMs: task.startedAt ? Date.now() - task.startedAt : undefined
-    })
+    if (!task.background) {
+      return JSON.stringify({
+        success: false,
+        error: `Task ${task_id} is not a background task and cannot be stopped independently.`
+      })
+    }
 
-    // Notify frontend
-    sendToRenderer('delegate:complete', {
-      taskId: task_id,
-      sessionId: ctx.sessionId,
-      error: 'Task stopped by user',
-      durationMs: task.startedAt ? Date.now() - task.startedAt : 0
-    }, ctx.senderWebContentsId ? { webContentsId: ctx.senderWebContentsId } : undefined)
+    if (!abortTaskRun(task_id)) {
+      return JSON.stringify({
+        success: false,
+        error: `Task ${task_id} cannot be stopped because it has no active runtime controller.`
+      })
+    }
+
+    await getTaskRunCompletionPromise(task_id)
+
+    const finalTask = getTaskRunForSession(task_id, ctx.sessionId)
 
     return JSON.stringify({
-      success: true,
+      success: finalTask?.status === 'stopped',
       task_id: task_id,
       previous_status: 'running',
-      note: 'Task has been stopped. The task will be marked as failed with reason "Stopped by user request".'
+      current_status: finalTask?.status || 'stopped',
+      note:
+        finalTask?.status === 'stopped'
+          ? 'Task stopped successfully.'
+          : `Stop was requested, but the task finished with status: ${finalTask?.status || 'unknown'}.`
     })
   }
 })

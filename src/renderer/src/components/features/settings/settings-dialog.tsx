@@ -10,7 +10,6 @@ import {
   FileText,
   Plus,
   X,
-  Key,
   Brain,
   Bot
 } from 'lucide-react'
@@ -55,7 +54,6 @@ import { useSettings } from '@/contexts/settings-context'
 import { MonacoCodeEditor } from '@/components/features/editor/monaco-code-editor'
 import { KeymapSettingsContent } from './keymap-settings-content'
 import { UserRulesSettingsContent } from './user-rules-settings-content'
-import { ApiKeysSettings } from './api-keys-settings'
 import { MemoriesSettingsContent } from './memories-settings-content'
 import { ModelsSettingsContent } from './models-settings-content'
 import type {
@@ -173,7 +171,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     { key: 'terminal', name: t('settings.terminal'), icon: Monitor },
     { key: 'keyboard', name: t('settings.keyboard'), icon: Keyboard },
     { key: 'models', name: t('settings.models'), icon: Bot },
-    { key: 'aiconfig', name: t('settings.ai_config'), icon: Key },
     { key: 'rules', name: t('settings.rules'), icon: FileText },
     { key: 'memories', name: t('settings.memories'), icon: Brain }
   ]
@@ -404,8 +401,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         return <KeymapSettingsContent />
       case 'models':
         return <ModelsSettingsContent />
-      case 'aiconfig':
-        return <ApiKeysSettings />
       case 'rules':
         return <UserRulesSettingsContent />
       case 'memories':
@@ -418,7 +413,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="overflow-hidden p-0 md:max-h-[750px] md:max-w-[1100px] lg:max-w-[1200px]"
+        className="overflow-hidden p-0 md:max-h-[82vh] md:max-w-[1100px] lg:max-w-[1200px]"
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogTitle className="sr-only">设置</DialogTitle>
@@ -445,8 +440,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               </SidebarGroup>
             </SidebarContent>
           </Sidebar>
-          <main className="flex h-[700px] flex-1 flex-col overflow-hidden">
-            <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border px-6">
+          <main className="flex h-[min(82vh,760px)] min-h-0 flex-1 flex-col overflow-hidden">
+            <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-5 md:px-6">
               <Breadcrumb>
                 <BreadcrumbList>
                   <BreadcrumbItem className="hidden md:block">
@@ -461,7 +456,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 </BreadcrumbList>
               </Breadcrumb>
             </header>
-            <div className="flex-1 overflow-y-auto p-6">{renderContent()}</div>
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 md:px-6 md:py-6">
+              {renderContent()}
+            </div>
             <div className="flex items-center justify-between border-t border-border p-4">
               <Popover open={resetPopoverOpen} onOpenChange={setResetPopoverOpen}>
                 <PopoverTrigger asChild>

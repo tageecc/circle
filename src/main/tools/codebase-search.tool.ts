@@ -17,12 +17,12 @@ const inputSchema = z.object({
  * 代码库语义搜索工具 - 使用 sqlite-vec 向量检索
  */
 export const codebaseSearchTool = defineTool({
-  description: `Semantic code search - finds code by meaning (vector search) or text (LIKE search).
+  description: `Semantic code search powered by embeddings and sqlite-vec.
 
 ### Mode Selection
 
-- **Vector search enabled**: Uses AI embeddings for true semantic search
-- **Vector search disabled**: Uses simple text LIKE matching
+- Requires vector search to be enabled and configured in Settings → Model Configuration.
+- Uses AI embeddings for true semantic search across the indexed codebase.
 
 ### When to Use
 
@@ -72,7 +72,8 @@ Use for:
         return JSON.stringify({
           success: false,
           error: 'Codebase index not found',
-          message: 'Please index the project first using the "Index Project" feature',
+          message:
+            'Index the project first after enabling vector search in Settings → Model Configuration.',
           projectPaths: roots
         })
       }

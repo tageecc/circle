@@ -206,18 +206,6 @@ export const skillPreferences = sqliteTable('skill_preferences', {
   enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true)
 })
 
-/**
- * Model configurations table - User-configured AI models
- */
-export const modelConfigs = sqliteTable('model_configs', {
-  id: text('id').primaryKey(),
-  providerId: text('provider_id').notNull(),
-  modelId: text('model_id').notNull(),
-  isDefault: integer('is_default', { mode: 'boolean' }).notNull().default(false),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull()
-})
-
 export const providerApiKeys = sqliteTable('provider_api_keys', {
   providerId: text('provider_id').primaryKey(),
   apiKey: text('api_key').notNull(),
@@ -245,5 +233,4 @@ export type CodebaseVector = typeof codebaseVectors.$inferSelect
 export type MessageSnapshot = typeof messageSnapshots.$inferSelect
 export type Memory = typeof memories.$inferSelect
 export type SkillPreference = typeof skillPreferences.$inferSelect
-export type ModelConfig = typeof modelConfigs.$inferSelect
 export type ProviderApiKey = typeof providerApiKeys.$inferSelect

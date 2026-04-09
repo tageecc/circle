@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Card } from '@/components/ui/card'
 import { ChatInput, type PastedImage } from '@/components/features/chat/chat-input'
+import { toast } from '@/components/ui/sonner'
 import { Folder, GitBranch, Terminal, Clock } from 'lucide-react'
-import { AIProjectCreationDialog } from '@/components/features/common/ai-project-creation-dialog'
+import { useAvailableChatModels } from '@/hooks/use-available-chat-models'
 
 interface RecentProject {
   name: string
@@ -16,7 +17,7 @@ interface WelcomeViewProps {
   onOpenProject: () => void
   onOpenRecentProject: (path: string) => void
   onCloneRepository: () => void
-  onProjectCreated?: (projectPath: string) => void
+  onCreateApp: (prompt: string, modelId: string) => Promise<boolean>
 }
 
 export function WelcomeView({
@@ -24,28 +25,34 @@ export function WelcomeView({
   onOpenProject,
   onOpenRecentProject,
   onCloneRepository,
-  onProjectCreated
+  onCreateApp
 }: WelcomeViewProps) {
   const { t } = useTranslation()
   const [promptValue, setPromptValue] = useState('')
   const [pastedImages, setPastedImages] = useState<PastedImage[]>([])
-  const [showCreationDialog, setShowCreationDialog] = useState(false)
-  const [creationPrompt, setCreationPrompt] = useState('')
+  const [isCreating, setIsCreating] = useState(false)
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(null)
+  const { availableModels, isLoadingModels } = useAvailableChatModels()
 
-  const handleCreateApp = () => {
-    if (!promptValue.trim()) return
+  const handleCreateApp = async () => {
+    const prompt = promptValue.trim()
+    if (!prompt || isCreating) return
 
-    setCreationPrompt(promptValue)
-    setShowCreationDialog(true)
+    if (!selectedModelId) {
+      toast.error(t('chat.select_model_first'))
+      return
+    }
 
-    setPromptValue('')
-    setPastedImages([])
-  }
+    setIsCreating(true)
 
-  const handleProjectCreated = (projectPath: string) => {
-    setShowCreationDialog(false)
-    if (onProjectCreated) {
-      onProjectCreated(projectPath)
+    try {
+      const started = await onCreateApp(prompt, selectedModelId)
+      if (started) {
+        setPromptValue('')
+        setPastedImages([])
+      }
+    } finally {
+      setIsCreating(false)
     }
   }
 
@@ -75,8 +82,14 @@ export function WelcomeView({
               value={promptValue}
               onChange={setPromptValue}
               onSend={handleCreateApp}
+              isSending={isCreating}
               pastedImages={pastedImages}
               onPastedImagesChange={setPastedImages}
+              availableModels={availableModels}
+              isLoadingModels={isLoadingModels}
+              selectedModelId={selectedModelId}
+              onModelChange={setSelectedModelId}
+              showModelSelector
               minHeight="100px"
             />
           </div>
@@ -175,13 +188,6 @@ export function WelcomeView({
           )}
         </div>
       </div>
-
-      <AIProjectCreationDialog
-        open={showCreationDialog}
-        userPrompt={creationPrompt}
-        onClose={() => setShowCreationDialog(false)}
-        onProjectCreated={handleProjectCreated}
-      />
     </div>
   )
 }

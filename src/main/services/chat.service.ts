@@ -33,6 +33,9 @@ import {
 } from '../agent/coding-session.runner'
 import { getSessionHooks } from '../agent/session-hooks'
 import { reportExclusiveToolBatchIfRisky } from '../tools/tool-policy'
+import { cancelUserQuestion } from '../tools/ask-user.tool'
+import { cancelPlanApproval } from '../tools/exit-plan-mode.tool'
+import { cancelApprovalRequest } from '../tools/run-terminal-cmd.tool'
 import { shouldUsePayloadRef, storeStreamPayload } from './stream-payload-refs.service'
 import {
   canUseNativeAgentLoop,
@@ -62,8 +65,15 @@ export class ChatService {
     senderWebContentsId?: number
     images?: Array<{ id: string; dataUrl: string; name: string; size: number }>
   }): AsyncGenerator<StreamChunk> {
-    const { sessionId, message, workspaceRoot, onStream, abortSignal, senderWebContentsId, images } =
-      options
+    const {
+      sessionId,
+      message,
+      workspaceRoot,
+      onStream,
+      abortSignal,
+      senderWebContentsId,
+      images
+    } = options
 
     let textContent = ''
     let reasoningContent = ''
@@ -112,10 +122,18 @@ export class ChatService {
         return c
       }
 
-      const defaultModelId = this.configService.getDefaultModel()
       const session = await SessionService.getSession(sessionId)
-      const modelId =
-        session?.modelId && session.modelId !== 'assistant' ? session.modelId : defaultModelId
+      const modelId = session?.modelId
+      if (!modelId || modelId === 'assistant') {
+        throw new Error(
+          'This session has no selected model. Choose a model in the chat input before sending.'
+        )
+      }
+      if (!this.configService.isConfiguredModel(modelId)) {
+        throw new Error(
+          'The selected session model is no longer configured. Re-select a configured model in the chat input.'
+        )
+      }
       console.log(`[ChatService] Using model: ${modelId}`)
       const totalUsage = (session?.metadata?.totalUsage as any) || {
         inputTokens: 0,
@@ -303,7 +321,7 @@ export class ChatService {
       const toolNamesSinceLastFinish: string[] = []
 
       if (!canUseNativeAgentLoop(modelId, this.configService)) {
-        const msg = `No API credentials for native agent (model: ${modelId}). Configure the provider API key in Settings.`
+        const msg = `No provider credentials for native agent (model: ${modelId}). Configure this provider in Model Settings.`
         closeStreaming()
         await saveMessage()
         yield emitChunk({
@@ -479,6 +497,14 @@ export class ChatService {
                       ? partWithOutput.output
                       : null) as any
                   }
+                }
+
+                const hasExistingResult = await SessionService.hasToolResult(
+                  sessionId,
+                  part.toolCallId
+                )
+                if (hasExistingResult) {
+                  break
                 }
 
                 // ✅ 保存tool-result消息（AI SDK标准）
@@ -842,22 +868,6 @@ export class ChatService {
     }
   }
 
-  /**
-   * 处理工具审批
-   */
-  async approveToolCall(
-    _sessionId: string,
-    messageId: number,
-    toolCallId: string,
-    approved: boolean
-  ): Promise<void> {
-    await SessionService.updateToolApprovalStatus(messageId, toolCallId, {
-      needsApproval: true,
-      approvalStatus: approved ? 'approved' : 'rejected',
-      state: approved ? 'running' : 'error'
-    })
-  }
-
   // Note: SessionService is now all static methods
   getSessionService(): typeof SessionService {
     return SessionService
@@ -895,6 +905,55 @@ export class ChatService {
   ): Promise<void> {
     const pendingToolCalls: Array<{ messageId: number; toolCallId: string; toolName: string }> = []
 
+    const buildCancelledOutput = (toolName: string): Record<string, unknown> => {
+      if (toolName === 'run_terminal_cmd') {
+        return {
+          success: false,
+          status: 'aborted',
+          stderr: 'Tool execution cancelled by user',
+          exitCode: 130
+        }
+      }
+
+      if (toolName === 'ask_user') {
+        return {
+          success: false,
+          skipped: true,
+          message: 'Question cancelled because the current turn was stopped.'
+        }
+      }
+
+      if (toolName === 'exit_plan_mode') {
+        return {
+          success: false,
+          cancelled: true,
+          message: 'Plan approval request cancelled because the current turn was stopped.'
+        }
+      }
+
+      return {
+        success: false,
+        cancelled: true,
+        message: 'Tool execution cancelled by user'
+      }
+    }
+
+    const cancelPendingWaiter = (toolName: string, toolCallId: string): void => {
+      switch (toolName) {
+        case 'run_terminal_cmd':
+          cancelApprovalRequest(toolCallId, 'skip')
+          break
+        case 'ask_user':
+          cancelUserQuestion(toolCallId)
+          break
+        case 'exit_plan_mode':
+          cancelPlanApproval(toolCallId)
+          break
+        default:
+          break
+      }
+    }
+
     // 查找所有没有 result 的 tool-calls
     for (const msg of historyMessages) {
       if (msg.role !== 'assistant') continue
@@ -903,6 +962,10 @@ export class ChatService {
 
       for (const part of content) {
         if (part.type === 'tool-call') {
+          if (part.toolName === 'delegate_task' && part.input?.run_in_background === true) {
+            continue
+          }
+
           const toolCallId = part.toolCallId
 
           // 检查是否已有 tool-result
@@ -927,6 +990,7 @@ export class ChatService {
     // 为所有 pending 的 tool-calls 添加 cancelled 的 tool-result
     for (const { messageId, toolCallId, toolName } of pendingToolCalls) {
       console.log(`[ChatService] Cancelling pending tool: ${toolName} (${toolCallId})`)
+      cancelPendingWaiter(toolName, toolCallId)
 
       // 使用标准的 tool-result 格式（AI SDK 兼容）
       const toolResultPart: ToolResultPart = {
@@ -935,11 +999,7 @@ export class ChatService {
         toolName,
         output: {
           type: 'text',
-          value: JSON.stringify({
-            success: false,
-            stderr: 'Tool execution cancelled by user',
-            exitCode: 130
-          })
+          value: JSON.stringify(buildCancelledOutput(toolName))
         }
       }
 

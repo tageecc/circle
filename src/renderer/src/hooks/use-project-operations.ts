@@ -134,15 +134,6 @@ export function useProjectOperations({
     [openRecentProject, openProjectWithBehavior, t]
   )
 
-  const handleProjectCreated = useCallback(
-    async (projectPath: string) => {
-      setWorkspaceRoot(projectPath)
-      refreshGitStatus()
-      await restoreEditorState(projectPath)
-    },
-    [setWorkspaceRoot, restoreEditorState]
-  )
-
   const handleCloneSuccess = useCallback(
     async (projectPath: string) => {
       setWorkspaceRoot(projectPath)
@@ -155,7 +146,6 @@ export function useProjectOperations({
   return {
     handleOpenProject,
     handleOpenRecentProject,
-    handleProjectCreated,
     handleCloneSuccess,
     pendingProject,
     setPendingProject,

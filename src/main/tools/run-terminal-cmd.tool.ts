@@ -20,6 +20,7 @@ type UserDecision = 'approve' | 'reject' | 'skip'
 interface CommandResult {
   success: boolean
   command: string
+  status?: 'completed' | 'rejected' | 'skipped' | 'aborted'
   stdout?: string
   stderr?: string
   exitCode?: number
@@ -37,6 +38,19 @@ const pendingApprovals = new Map<
     resolve: (decision: UserDecision) => void
   }
 >()
+
+export function cancelApprovalRequest(
+  toolCallId: string,
+  decision: UserDecision = 'skip'
+): boolean {
+  const pending = pendingApprovals.get(toolCallId)
+  if (!pending) {
+    return false
+  }
+  pendingApprovals.delete(toolCallId)
+  pending.resolve(decision)
+  return true
+}
 
 function needsApproval(command: string): boolean {
   const preferences = getConfigService().getPreferences()
@@ -66,7 +80,8 @@ async function requestApproval(
   toolCallId: string,
   command: string,
   is_background: boolean,
-  targetWebContentsId?: number
+  targetWebContentsId?: number,
+  abortSignal?: AbortSignal
 ): Promise<UserDecision> {
   console.log('[requestApproval] 📤 Preparing approval request:', {
     assistantMessageId,
@@ -96,8 +111,24 @@ async function requestApproval(
 
   console.log('[requestApproval] 📡 IPC sent:', sent)
 
+  if (abortSignal?.aborted) {
+    return 'skip'
+  }
+
   return new Promise((resolve) => {
-    pendingApprovals.set(toolCallId, { resolve })
+    const finalize = (decision: UserDecision) => {
+      abortSignal?.removeEventListener('abort', handleAbort)
+      resolve(decision)
+    }
+
+    const handleAbort = () => {
+      cancelApprovalRequest(toolCallId, 'skip')
+    }
+
+    pendingApprovals.set(toolCallId, { resolve: finalize })
+    if (abortSignal) {
+      abortSignal.addEventListener('abort', handleAbort, { once: true })
+    }
     console.log('[requestApproval] ⏳ Waiting for user decision...')
   })
 }
@@ -282,23 +313,25 @@ In using these tools, adhere to the following guidelines:
         toolCallId,
         command,
         is_background,
-        context.senderWebContentsId
+        context.senderWebContentsId,
+        context.abortSignal
       )
 
       if (decision === 'reject') {
         return JSON.stringify({
           success: false,
           command,
+          status: 'rejected',
           message: i18n.t('main.terminal.user_rejected_command'),
-          exitCode: 1,
           rejected: true
         })
       }
 
       if (decision === 'skip') {
         return JSON.stringify({
-          success: true,
+          success: false,
           command,
+          status: 'skipped',
           message: i18n.t('main.terminal.user_skipped_command'),
           skipped: true
         })
@@ -333,6 +366,7 @@ async function executeCommand(
     return JSON.stringify({
       success: false,
       command,
+      status: 'completed',
       stderr: error instanceof Error ? error.message : String(error),
       exitCode: 1
     })
@@ -394,6 +428,7 @@ async function executeInTerminal(
           resolveOnce({
             success: exitCode === 0,
             command,
+            status: 'completed',
             terminalId,
             stdout,
             exitCode,
@@ -420,6 +455,7 @@ async function executeInTerminal(
           resolveOnce({
             success: false,
             command,
+            status: 'aborted',
             terminalId,
             stdout,
             stderr: i18n.t('main.terminal.command_aborted_by_user'),
@@ -461,6 +497,7 @@ async function executeInline(
     buildResult: (stdout, stderr, exitCode) => ({
       success: exitCode === 0,
       command,
+      status: 'completed',
       stdout,
       stderr,
       exitCode,
@@ -545,6 +582,7 @@ async function spawnCommand(options: SpawnOptions): Promise<string> {
           resolveOnce({
             success: false,
             command,
+            status: 'aborted',
             stderr: i18n.t('main.terminal.command_aborted_by_user'),
             exitCode: 130 // SIGTERM 的标准退出码
           })
@@ -559,6 +597,7 @@ async function spawnCommand(options: SpawnOptions): Promise<string> {
       resolveOnce({
         success: false,
         command,
+        status: 'completed',
         stderr: error.message,
         exitCode: 1
       })

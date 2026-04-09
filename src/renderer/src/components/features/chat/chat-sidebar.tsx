@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useEffectEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/components/ui/sonner'
 import { ChatInput, type PastedImage, type Attachment } from './chat-input'
@@ -14,9 +14,17 @@ import type { PendingFileEdit } from '@/types/ide'
 import { useChatSession } from '@/hooks/use-chat-session'
 import { useMessageQueueStore, type QueuedMessage } from '@/stores/message-queue.store'
 import { getModelInfo } from '@/constants/models'
+import { splitSelectedModelId } from '@/lib/chat-models'
+import { useAvailableChatModels } from '@/hooks/use-available-chat-models'
 
 interface ChatSidebarProps {
   workspaceRoot: string | null
+  pendingInitialPrompt?: {
+    id: string
+    prompt: string
+    projectPath: string
+    modelId: string
+  } | null
   pendingFileEdits?: PendingFileEdit[]
   onOpenFile?: (filePath: string) => void
   onAddPendingFileEdit?: (edit: {
@@ -36,10 +44,12 @@ interface ChatSidebarProps {
   onRejectAllFileEdits?: (sessionId?: string) => void
   onClearSessionPendingEdits?: (sessionId: string) => void // 会话删除时清理
   onInitialized?: () => void // Chat 初始化完成回调（用于保持组件实例存活）
+  onPendingInitialPromptHandled?: (requestId: string) => void
 }
 
 export function ChatSidebar({
   workspaceRoot,
+  pendingInitialPrompt = null,
   pendingFileEdits = [],
   onOpenFile,
   onAcceptFileEdit,
@@ -47,14 +57,15 @@ export function ChatSidebar({
   onAcceptAllFileEdits,
   onRejectAllFileEdits,
   onClearSessionPendingEdits,
-  onInitialized
+  onInitialized,
+  onPendingInitialPromptHandled
 }: ChatSidebarProps) {
   const { t } = useTranslation()
   const [inputValue, setInputValue] = useState('')
   const [pastedImages, setPastedImages] = useState<PastedImage[]>([])
   const [attachments, setAttachments] = useState<Attachment[]>([])
-  const [selectedProvider, setSelectedProvider] = useState('')
-  const [selectedModel, setSelectedModel] = useState('')
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(null)
+  const { availableModels, isLoadingModels } = useAvailableChatModels()
 
   // Plan Mode state
   const [planModeState, setPlanModeState] = useState<
@@ -70,12 +81,13 @@ export function ChatSidebar({
   type DelegateTaskState = Omit<
     {
       id: string
+      sessionId: string
       description: string
       subagentType?: string
       subagentName?: string
       icon?: string
       color?: string
-      status: 'pending' | 'running' | 'completed' | 'failed'
+      status: 'pending' | 'running' | 'completed' | 'failed' | 'stopped'
       createdAt: number
       startedAt?: number
       completedAt?: number
@@ -105,14 +117,42 @@ export function ChatSidebar({
     openSession,
     closeSessionTab,
     openSessionIds,
-    createNewSession
+    createNewSession,
+    updateSessionModel
   } = useChatSession(workspaceRoot)
 
+  useEffect(() => {
+    setSelectedModelId(null)
+  }, [workspaceRoot])
+
+  useEffect(() => {
+    if (currentSession?.modelId) {
+      setSelectedModelId(currentSession.modelId)
+    }
+  }, [currentSession?.id, currentSession?.modelId])
+
+  const availableModelIds = useMemo(
+    () => new Set(availableModels.map((model) => model.id)),
+    [availableModels]
+  )
+
+  useEffect(() => {
+    if (
+      !isLoadingModels &&
+      selectedModelId &&
+      availableModels.length > 0 &&
+      !availableModelIds.has(selectedModelId)
+    ) {
+      setSelectedModelId(null)
+    }
+  }, [availableModelIds, availableModels.length, isLoadingModels, selectedModelId])
+
   const maxTokens = useMemo(() => {
+    const selectedModel = splitSelectedModelId(selectedModelId)
     if (!selectedModel) return undefined
-    const modelInfo = getModelInfo(selectedModel, selectedProvider)
+    const modelInfo = getModelInfo(selectedModel.modelId, selectedModel.providerId)
     return modelInfo?.contextWindow
-  }, [selectedModel, selectedProvider])
+  }, [selectedModelId])
 
   const usageData = useMemo(() => {
     const { lastUsage, totalUsage } = currentSession?.metadata || {}
@@ -134,11 +174,76 @@ export function ChatSidebar({
 
   // 消息队列处理标志
   const isProcessingQueue = useRef(false)
+  const lastCompletedInitialPromptIdRef = useRef<string | null>(null)
+  const inFlightInitialPromptIdRef = useRef<string | null>(null)
 
   // 标记 Chat 已初始化
   useEffect(() => {
     onInitialized?.()
   }, [onInitialized])
+
+  const processPendingInitialPrompt = useEffectEvent(
+    async (
+      request: NonNullable<ChatSidebarProps['pendingInitialPrompt']>,
+      modelId: string
+    ): Promise<void> => {
+      let resolved = false
+
+      const finishRequest = (mode: 'success' | 'restore'): void => {
+        if (resolved || inFlightInitialPromptIdRef.current !== request.id) {
+          return
+        }
+
+        resolved = true
+        inFlightInitialPromptIdRef.current = null
+
+        if (mode === 'success') {
+          lastCompletedInitialPromptIdRef.current = request.id
+        } else if (workspaceRoot === request.projectPath) {
+          setInputValue((current) => (current.trim() ? current : request.prompt))
+        }
+
+        onPendingInitialPromptHandled?.(request.id)
+      }
+
+      try {
+        const sessionId = await createNewSession(modelId)
+
+        if (!sessionId) {
+          finishRequest('restore')
+          return
+        }
+
+        await sendMessage(request.prompt, modelId, [], [], sessionId, {
+          onAccepted: () => finishRequest('success'),
+          onFailureBeforeAccepted: () => finishRequest('restore')
+        })
+      } catch (error) {
+        console.error('自动启动项目生成失败:', error)
+        finishRequest('restore')
+      }
+    }
+  )
+
+  useEffect(() => {
+    if (!pendingInitialPrompt || pendingInitialPrompt.projectPath !== workspaceRoot) {
+      return
+    }
+
+    if (
+      lastCompletedInitialPromptIdRef.current === pendingInitialPrompt.id ||
+      inFlightInitialPromptIdRef.current === pendingInitialPrompt.id
+    ) {
+      return
+    }
+
+    if (!pendingInitialPrompt.modelId) {
+      return
+    }
+
+    inFlightInitialPromptIdRef.current = pendingInitialPrompt.id
+    void processPendingInitialPrompt(pendingInitialPrompt, pendingInitialPrompt.modelId)
+  }, [pendingInitialPrompt, processPendingInitialPrompt, workspaceRoot])
 
   // 自动处理队列：当 isStreaming 变为 false 时，检查队列
   useEffect(() => {
@@ -159,7 +264,7 @@ export function ChatSidebar({
         try {
           await sendMessage(
             nextMessage.content,
-            `${nextMessage.provider}/${nextMessage.model}`,
+            nextMessage.modelId,
             nextMessage.images,
             nextMessage.attachments || []
           )
@@ -180,9 +285,12 @@ export function ChatSidebar({
 
   // 创建新会话
   const handleNewSession = async () => {
-    const modelId =
-      selectedProvider && selectedModel ? `${selectedProvider}/${selectedModel}` : 'assistant'
-    await createNewSession(modelId)
+    if (!selectedModelId) {
+      toast.error(t('chat.select_model_first'))
+      return
+    }
+
+    await createNewSession(selectedModelId)
     setInputValue('')
     setPastedImages([])
     setAttachments([])
@@ -207,6 +315,11 @@ export function ChatSidebar({
       return
     }
 
+    if (!selectedModelId) {
+      toast.error(t('chat.select_model_first'))
+      return
+    }
+
     const message = inputValue.trim()
     const images = [...pastedImages]
     const files = [...attachments]
@@ -221,16 +334,14 @@ export function ChatSidebar({
         content: message,
         images,
         attachments: files,
-        provider: selectedProvider,
-        model: selectedModel,
+        modelId: selectedModelId,
         sessionId: currentSessionId
       })
       return
     }
 
     // 否则直接发送
-    const modelId = `${selectedProvider}/${selectedModel}`
-    await sendMessage(message, modelId, images, files)
+    await sendMessage(message, selectedModelId, images, files)
   }
 
   // 强制发送队列消息（打断当前对话）
@@ -246,10 +357,9 @@ export function ChatSidebar({
     }
 
     // 立即发送到队列消息的目标 session
-    const modelId = `${queuedMessage.provider}/${queuedMessage.model}`
     await sendMessage(
       queuedMessage.content,
-      modelId,
+      queuedMessage.modelId,
       queuedMessage.images,
       queuedMessage.attachments || [],
       queuedMessage.sessionId || undefined
@@ -303,6 +413,7 @@ export function ChatSidebar({
         ...prev,
         [data.taskId]: {
           id: data.taskId,
+          sessionId: data.sessionId,
           description: data.description,
           subagentType: data.subagentType,
           subagentName: data.subagentName,
@@ -352,6 +463,7 @@ export function ChatSidebar({
     const handleDelegateComplete = (data: {
       taskId: string
       sessionId: string
+      status: 'completed' | 'failed' | 'stopped'
       result?: string
       error?: string
       durationMs: number
@@ -369,7 +481,7 @@ export function ChatSidebar({
           ...prev,
           [data.taskId]: {
             ...task,
-            status: data.error ? 'failed' : 'completed',
+            status: data.status,
             completedAt: Date.now(),
             durationMs: data.durationMs,
             result: data.result,
@@ -400,7 +512,7 @@ export function ChatSidebar({
 
   // Get delegate tasks for current session
   const currentSessionDelegateTasks = Object.values(delegateTasks).filter(
-    (task) => currentSessionId && task.id.startsWith(currentSessionId.slice(0, 8))
+    (task) => currentSessionId && task.sessionId === currentSessionId
   )
 
   return (
@@ -449,6 +561,7 @@ export function ChatSidebar({
         currentSession={currentSession || undefined}
         sessions={sessions}
         openSessionIds={openSessionIds}
+        canCreateSession={Boolean(workspaceRoot && selectedModelId)}
         onNewSession={handleNewSession}
         onSelectSession={openSession}
         onCloseSessionTab={closeSessionTab}
@@ -470,8 +583,12 @@ export function ChatSidebar({
           onApprovalDecision(toolCallId, decision)
         }}
         onResubmitMessage={async (content) => {
-          const modelId = `${selectedProvider}/${selectedModel}`
-          await sendMessage(content, modelId, [])
+          if (!selectedModelId) {
+            toast.error(t('chat.select_model_first'))
+            return
+          }
+
+          await sendMessage(content, selectedModelId, [])
         }}
       />
 
@@ -494,12 +611,20 @@ export function ChatSidebar({
           onPastedImagesChange={setPastedImages}
           attachments={attachments}
           onAttachmentsChange={setAttachments}
+          availableModels={availableModels}
+          isLoadingModels={isLoadingModels}
+          selectedModelId={selectedModelId}
           maxTokens={maxTokens}
           usedTokens={usageData.usedTokens}
           usage={usageData.usage}
-          onModelChange={(provider, model) => {
-            setSelectedProvider(provider)
-            setSelectedModel(model)
+          onModelChange={(modelId) => {
+            setSelectedModelId(modelId)
+
+            if (!modelId || !currentSessionId || currentSession?.modelId === modelId) {
+              return
+            }
+
+            void updateSessionModel(currentSessionId, modelId)
           }}
         />
       </div>

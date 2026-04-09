@@ -315,7 +315,11 @@ export function useChatMessages(
     modelId: string,
     pastedImages: PastedImage[] = [],
     attachments: Attachment[] = [],
-    targetSessionId?: string
+    targetSessionId?: string,
+    callbacks?: {
+      onAccepted?: () => void
+      onFailureBeforeAccepted?: (error: string) => void
+    }
   ): Promise<void> => {
     if (!message.trim() && pastedImages.length === 0 && attachments.length === 0) return
 
@@ -360,6 +364,18 @@ export function useChatMessages(
     setIsStreaming(true)
 
     try {
+      let hasAccepted = false
+      const markAccepted = () => {
+        if (hasAccepted) return
+        hasAccepted = true
+        callbacks?.onAccepted?.()
+      }
+
+      const notifyFailureBeforeAccepted = (errorMessage: string) => {
+        if (hasAccepted) return
+        callbacks?.onFailureBeforeAccepted?.(errorMessage)
+      }
+
       // TODO: 后端需要支持 attachments 参数
       // 暂时只传递 images，attachments 的非图片文件稍后实现
       const allImages = [
@@ -408,6 +424,7 @@ export function useChatMessages(
             chunk.payloadRef &&
             window.api.chat.getStreamPayload
           ) {
+            markAccepted()
             void window.api.chat.getStreamPayload(chunk.payloadRef).then((json) => {
               if (!json) return
               try {
@@ -464,6 +481,7 @@ export function useChatMessages(
 
           // 处理 message-start：直接使用后端传来的完整消息
           if (chunk.type === 'message-start' && chunk.messages) {
+            markAccepted()
             const newMessages: Message[] = chunk.messages!.map((msg) => ({
               ...msg,
               timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date()
@@ -535,6 +553,9 @@ export function useChatMessages(
           )
         },
         (_sessionId) => {
+          if (!hasAccepted) {
+            notifyFailureBeforeAccepted(t('chat.toast_send_failed'))
+          }
           setIsStreaming(false)
           // 关闭最后一个 assistant 消息的流式状态
           setSessions((prev) =>
@@ -564,6 +585,9 @@ export function useChatMessages(
         (error) => {
           // 用户主动停止不显示错误提示
           if (error !== 'Chat stopped by user') {
+            notifyFailureBeforeAccepted(
+              (typeof error === 'string' && error) || t('chat.toast_send_failed')
+            )
             console.error('Stream error:', error)
             toast.error((typeof error === 'string' && error) || t('chat.toast_send_failed'))
           }
@@ -574,6 +598,7 @@ export function useChatMessages(
       // 保存 stop 方法到 ref
       streamStopRef.current = stop
     } catch (error: any) {
+      callbacks?.onFailureBeforeAccepted?.(t('chat.toast_send_failed'))
       console.error('Stream error:', error)
       toast.error(t('chat.toast_send_failed'))
       setIsStreaming(false)
@@ -642,7 +667,6 @@ export function useChatMessages(
     toolCallId: string,
     decision: 'approve' | 'reject' | 'skip'
   ) => {
-    // ✅ 映射到approvalStatus类型
     const approvalStatus =
       decision === 'approve' ? 'approved' : decision === 'reject' ? 'rejected' : 'skipped'
 
@@ -657,9 +681,26 @@ export function useChatMessages(
       }))
     )
 
-    // ✅ 通知后端继续执行（传递原始decision: 'approve' | 'reject' | 'skip'）
-    if (activeSessionId) {
-      await window.api.chat.resumeInterrupt(activeSessionId, toolCallId, decision)
+    if (!activeSessionId) return
+
+    try {
+      const result = await window.api.chat.resumeInterrupt(activeSessionId, toolCallId, decision)
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to resume interrupted tool')
+      }
+    } catch (error) {
+      console.error('[useChatMessages] Failed to submit approval decision:', error)
+
+      setSessions((prev) =>
+        prev.map((s) => ({
+          ...s,
+          messages: s.messages.map((m) =>
+            setToolUIState(m, toolCallId, {
+              approvalStatus: 'pending'
+            })
+          )
+        }))
+      )
     }
   }
 

@@ -9,8 +9,7 @@ export interface QueuedMessage {
   content: string
   images: PastedImage[]
   attachments?: Attachment[]
-  provider: string
-  model: string
+  modelId: string
   sessionId: string | null
   timestamp: number
 }

@@ -96,6 +96,16 @@ export function resolveUserQuestionAnswer(questionId: string, result: AnswerResu
   }
 }
 
+export function cancelUserQuestion(questionId: string): boolean {
+  const pending = pendingAnswers.get(questionId)
+  if (!pending) {
+    return false
+  }
+  pendingAnswers.delete(questionId)
+  pending({ type: 'skipped' })
+  return true
+}
+
 export const askUserTool = defineTool({
   description: `Ask the user multiple choice questions to gather information, clarify ambiguity, understand preferences, make decisions or offer them choices. Returns JSON: {"success":true,"answers":{...},"annotations":{...}} or {"success":false,"skipped":true} or {"success":false,"rejected":true,"feedback":"..."}.
 
@@ -136,7 +146,8 @@ Users can:
 - **Continue (Enter)**: Submit their current answers and let you proceed
 - **Other**: Type custom answer for any question (automatically available)
 
-When user skips or wants to clarify, you receive \`rejected: true\` with their feedback text, allowing you to reformulate questions or ask differently.
+When the user skips, you receive \`skipped: true\`.
+When the user rejects to clarify, you receive \`rejected: true\` with their feedback text, allowing you to reformulate questions or ask differently.
 
 ### Examples
 
@@ -229,13 +240,39 @@ When user skips or wants to clarify, you receive \`rejected: true\` with their f
       isInPlanMode
     }, ctx.senderWebContentsId ? { webContentsId: ctx.senderWebContentsId } : undefined)
 
+    if (ctx.abortSignal?.aborted) {
+      await SessionService.updateToolApprovalStatus(ctx.assistantMessageId, questionId, {
+        needsApproval: false,
+        approvalStatus: 'skipped',
+        state: 'completed'
+      })
+      return JSON.stringify({ success: false, skipped: true })
+    }
+
     const result = await new Promise<AnswerResult>((resolve) => {
-      pendingAnswers.set(questionId, resolve)
+      const finalize = (value: AnswerResult) => {
+        ctx.abortSignal?.removeEventListener('abort', handleAbort)
+        resolve(value)
+      }
+
+      const handleAbort = () => {
+        cancelUserQuestion(questionId)
+      }
+
+      pendingAnswers.set(questionId, finalize)
+      if (ctx.abortSignal) {
+        ctx.abortSignal.addEventListener('abort', handleAbort, { once: true })
+      }
     })
 
     await SessionService.updateToolApprovalStatus(ctx.assistantMessageId, questionId, {
       needsApproval: false,
-      approvalStatus: result.type === 'answered' ? 'approved' : 'rejected',
+      approvalStatus:
+        result.type === 'answered'
+          ? 'approved'
+          : result.type === 'skipped'
+            ? 'skipped'
+            : 'rejected',
       state: 'completed'
     })
 

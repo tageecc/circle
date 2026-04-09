@@ -6,6 +6,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import type { ConfigService } from '../services/config.service'
 import { resolveOpenAICompatibleEndpoint } from './native/resolve-openai-endpoint'
+import { normalizeModelId, normalizeProviderId } from '../../shared/provider-config'
 
 export type OneShotParams = {
   modelId: string
@@ -18,32 +19,36 @@ export type OneShotParams = {
 }
 
 function anthropicKey(config: ConfigService): string | null {
-  return config.getApiKey('anthropic') || process.env.ANTHROPIC_API_KEY || null
+  return config.getProviderApiKey('anthropic') || null
 }
 
 function googleKey(config: ConfigService): string | null {
-  return config.getApiKey('google') || process.env.GOOGLE_API_KEY || null
+  return config.getProviderApiKey('google') || null
 }
 
 export async function generateTextOneShot(params: OneShotParams): Promise<string> {
   const { modelId, configService, system, prompt, temperature, maxOutputTokens, abortSignal } =
     params
-  const [provider, model] = modelId.split('/')
+  const normalizedModelId = normalizeModelId(modelId)
+  const [provider, model] = normalizedModelId.split('/')
   if (!provider || !model) {
     throw new Error(`Invalid modelId: ${modelId}`)
   }
 
-  const openai = resolveOpenAICompatibleEndpoint(modelId, configService)
+  const openai = resolveOpenAICompatibleEndpoint(normalizedModelId, configService)
   if (openai) {
     const messages: Array<{ role: string; content: string }> = []
     if (system) messages.push({ role: 'system', content: system })
     messages.push({ role: 'user', content: prompt })
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
+    }
+    if (openai.apiKey) {
+      headers.Authorization = `Bearer ${openai.apiKey}`
+    }
     const res = await fetch(`${openai.baseURL.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${openai.apiKey}`,
-        'Content-Type': 'application/json'
-      },
+      headers,
       body: JSON.stringify({
         model: openai.model,
         messages,
@@ -62,9 +67,9 @@ export async function generateTextOneShot(params: OneShotParams): Promise<string
     return typeof text === 'string' ? text : ''
   }
 
-  if (provider === 'Anthropic') {
+  if (normalizeProviderId(provider) === 'anthropic') {
     const apiKey = anthropicKey(configService)
-    if (!apiKey) throw new Error('Anthropic API key not configured')
+    if (!apiKey) throw new Error('Anthropic credentials not configured in Model Settings')
     const client = new Anthropic({ apiKey })
     const msg = await client.messages.create({
       model,
@@ -80,9 +85,9 @@ export async function generateTextOneShot(params: OneShotParams): Promise<string
     return anthropicText
   }
 
-  if (provider === 'Google') {
+  if (normalizeProviderId(provider) === 'google') {
     const apiKey = googleKey(configService)
-    if (!apiKey) throw new Error('Google API key not configured')
+    if (!apiKey) throw new Error('Google credentials not configured in Model Settings')
     const genAI = new GoogleGenerativeAI(apiKey)
     const m = genAI.getGenerativeModel({
       model,

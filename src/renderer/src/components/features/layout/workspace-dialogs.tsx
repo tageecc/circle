@@ -14,6 +14,8 @@ import { useConfirm } from '../common/confirm-provider'
 interface WorkspaceDialogsProps {
   workspaceRoot: string | null
   setWorkspaceRoot: (root: string) => void
+  settingsOpen: boolean
+  onSettingsOpenChange: (open: boolean) => void
   // 项目确认对话框相关
   pendingProject: { path: string; name: string; type: 'open' | 'recent' } | null
   onProjectConfirm: (openInNewWindow: boolean, rememberChoice: boolean) => void
@@ -23,6 +25,8 @@ interface WorkspaceDialogsProps {
 export function WorkspaceDialogs({
   workspaceRoot,
   setWorkspaceRoot,
+  settingsOpen,
+  onSettingsOpenChange,
   pendingProject,
   onProjectConfirm,
   onProjectConfirmCancel
@@ -36,7 +40,6 @@ export function WorkspaceDialogs({
   const quickOpenDialogOpen = useWorkspaceUIStore((state) => state.quickOpenDialogOpen)
   const cloneDialogOpen = useWorkspaceUIStore((state) => state.cloneDialogOpen)
   const showStashDialog = useWorkspaceUIStore((state) => state.showStashDialog)
-  const settingsOpen = useWorkspaceUIStore((state) => state.settingsOpen)
   const bugReportOpen = useWorkspaceUIStore((state) => state.bugReportOpen)
   const openDialog = useWorkspaceUIStore((state) => state.openDialog)
   const closeDialog = useWorkspaceUIStore((state) => state.closeDialog)
@@ -81,7 +84,7 @@ export function WorkspaceDialogs({
 
       <SettingsDialog
         open={settingsOpen}
-        onOpenChange={(open) => (open ? openDialog('settings') : closeDialog('settings'))}
+        onOpenChange={onSettingsOpenChange}
       />
       <BugReportDialog
         open={bugReportOpen}

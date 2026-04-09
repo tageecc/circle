@@ -177,6 +177,18 @@ export class SessionService {
     }))
   }
 
+  static async hasToolResult(sessionId: string, toolCallId: string): Promise<boolean> {
+    const messages = await this.getMessages(sessionId)
+    return messages.some(
+      (message) =>
+        message.role === 'tool' &&
+        Array.isArray(message.content) &&
+        message.content.some(
+          (part: any) => part?.type === 'tool-result' && part?.toolCallId === toolCallId
+        )
+    )
+  }
+
   static async saveMessage(
     sessionId: string,
     message: {
@@ -270,6 +282,37 @@ export class SessionService {
     await this.updateMessage(messageId, {
       metadata: { ...metadata, toolStates }
     })
+  }
+
+  static async updateToolApprovalStatusBySession(
+    sessionId: string,
+    toolCallId: string,
+    approvalData: {
+      needsApproval: boolean
+      approvalStatus: 'pending' | 'approved' | 'rejected' | 'skipped'
+      state?: 'pending' | 'running' | 'completed' | 'error'
+    }
+  ): Promise<void> {
+    const messages = await this.getMessages(sessionId)
+    const assistantMessage = [...messages]
+      .reverse()
+      .find(
+        (message) =>
+          message.role === 'assistant' &&
+          Array.isArray(message.content) &&
+          message.content.some(
+            (part: any) => part?.type === 'tool-call' && part?.toolCallId === toolCallId
+          )
+      )
+
+    if (!assistantMessage) {
+      console.warn(
+        `[SessionService] Tool call message not found for session=${sessionId}, toolCallId=${toolCallId}`
+      )
+      return
+    }
+
+    await this.updateToolApprovalStatus(assistantMessage.id, toolCallId, approvalData)
   }
 
   static async deleteSession(sessionId: string): Promise<void> {
@@ -372,7 +415,10 @@ Title (3-5 words):`
       const { getConfigService } = await import('../index.js')
       const config = getConfigService()
       const sess = await this.getSession(sessionId)
-      const modelId = sess?.modelId ?? 'Alibaba (China)/qwen3.6-plus-2026-04-02'
+      const modelId = sess?.modelId
+      if (!modelId || !config.isConfiguredModel(modelId)) {
+        return
+      }
 
       const text = await generateTextOneShot({
         modelId,

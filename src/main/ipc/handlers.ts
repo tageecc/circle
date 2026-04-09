@@ -124,12 +124,25 @@ export function registerIpcHandlers(): void {
       params: {
         sessionId: string
         toolCallId: string
-        decision: string
+        decision: 'approve' | 'reject' | 'skip'
       }
     ): Promise<{ success: boolean; error?: string }> => {
       try {
-        const decision = params.decision === 'approved' ? 'approve' : 'reject'
-        handleApprovalDecision(params.toolCallId, decision)
+        if (!['approve', 'reject', 'skip'].includes(params.decision)) {
+          throw new Error(`Invalid approval decision: ${params.decision}`)
+        }
+
+        await SessionService.updateToolApprovalStatusBySession(params.sessionId, params.toolCallId, {
+          needsApproval: true,
+          approvalStatus:
+            params.decision === 'approve'
+              ? 'approved'
+              : params.decision === 'reject'
+                ? 'rejected'
+                : 'skipped'
+        })
+
+        handleApprovalDecision(params.toolCallId, params.decision)
         return { success: true }
       } catch (error) {
         console.error('[IPC] Failed to resume interrupt:', error)
@@ -158,6 +171,9 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('sessions:create', async (_, modelId: string, projectPath: string) => {
     try {
+      if (!configService.isConfiguredModel(modelId)) {
+        throw new Error('Cannot create a session for a provider without valid credentials.')
+      }
       return await SessionService.createSession(modelId, projectPath)
     } catch (error) {
       console.error('Failed to create session:', error)
@@ -211,6 +227,9 @@ export function registerIpcHandlers(): void {
     'sessions:update',
     async (_, sessionId: string, updates: { title?: string; modelId?: string }) => {
       try {
+        if (updates.modelId && !configService.isConfiguredModel(updates.modelId)) {
+          throw new Error('Cannot assign a model whose provider is not configured.')
+        }
         await SessionService.updateSession(sessionId, updates)
       } catch (error) {
         console.error('Failed to update session:', error)
@@ -300,74 +319,6 @@ export function registerIpcHandlers(): void {
       configService.setPreference(key as PreferenceKey, value)
     } catch (error) {
       console.error('Failed to set preference:', error)
-      throw error
-    }
-  })
-
-  // API Keys handlers
-  ipcMain.handle('config:getApiKeys', async () => {
-    try {
-      return configService.getApiKeys()
-    } catch (error) {
-      console.error('Failed to get API keys:', error)
-      throw error
-    }
-  })
-
-  ipcMain.handle('config:getApiKey', async (_, provider: string) => {
-    try {
-      return configService.getApiKey(provider)
-    } catch (error) {
-      console.error('Failed to get API key:', error)
-      throw error
-    }
-  })
-
-  ipcMain.handle('config:setApiKey', async (_, provider: string, apiKey: string) => {
-    try {
-      configService.setApiKey(provider, apiKey)
-      return { success: true }
-    } catch (error) {
-      console.error('Failed to set API key:', error)
-      throw error
-    }
-  })
-
-  ipcMain.handle('config:deleteApiKey', async (_, provider: string) => {
-    try {
-      configService.deleteApiKey(provider)
-      return { success: true }
-    } catch (error) {
-      console.error('Failed to delete API key:', error)
-      throw error
-    }
-  })
-
-  ipcMain.handle('config:setApiKeys', async (_, apiKeys: Record<string, string>) => {
-    try {
-      configService.setApiKeys(apiKeys)
-      return { success: true }
-    } catch (error) {
-      console.error('Failed to set API keys:', error)
-      throw error
-    }
-  })
-
-  ipcMain.handle('config:getDefaultModel', async () => {
-    try {
-      return configService.getDefaultModel()
-    } catch (error) {
-      console.error('Failed to get default model:', error)
-      throw error
-    }
-  })
-
-  ipcMain.handle('config:setDefaultModel', async (_, modelId: string) => {
-    try {
-      configService.setDefaultModel(modelId)
-      return { success: true }
-    } catch (error) {
-      console.error('Failed to set default model:', error)
       throw error
     }
   })
@@ -1552,8 +1503,8 @@ export function registerIpcHandlers(): void {
     }
   })
 
-  // AI project bootstrap (welcome flow)
-  ipcMain.handle('project-create:selectProjectFolder', async (event) => {
+  // Project creation location picker (welcome flow)
+  ipcMain.handle('project:selectCreateLocation', async (event) => {
     try {
       const window = BrowserWindow.fromWebContents(event.sender)
       if (!window) throw new Error('No active window')
@@ -1565,70 +1516,15 @@ export function registerIpcHandlers(): void {
         buttonLabel: mainI18n.t('dialog.create_project_folder.confirm')
       })
 
-      if (result.canceled || result.filePaths.length === 0) {
-        return { canceled: true }
+      return {
+        canceled: result.canceled || result.filePaths.length === 0,
+        path: result.filePaths[0] ?? null
       }
-
-      return { canceled: false, path: result.filePaths[0] }
     } catch (error) {
       console.error('Failed to select project folder:', error)
       throw error
     }
   })
-
-  ipcMain.handle(
-    'project-create:createProject',
-    async (event, userPrompt: string, projectPath: string) => {
-      try {
-        const window = BrowserWindow.fromWebContents(event.sender)
-
-        // 创建新的 session，使用默认模型
-        const defaultModelId = 'Alibaba (China)/qwen3.6-plus-2026-04-02'
-        const sessionId = await SessionService.createSession(defaultModelId, projectPath)
-
-        const stream = chatService.streamChat({
-          sessionId,
-          message: userPrompt,
-          workspaceRoot: projectPath,
-          senderWebContentsId: event.sender.id
-        })
-
-        for await (const chunk of stream) {
-          if (chunk.type === 'text') {
-            event.sender.send('project-create:stream:chunk', { content: chunk.content })
-          }
-        }
-
-        // 项目创建完成后的处理
-        const recentProjects = configService.getRecentProjects()
-        const filtered = recentProjects.filter((p) => p.path !== projectPath)
-        const projectName = nodePath.basename(projectPath)
-        filtered.unshift({
-          path: projectPath,
-          name: projectName,
-          lastOpened: Date.now().toString()
-        })
-        const limited = filtered.slice(0, 10)
-        configService.setConfig({ recentProjects: limited })
-        configService.setCurrentProject(projectPath)
-
-        if (window) {
-          FileWatcherService.startWatching(projectPath, window)
-          // ⭐ 同时启动Git监听器
-          GitWatcherService.startWatching(projectPath, event.sender.id)
-        }
-
-        return {
-          success: true,
-          sessionId,
-          projectPath
-        }
-      } catch (error) {
-        console.error('Failed to create project with AI:', error)
-        throw error
-      }
-    }
-  )
 
   // Terminal handlers
   ipcMain.handle('terminal:create', async (event, cwd: string) => {

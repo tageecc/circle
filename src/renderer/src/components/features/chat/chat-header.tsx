@@ -18,6 +18,7 @@ interface ChatHeaderProps {
   currentSession: Session | undefined
   sessions: Session[]
   openSessionIds: string[]
+  canCreateSession?: boolean
   onNewSession: () => void
   onSelectSession: (sessionId: string) => void
   onCloseSessionTab: (sessionId: string) => void
@@ -82,6 +83,7 @@ export function ChatHeader({
   currentSession,
   sessions,
   openSessionIds,
+  canCreateSession = true,
   onNewSession,
   onSelectSession,
   onCloseSessionTab,
@@ -228,6 +230,7 @@ export function ChatHeader({
           variant="ghost"
           size="icon"
           className="size-8 hover:bg-sidebar-accent"
+          disabled={!canCreateSession}
           onClick={onNewSession}
           title={t('chat.new_chat')}
         >

@@ -42,6 +42,7 @@ interface WorkspaceUIState {
   // 布局 Actions
   toggleFileTree: () => void
   toggleChatSidebar: () => void
+  setShowChatSidebar: (show: boolean) => void
   setBottomPanel: (panel: BottomPanelType) => void
   setActiveLeftTab: (tab: LeftTabType) => void
   refreshFileTree: () => void
@@ -142,6 +143,7 @@ export const useWorkspaceUIStore = create<WorkspaceUIState>((set) => ({
   // 布局 Actions
   toggleFileTree: () => set((state) => ({ showFileTree: !state.showFileTree })),
   toggleChatSidebar: () => set((state) => ({ showChatSidebar: !state.showChatSidebar })),
+  setShowChatSidebar: (show) => set({ showChatSidebar: show }),
   setBottomPanel: (panel) => set({ bottomPanel: panel }),
   setActiveLeftTab: (tab) => set({ activeLeftTab: tab }),
   setFullscreen: (isFullscreen) => set({ isFullscreen }),

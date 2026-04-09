@@ -7,6 +7,7 @@ const debug = (...args: any[]) => DEBUG && console.log('[InlineCompletion]', ...
 
 import type * as monaco from 'monaco-editor'
 import { getCompletionRequestManager, type CompletionContext } from './completion-request-manager'
+import { useChatStore } from '@/stores/chat.store'
 
 export interface InlineCompletionProviderOptions {
   enabled?: boolean
@@ -44,6 +45,9 @@ export class InlineCompletionProvider implements monaco.languages.InlineCompleti
 
     try {
       const completionContext = this.buildCompletionContext(model, position)
+      if (!completionContext) {
+        return undefined
+      }
       const response = await this.requestManager.requestCompletion(completionContext)
 
       if (!response || !response.completionText || token.isCancellationRequested) {
@@ -76,11 +80,21 @@ export class InlineCompletionProvider implements monaco.languages.InlineCompleti
   private buildCompletionContext(
     model: monaco.editor.ITextModel,
     position: monaco.Position
-  ): CompletionContext {
+  ): CompletionContext | null {
+    const state = useChatStore.getState()
+    const currentSession = state.currentSessionId
+      ? state.sessions.find((session) => session.id === state.currentSessionId)
+      : null
+
+    if (!currentSession?.modelId) {
+      return null
+    }
+
     return {
       filePath: model.uri.path,
       fileContent: model.getValue(),
       language: model.getLanguageId(),
+      modelId: currentSession.modelId,
       cursorPosition: {
         line: position.lineNumber,
         column: position.column

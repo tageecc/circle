@@ -5,7 +5,8 @@
 import { z } from 'zod'
 import type { ToolCallOptions } from '@ai-sdk/provider-utils'
 import { defineTool } from './define-tool'
-import { getTaskRun } from '../agent/task-run-registry'
+import { getTaskRunForSession } from '../agent/task-run-registry'
+import { getToolContext } from '../services/tool-context'
 
 const inputSchema = z.object({
   task_id: z.string().describe('The ID of the task to retrieve (from delegate_task or task_list)')
@@ -31,8 +32,9 @@ Get the task_id from:
 
   inputSchema,
 
-  execute: async ({ task_id }, _options: ToolCallOptions) => {
-    const task = getTaskRun(task_id)
+  execute: async ({ task_id }, options: ToolCallOptions) => {
+    const ctx = getToolContext(options)
+    const task = getTaskRunForSession(task_id, ctx.sessionId)
 
     if (!task) {
       return JSON.stringify({
@@ -56,9 +58,12 @@ Get the task_id from:
         id: task.id,
         description: task.description,
         status: task.status,
+        background: task.background === true,
         created_at: new Date(task.createdAt).toISOString(),
         age: ageStr,
-        result: task.resultSummary || null
+        result: task.resultSummary || null,
+        progress: task.progress || null,
+        current_operation: task.currentOperation || null
       }
     })
   }

@@ -6,9 +6,20 @@ import { usePendingEditsActions } from '@/hooks/use-pending-edits-actions'
 
 interface RightPanelProps {
   workspaceRoot: string
+  pendingInitialPrompt?: {
+    id: string
+    prompt: string
+    projectPath: string
+    modelId: string
+  } | null
+  onPendingInitialPromptHandled?: (requestId: string) => void
 }
 
-export const RightPanel = memo(function RightPanel({ workspaceRoot }: RightPanelProps) {
+export const RightPanel = memo(function RightPanel({
+  workspaceRoot,
+  pendingInitialPrompt = null,
+  onPendingInitialPromptHandled
+}: RightPanelProps) {
   // Store - 精确订阅
   const setChatInitialized = useWorkspaceUIStore((state) => state.setChatInitialized)
   const setPendingTerminalCommand = useWorkspaceUIStore((state) => state.setPendingTerminalCommand)
@@ -37,6 +48,7 @@ export const RightPanel = memo(function RightPanel({ workspaceRoot }: RightPanel
   return (
     <ChatSidebar
       workspaceRoot={workspaceRoot}
+      pendingInitialPrompt={pendingInitialPrompt}
       pendingFileEdits={pendingFileEdits}
       onOpenFile={(filePath) => fileManager.openFile(filePath)}
       onAddPendingFileEdit={(edit) => {
@@ -49,6 +61,7 @@ export const RightPanel = memo(function RightPanel({ workspaceRoot }: RightPanel
       onRejectAllFileEdits={handleRejectAllFileEdits}
       onClearSessionPendingEdits={handleClearSessionPendingEdits}
       onInitialized={() => setChatInitialized(true)}
+      onPendingInitialPromptHandled={onPendingInitialPromptHandled}
     />
   )
 })

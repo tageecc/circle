@@ -1,11 +1,16 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as monaco from 'monaco-editor'
+import { registerMonacoThemes } from '@/config/monaco-themes'
 
 interface ToolCallDiffViewerProps {
   original: string
   modified: string
   language?: string
   maxHeight?: number
+}
+
+function getCurrentMonacoTheme(): 'one-dark-pro' | 'one-light' {
+  return document.documentElement.classList.contains('dark') ? 'one-dark-pro' : 'one-light'
 }
 
 export function ToolCallDiffViewer({
@@ -16,18 +21,29 @@ export function ToolCallDiffViewer({
 }: ToolCallDiffViewerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const diffRef = useRef<monaco.editor.IStandaloneDiffEditor | null>(null)
+  const originalModelRef = useRef<monaco.editor.ITextModel | null>(null)
+  const modifiedModelRef = useRef<monaco.editor.ITextModel | null>(null)
+  const [theme, setTheme] = useState<'one-dark-pro' | 'one-light'>(getCurrentMonacoTheme)
+
+  useEffect(() => {
+    const syncTheme = () => {
+      setTheme(getCurrentMonacoTheme())
+    }
+
+    const observer = new MutationObserver(syncTheme)
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    })
+
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     if (!containerRef.current) return
 
-    if (diffRef.current) {
-      diffRef.current.dispose()
-      diffRef.current = null
-    }
-
-    const originalModel = monaco.editor.createModel(original, language)
-
-    const modifiedModel = monaco.editor.createModel(modified, language)
+    registerMonacoThemes(monaco)
+    monaco.editor.setTheme(theme)
 
     const editor = monaco.editor.createDiffEditor(containerRef.current, {
       renderSideBySide: false,
@@ -56,6 +72,11 @@ export function ToolCallDiffViewer({
       scrollBeyondLastLine: false
     })
 
+    const originalModel = monaco.editor.createModel(original, language)
+    const modifiedModel = monaco.editor.createModel(modified, language)
+
+    originalModelRef.current = originalModel
+    modifiedModelRef.current = modifiedModel
     editor.setModel({ original: originalModel, modified: modifiedModel })
     diffRef.current = editor
 
@@ -87,8 +108,33 @@ export function ToolCallDiffViewer({
       editor.dispose()
       originalModel.dispose()
       modifiedModel.dispose()
+      diffRef.current = null
+      originalModelRef.current = null
+      modifiedModelRef.current = null
     }
-  }, [original, modified, language, maxHeight])
+  }, [maxHeight])
+
+  useEffect(() => {
+    monaco.editor.setTheme(theme)
+  }, [theme])
+
+  useEffect(() => {
+    const originalModel = originalModelRef.current
+    const modifiedModel = modifiedModelRef.current
+
+    if (!originalModel || !modifiedModel) return
+
+    if (originalModel.getValue() !== original) {
+      originalModel.setValue(original)
+    }
+
+    if (modifiedModel.getValue() !== modified) {
+      modifiedModel.setValue(modified)
+    }
+
+    monaco.editor.setModelLanguage(originalModel, language)
+    monaco.editor.setModelLanguage(modifiedModel, language)
+  }, [original, modified, language])
 
   return (
     <>

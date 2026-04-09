@@ -3,10 +3,11 @@
  */
 
 import type { ConfigService } from '../../services/config.service'
+import { getProviderRuntimeConfig, normalizeModelId, normalizeProviderId } from '../../../shared/provider-config'
 
 export type OpenAICompatibleEndpoint = {
   baseURL: string
-  apiKey: string
+  apiKey?: string
   model: string
 }
 
@@ -16,9 +17,10 @@ export function resolveAnthropicCredentials(
   modelId: string,
   configService: ConfigService
 ): AnthropicCredentials | null {
-  const [provider, model] = modelId.split('/')
-  if (provider !== 'Anthropic' || !model) return null
-  const apiKey = configService.getApiKey('anthropic') || process.env.ANTHROPIC_API_KEY
+  const normalizedModelId = normalizeModelId(modelId)
+  const [provider, model] = normalizedModelId.split('/')
+  if (normalizeProviderId(provider) !== 'anthropic' || !model) return null
+  const apiKey = configService.getProviderApiKey('anthropic')
   if (!apiKey) return null
   return { apiKey, model }
 }
@@ -29,9 +31,10 @@ export function resolveGoogleCredentials(
   modelId: string,
   configService: ConfigService
 ): GoogleCredentials | null {
-  const [provider, model] = modelId.split('/')
-  if (provider !== 'Google' || !model) return null
-  const apiKey = configService.getApiKey('google') || process.env.GOOGLE_API_KEY
+  const normalizedModelId = normalizeModelId(modelId)
+  const [provider, model] = normalizedModelId.split('/')
+  if (normalizeProviderId(provider) !== 'google' || !model) return null
+  const apiKey = configService.getProviderApiKey('google')
   if (!apiKey) return null
   return { apiKey, model }
 }
@@ -49,39 +52,36 @@ export function resolveOpenAICompatibleEndpoint(
   modelId: string,
   configService: ConfigService
 ): OpenAICompatibleEndpoint | null {
-  const [provider, model] = modelId.split('/')
+  const normalizedModelId = normalizeModelId(modelId)
+  const [provider, model] = normalizedModelId.split('/')
   if (!provider || !model) return null
 
-  switch (provider) {
-    case 'Alibaba (China)': {
-      const apiKey = configService.getApiKey('dashscope') || process.env.DASHSCOPE_API_KEY
-      if (!apiKey) return null
-      return {
-        baseURL:
-          process.env.DASHSCOPE_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-        apiKey,
-        model
-      }
+  const runtimeConfig = getProviderRuntimeConfig(provider)
+  if (!runtimeConfig || runtimeConfig.kind !== 'openai-compatible') {
+    return null
+  }
+
+  const baseURL = configService.getProviderBaseURL(provider)
+  if (!baseURL) {
+    return null
+  }
+
+  if (!runtimeConfig.requiresApiKey) {
+    return {
+      baseURL,
+      apiKey: configService.getProviderApiKey(provider),
+      model
     }
-    case 'OpenAI': {
-      const apiKey = configService.getApiKey('openai') || process.env.OPENAI_API_KEY
-      if (!apiKey) return null
-      return {
-        baseURL: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
-        apiKey,
-        model
-      }
-    }
-    case 'DeepSeek': {
-      const apiKey = configService.getApiKey('deepseek') || process.env.DEEPSEEK_API_KEY
-      if (!apiKey) return null
-      return {
-        baseURL: 'https://api.deepseek.com/v1',
-        apiKey,
-        model
-      }
-    }
-    default:
-      return null
+  }
+
+  const apiKey = configService.getProviderApiKey(provider)
+  if (!apiKey) {
+    return null
+  }
+
+  return {
+    baseURL,
+    apiKey,
+    model
   }
 }

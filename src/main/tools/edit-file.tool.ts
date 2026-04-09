@@ -155,7 +155,7 @@ export function parseDate(str: string): Date {
 
 1. **You provide**: target_file, instructions, code_edit
 2. **System reads**: the original file (if it exists)
-3. **With \`// ... existing code ...\` markers**: the configured default model merges the sketch into the full file (up to two attempts). **If merge fails, the tool returns \`edit_file_failed\` JSON and does not write the file** — fix the sketch or use a full-file replace without markers.
+3. **With \`// ... existing code ...\` markers**: the current session model merges the sketch into the full file (up to two attempts). **If merge fails, the tool returns \`edit_file_failed\` JSON and does not write the file** — fix the sketch or use a full-file replace without markers.
 4. **Without markers** (or new file): your \`code_edit\` is written as the full new content
 5. **Success**: \`applied-file-edit\` payload and file written to disk
 
@@ -203,7 +203,7 @@ Specify arguments in this order: [target_file, instructions, code_edit]`,
       fileExists = false
     }
 
-    const applied = await applyEdit(originalContent, code_edit, instructions)
+    const applied = await applyEdit(originalContent, code_edit, instructions, ctx.modelId)
     if (!applied.ok) {
       return JSON.stringify({
         type: 'edit_file_failed',
@@ -293,12 +293,13 @@ Complete file:`
 /**
  * 1. New file → use code_edit as full content
  * 2. No markers → full file replace from code_edit
- * 3. Markers → merge via the configured default model (with explicit failure if merge cannot be applied)
+ * 3. Markers → merge via the current session model (with explicit failure if merge cannot be applied)
  */
 async function applyEdit(
   originalContent: string,
   codeEdit: string,
-  instructions: string
+  instructions: string,
+  modelId?: string
 ): Promise<ApplyEditResult> {
   const cleanedEdit = cleanMarkdown(codeEdit)
 
@@ -310,17 +311,27 @@ async function applyEdit(
     return { ok: true, content: cleanedEdit }
   }
 
-  return applyWithModel(originalContent, cleanedEdit, instructions)
+  if (!modelId?.trim()) {
+    return {
+      ok: false,
+      reason: 'model_error',
+      detail:
+        'The current session has no selected model. Select a model in chat before using sketch-based edit_file merges.',
+      hint: FAIL_HINT
+    }
+  }
+
+  return applyWithModel(originalContent, cleanedEdit, instructions, modelId)
 }
 
 async function applyWithModel(
   originalContent: string,
   codeEdit: string,
-  instructions: string
+  instructions: string,
+  modelId: string
 ): Promise<ApplyEditResult> {
   const { getConfigService } = await import('../index.js')
   const config = getConfigService()
-  const modelId = config.getDefaultModel()
   const prompt = buildMergePrompt(originalContent, codeEdit, instructions)
 
   let lastFailure: 'empty' | 'unchanged' | 'error' = 'empty'

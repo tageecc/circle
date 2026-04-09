@@ -8,12 +8,14 @@ interface ChatState {
   openSessionIds: string[]
 
   setSessions: (sessionsOrUpdater: Session[] | ((prev: Session[]) => Session[])) => void
+  mergeSessions: (sessions: Session[]) => void
   addSession: (session: Session) => void
   updateSession: (sessionId: string, updates: Partial<Session>) => void
   removeSession: (sessionId: string) => void
   markSessionAsLoaded: (sessionId: string) => void
   openSession: (sessionId: string) => void
   closeSessionTab: (sessionId: string) => void
+  resetState: () => void
   addMessage: (sessionId: string, message: Message) => void
   updateLastAssistantMessage: (sessionId: string, updates: Partial<Message>) => void
   batchUpdateSession: (
@@ -33,18 +35,79 @@ export const useChatStore = create<ChatState>((set) => ({
   openSessionIds: [],
 
   setSessions: (sessionsOrUpdater) =>
-    set((state) => ({
-      sessions:
+    set((state) => {
+      const sessions =
         typeof sessionsOrUpdater === 'function'
           ? sessionsOrUpdater(state.sessions)
           : sessionsOrUpdater
-    })),
+
+      const validIds = new Set(sessions.map((session) => session.id))
+      const openSessionIds = state.openSessionIds.filter((id) => validIds.has(id))
+      const loadedSessions = new Set(
+        Array.from(state.loadedSessions).filter((id) => validIds.has(id))
+      )
+      const currentSessionId =
+        state.currentSessionId && validIds.has(state.currentSessionId)
+          ? state.currentSessionId
+          : openSessionIds[0] || null
+
+      return {
+        sessions,
+        currentSessionId,
+        loadedSessions,
+        openSessionIds
+      }
+    }),
+
+  mergeSessions: (incomingSessions) =>
+    set((state) => {
+      const sessionMap = new Map(state.sessions.map((session) => [session.id, session]))
+
+      incomingSessions.forEach((incoming) => {
+        const existing = sessionMap.get(incoming.id)
+        if (!existing) {
+          sessionMap.set(incoming.id, incoming)
+          return
+        }
+
+        sessionMap.set(incoming.id, {
+          ...incoming,
+          messages: existing.messages.length > 0 ? existing.messages : incoming.messages,
+          metadata: {
+            ...(incoming.metadata || {}),
+            ...(existing.metadata || {})
+          }
+        })
+      })
+
+      const sessions = Array.from(sessionMap.values()).sort(
+        (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+      )
+      const validIds = new Set(sessions.map((session) => session.id))
+      const openSessionIds = state.openSessionIds.filter((id) => validIds.has(id))
+      const loadedSessions = new Set(
+        Array.from(state.loadedSessions).filter((id) => validIds.has(id))
+      )
+
+      const fallbackSessionId = sessions[0]?.id || null
+      const currentSessionId =
+        state.currentSessionId && validIds.has(state.currentSessionId)
+          ? state.currentSessionId
+          : openSessionIds[0] || fallbackSessionId
+
+      return {
+        sessions,
+        currentSessionId,
+        loadedSessions,
+        openSessionIds: openSessionIds.length > 0 || !fallbackSessionId ? openSessionIds : [fallbackSessionId]
+      }
+    }),
 
   addSession: (session) =>
     set((state) => ({
-      sessions: [session, ...state.sessions],
+      sessions: [session, ...state.sessions.filter((existing) => existing.id !== session.id)],
       currentSessionId: session.id,
-      openSessionIds: [session.id, ...state.openSessionIds]
+      openSessionIds: [session.id, ...state.openSessionIds.filter((id) => id !== session.id)]
     })),
 
   updateSession: (sessionId, updates) =>
@@ -56,10 +119,13 @@ export const useChatStore = create<ChatState>((set) => ({
     set((state) => {
       const newSessions = state.sessions.filter((s) => s.id !== sessionId)
       const newOpenIds = state.openSessionIds.filter((id) => id !== sessionId)
+      const newLoadedSessions = new Set(state.loadedSessions)
+      newLoadedSessions.delete(sessionId)
       const newCurrentId =
         state.currentSessionId === sessionId ? newOpenIds[0] || null : state.currentSessionId
       return {
         sessions: newSessions,
+        loadedSessions: newLoadedSessions,
         openSessionIds: newOpenIds,
         currentSessionId: newCurrentId
       }
@@ -92,6 +158,14 @@ export const useChatStore = create<ChatState>((set) => ({
         openSessionIds: newOpenIds,
         currentSessionId: newCurrentId
       }
+    }),
+
+  resetState: () =>
+    set({
+      sessions: [],
+      currentSessionId: null,
+      loadedSessions: new Set<string>(),
+      openSessionIds: []
     }),
 
   addMessage: (sessionId, message) =>

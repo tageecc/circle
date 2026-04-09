@@ -10,7 +10,7 @@ import { listTaskRunsForSession } from '../agent/task-run-registry'
 
 const inputSchema = z.object({
   status: z
-    .enum(['pending', 'running', 'completed', 'failed', 'all'])
+    .enum(['pending', 'running', 'completed', 'failed', 'stopped', 'all'])
     .optional()
     .default('all')
     .describe('Filter tasks by status. Default: all')
@@ -23,14 +23,14 @@ Shows information about sub-agent tasks that have been created via delegate_task
 - Task ID and description
 - Status (pending, running, completed, failed)
 - Creation time
-- Result summary (for completed tasks)
+- Result summary (for completed / stopped tasks)
 
 Use this to:
 - Check status of running background tasks
 - Review completed delegate work
 - Get task IDs for use with task_get
 
-You can filter by status: pending, running, completed, failed, or all (default).`,
+You can filter by status: pending, running, completed, failed, stopped, or all (default).`,
 
   inputSchema,
 
@@ -68,6 +68,7 @@ You can filter by status: pending, running, completed, failed, or all (default).
         id: task.id,
         description: task.description,
         status: task.status,
+        background: task.background === true,
         age: ageStr,
         result: task.resultSummary ? task.resultSummary.slice(0, 200) : undefined
       }

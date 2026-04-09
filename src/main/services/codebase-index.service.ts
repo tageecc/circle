@@ -170,8 +170,33 @@ export class CodebaseIndexService {
     return this.instance
   }
 
-  private isVectorSearchAvailable(): boolean {
-    return this.embeddingService.isEnabled() && this.db.isSqliteVecAvailable()
+  private assertVectorSearchReady(): {
+    provider: string
+    model: string
+    dimensions: number
+  } {
+    if (!this.embeddingService.isEnabled()) {
+      throw new Error(
+        'Vector search is disabled. Enable it in Settings → Model Configuration before indexing or searching.'
+      )
+    }
+
+    if (!this.db.isSqliteVecAvailable()) {
+      throw new Error('SQLite vector search support is unavailable in this build.')
+    }
+
+    if (!this.embeddingService.isConfigured()) {
+      throw new Error(
+        'Vector search is enabled, but the embedding provider credentials are missing. Configure them in Settings → Model Configuration.'
+      )
+    }
+
+    const embeddingConfig = this.embeddingService.getConfig()
+    if (!embeddingConfig) {
+      throw new Error('Select an embedding provider in Settings → Model Configuration.')
+    }
+
+    return embeddingConfig
   }
 
   async indexProject(
@@ -180,38 +205,26 @@ export class CodebaseIndexService {
   ): Promise<IndexStats> {
     console.log('[CodebaseIndex] Starting indexing:', projectPath)
 
-    const vectorEnabled = this.isVectorSearchAvailable()
+    const embeddingConfig = this.assertVectorSearchReady()
     const db = this.db.getDb()
 
-    if (vectorEnabled) {
-      if (!this.embeddingService.isConfigured()) {
-        throw new Error(
-          'Vector search enabled but embedding API not configured. Configure in Settings → API Keys'
-        )
-      }
+    console.log(
+      `[CodebaseIndex] Vector search enabled: ${embeddingConfig.model} (${embeddingConfig.dimensions}d)`
+    )
 
-      const embeddingConfig = this.embeddingService.getConfig()!
-      console.log(
-        `[CodebaseIndex] Vector search enabled: ${embeddingConfig.model} (${embeddingConfig.dimensions}d)`
-      )
+    const existingVector = db
+      .select({ embedding: schema.codebaseVectors.embedding })
+      .from(schema.codebaseVectors)
+      .where(eq(schema.codebaseVectors.projectPath, projectPath))
+      .limit(1)
+      .get()
 
-      // Check dimension mismatch
-      const existingVector = db
-        .select({ embedding: schema.codebaseVectors.embedding })
-        .from(schema.codebaseVectors)
-        .where(eq(schema.codebaseVectors.projectPath, projectPath))
-        .limit(1)
-        .get()
-
-      if (
-        existingVector?.embedding &&
-        existingVector.embedding.length / 4 !== embeddingConfig.dimensions
-      ) {
-        console.warn('[CodebaseIndex] Dimension mismatch, deleting old index...')
-        await this.deleteProject(projectPath)
-      }
-    } else {
-      console.log('[CodebaseIndex] Vector search disabled, using text-only index')
+    if (
+      existingVector?.embedding &&
+      existingVector.embedding.length / 4 !== embeddingConfig.dimensions
+    ) {
+      console.warn('[CodebaseIndex] Dimension mismatch, deleting old index...')
+      await this.deleteProject(projectPath)
     }
 
     const existingFiles = await this.loadFileMetadata(projectPath)
@@ -448,11 +461,7 @@ export class CodebaseIndexService {
         const content = await FileService.readFile(filePath)
         const chunks = this.chunkText(content)
 
-        // Generate embeddings if vector search is enabled
-        let embeddings: Float32Array[] = []
-        if (this.isVectorSearchAvailable()) {
-          embeddings = await this.embeddingService.generateEmbeddings(chunks)
-        }
+        const embeddings = await this.embeddingService.generateEmbeddings(chunks)
 
         for (let i = 0; i < chunks.length; i++) {
           const chunkText = chunks[i]
@@ -467,7 +476,7 @@ export class CodebaseIndexService {
               relativePath: meta.relativePath,
               text: chunkText,
               language: meta.language,
-              embedding: embedding ? Buffer.from(embedding.buffer) : null,
+              embedding: Buffer.from(embedding.buffer),
               createdAt: now
             })
             .run()
@@ -500,9 +509,7 @@ export class CodebaseIndexService {
 
         processed++
         const progress = 10 + Math.floor((processed / total) * 80)
-        const message = this.isVectorSearchAvailable()
-          ? `索引文件 (含向量化): ${processed}/${total}`
-          : `索引文件: ${processed}/${total}`
+        const message = `索引文件 (含向量化): ${processed}/${total}`
         onProgress?.(progress, 100, message)
       } catch (error) {
         console.error(`[CodebaseIndex] Failed to index ${meta.relativePath}:`, error)
@@ -682,33 +689,9 @@ export class CodebaseIndexService {
     query: string,
     options?: { limit?: number; minScore?: number }
   ): Promise<SearchResult[]> {
+    this.assertVectorSearchReady()
     const db = this.db.getDb()
     const { limit = 15, minScore = 0.5 } = options || {}
-
-    // If vector search is disabled, use text LIKE search
-    if (!this.isVectorSearchAvailable()) {
-      const results = db
-        .select()
-        .from(schema.codebaseVectors)
-        .where(
-          and(
-            eq(schema.codebaseVectors.projectPath, projectPath),
-            sql`${schema.codebaseVectors.text} LIKE ${'%' + query + '%'}`
-          )
-        )
-        .limit(limit)
-        .all()
-
-      return results.map((row) => ({
-        filePath: row.filePath,
-        relativePath: row.relativePath,
-        text: row.text,
-        score: 1.0,
-        language: row.language
-      }))
-    }
-
-    // Vector search enabled
     const queryEmbedding = await this.embeddingService.generateEmbedding(query)
     const queryBuffer = Buffer.from(queryEmbedding.buffer)
 

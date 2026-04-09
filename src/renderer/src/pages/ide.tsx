@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useCallback, useRef } from 'react'
+import { useEffect, useMemo, useCallback, useRef, useState } from 'react'
 import { Panel, PanelGroup } from 'react-resizable-panels'
 import { PanelResizeHandle } from 'react-resizable-panels'
 import { useSettings } from '@/contexts/settings-context'
@@ -27,6 +27,7 @@ import { WorkspaceDialogs } from '@/components/features/layout/workspace-dialogs
 import { WelcomeView } from '@/components/features/layout/welcome-view'
 import { LoadingScreen } from '@/components/features/layout/loading-screen'
 import { CloneRepositoryDialog } from '@/components/features/git/clone-repository-dialog'
+import { SettingsDialog } from '@/components/features/settings/settings-dialog'
 import { EditorProvider } from '@/contexts/editor-context'
 import { useTranslation } from 'react-i18next'
 
@@ -41,15 +42,23 @@ export function IDEPage(): React.ReactElement {
   const activeLeftTab = useWorkspaceUIStore((state) => state.activeLeftTab)
   const setActiveLeftTab = useWorkspaceUIStore((state) => state.setActiveLeftTab)
   const setFullscreen = useWorkspaceUIStore((state) => state.setFullscreen)
+  const setShowChatSidebar = useWorkspaceUIStore((state) => state.setShowChatSidebar)
 
   // 对话框状态和控制（统一从 Zustand 获取）
   const cloneDialogOpen = useWorkspaceUIStore((state) => state.cloneDialogOpen)
+  const settingsOpen = useWorkspaceUIStore((state) => state.settingsOpen)
   const openDialog = useWorkspaceUIStore((state) => state.openDialog)
   const closeDialog = useWorkspaceUIStore((state) => state.closeDialog)
 
   // Workspace Store - 工作区数据（统一的状态源）
   const workspaceRoot = useWorkspaceStore((state) => state.workspaceRoot)
   const setWorkspaceRoot = useWorkspaceStore((state) => state.setWorkspaceRoot)
+  const [pendingInitialPrompt, setPendingInitialPrompt] = useState<{
+    id: string
+    prompt: string
+    projectPath: string
+    modelId: string
+  } | null>(null)
 
   // Project management - 现在统一使用 Zustand 管理 workspaceRoot
   const {
@@ -89,7 +98,6 @@ export function IDEPage(): React.ReactElement {
   const {
     handleOpenProject,
     handleOpenRecentProject,
-    handleProjectCreated,
     handleCloneSuccess,
     pendingProject,
     setPendingProject,
@@ -101,6 +109,55 @@ export function IDEPage(): React.ReactElement {
     restoreEditorState,
     currentWorkspaceRoot: workspaceRoot
   })
+
+  const handleCreateApp = useCallback(
+    async (prompt: string, modelId: string): Promise<boolean> => {
+      try {
+        const result = await window.api.project.selectCreateLocation()
+
+        if (result.canceled || !result.path) {
+          return false
+        }
+
+        const projectPath = result.path
+        await window.api.project.setCurrent(projectPath)
+        setWorkspaceRoot(projectPath)
+        setShowChatSidebar(true)
+
+        try {
+          await restoreEditorState(projectPath)
+        } catch (error) {
+          console.error('Failed to restore editor state for new project:', error)
+        }
+
+        refreshGitStatus(projectPath)
+        setPendingInitialPrompt({
+          id: `welcome-create-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          prompt,
+          projectPath,
+          modelId
+        })
+        return true
+      } catch (error) {
+        console.error('Failed to start project creation flow:', error)
+        toast.error(t('ide.project_load_failed'), {
+          description: error instanceof Error ? error.message : t('errors.unknown_error')
+        })
+        return false
+      }
+    },
+    [restoreEditorState, setShowChatSidebar, setWorkspaceRoot, t]
+  )
+
+  const handlePendingInitialPromptHandled = useCallback((requestId: string) => {
+    setPendingInitialPrompt((current) => (current?.id === requestId ? null : current))
+  }, [])
+
+  useEffect(() => {
+    if (pendingInitialPrompt && workspaceRoot !== pendingInitialPrompt.projectPath) {
+      setPendingInitialPrompt(null)
+    }
+  }, [pendingInitialPrompt, workspaceRoot])
 
   // 全局快捷键
   useGlobalShortcuts({
@@ -346,7 +403,11 @@ export function IDEPage(): React.ReactElement {
           onOpenProject={handleOpenProject}
           onOpenRecentProject={handleOpenRecentProject}
           onCloneRepository={() => openDialog('clone')}
-          onProjectCreated={handleProjectCreated}
+          onCreateApp={handleCreateApp}
+        />
+        <SettingsDialog
+          open={settingsOpen}
+          onOpenChange={(open) => (open ? openDialog('settings') : closeDialog('settings'))}
         />
         {/* Clone Repository 对话框 - 在欢迎页也需要渲染 */}
         <CloneRepositoryDialog
@@ -438,7 +499,11 @@ export function IDEPage(): React.ReactElement {
                   minSize={20}
                   maxSize={40}
                 >
-                  <RightPanel workspaceRoot={workspaceRoot} />
+                  <RightPanel
+                    workspaceRoot={workspaceRoot}
+                    pendingInitialPrompt={pendingInitialPrompt}
+                    onPendingInitialPromptHandled={handlePendingInitialPromptHandled}
+                  />
                 </Panel>
               </>
             )}
@@ -446,7 +511,11 @@ export function IDEPage(): React.ReactElement {
             {/* Chat 组件保活：即使折叠也渲染（用于保持 WebSocket 连接） */}
             {!showChatSidebar && chatInitialized && (
               <div className="hidden">
-                <RightPanel workspaceRoot={workspaceRoot} />
+                <RightPanel
+                  workspaceRoot={workspaceRoot}
+                  pendingInitialPrompt={pendingInitialPrompt}
+                  onPendingInitialPromptHandled={handlePendingInitialPromptHandled}
+                />
               </div>
             )}
           </PanelGroup>
@@ -461,6 +530,8 @@ export function IDEPage(): React.ReactElement {
         <WorkspaceDialogs
           workspaceRoot={workspaceRoot}
           setWorkspaceRoot={setWorkspaceRoot}
+          settingsOpen={settingsOpen}
+          onSettingsOpenChange={(open) => (open ? openDialog('settings') : closeDialog('settings'))}
           pendingProject={pendingProject}
           onProjectConfirm={handleProjectSelection}
           onProjectConfirmCancel={() => setPendingProject(null)}

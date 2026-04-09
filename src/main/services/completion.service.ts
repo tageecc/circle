@@ -28,7 +28,7 @@ export interface CompletionRequest {
     line: number
     column: number
   }
-  modelId?: string
+  modelId: string
   enableValidation?: boolean // 🔥 可选：启用 Shadow Workspace 验证
 }
 
@@ -64,6 +64,17 @@ export class CompletionService {
     request: CompletionRequest,
     abortSignal?: AbortSignal
   ): Promise<CompletionChunk> {
+    if (!request.modelId?.trim()) {
+      return { type: 'error', error: 'Inline completion requires an explicitly selected model.' }
+    }
+
+    if (!this.configService.isConfiguredModel(request.modelId)) {
+      return {
+        type: 'error',
+        error: 'The selected completion model is not configured anymore.'
+      }
+    }
+
     const startTime = Date.now()
 
     // 🔥 如果启用验证 + 是 TS/JS 文件，使用 Shadow Workspace
@@ -87,7 +98,7 @@ export class CompletionService {
       // 1. 获取 Shadow Workspace
       const projectRoot = this.getProjectRoot(request.filePath)
       if (!projectRoot) {
-        debug('No project root found, fallback to no validation')
+        debug('No project root found, skipping validation')
         return await this.generateWithoutValidation(request, abortSignal, startTime)
       }
 
@@ -160,7 +171,7 @@ export class CompletionService {
       throw new Error('Unexpected: should not reach here')
     } catch (error) {
       console.error('[CompletionService] Validation failed:', error)
-      // Fallback 到无验证模式
+      // 验证失败时退回无验证模式，但仍使用同一个显式模型
       return await this.generateWithoutValidation(request, abortSignal, startTime)
     }
   }
@@ -216,10 +227,7 @@ export class CompletionService {
     abortSignal?: AbortSignal
   ): Promise<string | null> {
     try {
-      const modelId =
-        request.modelId ||
-        this.configService.getCompletionModel() ||
-        this.configService.getDefaultModel()
+      const modelId = request.modelId
       const prompt = this.buildPrompt(request)
 
       // 如果有错误，增强 system prompt

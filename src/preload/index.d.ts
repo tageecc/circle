@@ -95,8 +95,8 @@ declare global {
         resumeInterrupt: (
           sessionId: string,
           toolCallId: string,
-          decision: string
-        ) => Promise<{ success: boolean }>
+          decision: 'approve' | 'reject' | 'skip'
+        ) => Promise<{ success: boolean; error?: string }>
         onUserQuestion: (
           callback: (data: {
             questionId: string
@@ -183,15 +183,6 @@ declare global {
           activeLeftTab?: 'explorer' | 'search' | 'changes' | 'history' | 'mcp' | 'skills'
           panelLayout?: { fileTreeSize?: number; chatPanelSize?: number }
         }) => Promise<void>
-        // API Keys
-        getApiKeys: () => Promise<Record<string, string>>
-        getApiKey: (provider: string) => Promise<string | undefined>
-        setApiKey: (provider: string, apiKey: string) => Promise<{ success: boolean }>
-        deleteApiKey: (provider: string) => Promise<{ success: boolean }>
-        setApiKeys: (apiKeys: Record<string, string>) => Promise<{ success: boolean }>
-        // Default Model
-        getDefaultModel: () => Promise<string>
-        setDefaultModel: (modelId: string) => Promise<{ success: boolean }>
         getServiceSettings: () => Promise<any>
         setServiceSettings: (settings: any) => Promise<{ success: boolean }>
       }
@@ -280,6 +271,7 @@ declare global {
       }
       project: {
         openDialog: () => Promise<string | null>
+        selectCreateLocation: () => Promise<{ canceled: boolean; path: string | null }>
         getRecent: () => Promise<Array<{ name: string; path: string; lastOpened: string }>>
         getCurrent: () => Promise<string | null>
         setCurrent: (projectPath: string | null) => Promise<void>
@@ -583,17 +575,6 @@ declare global {
         readAsBase64: (fileName: string) => Promise<string>
         readFileAsBase64: (filePath: string) => Promise<string>
       }
-      projectCreate: {
-        selectProjectFolder: () => Promise<{ canceled: boolean; path?: string }>
-        createProject: (
-          userPrompt: string,
-          projectPath: string
-        ) => Promise<{
-          success: boolean
-          response: string
-          projectPath: string
-        }>
-      }
       terminal: {
         create: (cwd: string) => Promise<string>
         write: (terminalId: string, data: string) => Promise<void>
@@ -676,6 +657,7 @@ declare global {
           callback: (data: {
             taskId: string
             sessionId: string
+            status: 'completed' | 'failed' | 'stopped'
             result?: string
             error?: string
             durationMs: number
@@ -998,7 +980,7 @@ declare global {
           fileContent: string
           language: string
           cursorPosition: { line: number; column: number }
-          modelId?: string
+          modelId: string
           enableValidation?: boolean // 🔥 可选：启用 Shadow Workspace 验证
         }) => Promise<{
           type: 'done' | 'error'
@@ -1043,41 +1025,16 @@ declare global {
         delete: (skillPath: string) => Promise<{ success: boolean }>
       }
       modelConfig: {
-        getAll: () => Promise<
+        listProviderCredentials: () => Promise<
           Array<{
-            id: string
             providerId: string
-            modelId: string
-            isDefault: boolean
+            apiKey: string
+            baseURL: string | null
             createdAt: Date
             updatedAt: Date
           }>
         >
-        getDefault: () => Promise<
-          | {
-              id: string
-              providerId: string
-              modelId: string
-              isDefault: boolean
-              createdAt: Date
-              updatedAt: Date
-            }
-          | undefined
-        >
-        add: (input: { providerId: string; modelId: string; isDefault?: boolean }) => Promise<{
-          id: string
-          providerId: string
-          modelId: string
-          isDefault: boolean
-          createdAt: Date
-          updatedAt: Date
-        }>
-        setDefault: (id: string) => Promise<{ success: boolean }>
-        delete: (id: string) => Promise<{ success: boolean }>
-        exists: (providerId: string, modelId: string) => Promise<boolean>
-      }
-      providerApiKey: {
-        get: (providerId: string) => Promise<
+        getProviderCredential: (providerId: string) => Promise<
           | {
               providerId: string
               apiKey: string
@@ -1087,14 +1044,26 @@ declare global {
             }
           | undefined
         >
-        set: (input: { providerId: string; apiKey: string; baseURL?: string }) => Promise<{
+        setProviderCredential: (input: {
+          providerId: string
+          apiKey: string
+          baseURL?: string
+        }) => Promise<{
           providerId: string
           apiKey: string
           baseURL: string | null
           createdAt: Date
           updatedAt: Date
         }>
-        delete: (providerId: string) => Promise<{ success: boolean }>
+        deleteProviderCredential: (providerId: string) => Promise<{ success: boolean }>
+        getVectorSearchSettings: () => Promise<{
+          vectorSearchEnabled: boolean
+          embeddingProvider: string
+        }>
+        setVectorSearchSettings: (settings: {
+          vectorSearchEnabled?: boolean
+          embeddingProvider?: string
+        }) => Promise<{ success: boolean }>
       }
       shell: {
         openExternal: (url: string) => Promise<void>

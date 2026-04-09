@@ -1,21 +1,26 @@
-import { useCallback, useState, useMemo, useEffect, useRef } from 'react'
+import { useMemo, useEffect, useRef, useState, useDeferredValue } from 'react'
 import { InputGroup, InputGroupAddon, InputGroupButton } from '@/components/ui/input-group'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuLabel
+  DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-import { RichTextInput, type PastedImage, type Attachment } from '@/components/ui/rich-text-input'
-import { ArrowUp, Square, AlertCircle } from 'lucide-react'
-import { getProviderLogo } from '@/lib/provider-logos'
+import { RichTextInput, type Attachment, type PastedImage } from '@/components/ui/rich-text-input'
+import { AlertCircle, ArrowUp, Square } from 'lucide-react'
+import { getProviderLogoAsset } from '@/lib/provider-logos'
 import { cn } from '@/lib/utils'
 import { getProvider } from '@/constants/providers'
 import { getModelInfo } from '@/constants/models'
 import { eventBus } from '@/lib/event-bus'
+import { type AvailableChatModel } from '@/lib/chat-models'
+import {
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList
+} from '@/components/ui/command'
 import {
   Context,
   ContextCacheUsage,
@@ -31,16 +36,7 @@ import {
 import type { LanguageModelUsage } from '@/types/chat'
 import { useTranslation } from 'react-i18next'
 
-interface ModelConfig {
-  id: string
-  providerId: string
-  modelId: string
-  isDefault: boolean
-  createdAt: Date
-  updatedAt: Date
-}
-
-export type { PastedImage, Attachment }
+export type { Attachment, PastedImage }
 
 interface ChatInputProps {
   placeholder?: string
@@ -54,10 +50,13 @@ interface ChatInputProps {
   onPastedImagesChange: (images: PastedImage[]) => void
   attachments?: Attachment[]
   onAttachmentsChange?: (attachments: Attachment[]) => void
-  onModelChange?: (provider: string, model: string) => void
+  availableModels: AvailableChatModel[]
+  isLoadingModels: boolean
+  selectedModelId: string | null
+  onModelChange?: (modelId: string | null) => void
+  showModelSelector?: boolean
   autoFocus?: boolean
   minHeight?: string
-  // Context usage
   maxTokens?: number
   usedTokens?: number
   usage?: LanguageModelUsage
@@ -75,7 +74,11 @@ export function ChatInput({
   onPastedImagesChange,
   attachments = [],
   onAttachmentsChange,
+  availableModels,
+  isLoadingModels,
+  selectedModelId,
   onModelChange,
+  showModelSelector = true,
   autoFocus = false,
   minHeight,
   maxTokens,
@@ -85,269 +88,276 @@ export function ChatInput({
   const { t } = useTranslation()
   const inputGroupRef = useRef<HTMLDivElement>(null)
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null)
-  const [selectedProvider, setSelectedProvider] = useState('')
-  const [selectedModel, setSelectedModel] = useState('')
-  const [configuredModels, setConfiguredModels] = useState<ModelConfig[]>([])
-  const [isLoadingModels, setIsLoadingModels] = useState(true)
-
+  const [modelPickerOpen, setModelPickerOpen] = useState(false)
+  const [modelSearch, setModelSearch] = useState('')
   const onModelChangeRef = useRef(onModelChange)
-  const selectionRef = useRef({ providerId: '', modelId: '' })
+  const deferredModelSearch = useDeferredValue(modelSearch)
+
   useEffect(() => {
     onModelChangeRef.current = onModelChange
   })
 
-  useEffect(() => {
-    const loadModels = async () => {
-      try {
-        const models = await window.api.modelConfig.getAll()
-        setConfiguredModels(models)
+  const modelEntries = useMemo(() => {
+    return availableModels.map((model) => {
+      const provider = getProvider(model.providerId)
+      const modelInfo = getModelInfo(model.modelId, model.providerId)
+      const contextWindow = modelInfo?.contextWindow
+        ? modelInfo.contextWindow >= 1000000
+          ? `${(modelInfo.contextWindow / 1000000).toFixed(1)}M`
+          : `${Math.round(modelInfo.contextWindow / 1000)}K`
+        : null
 
-        const { providerId: prevP, modelId: prevM } = selectionRef.current
-        const stillValid =
-          Boolean(prevP && prevM) &&
-          models.some((m) => m.providerId === prevP && m.modelId === prevM)
-
-        if (stillValid) {
-          return
-        }
-
-        const pick = models.find((m) => m.isDefault) ?? (models.length > 0 ? models[0] : undefined)
-        if (!pick) {
-          return
-        }
-
-        selectionRef.current = { providerId: pick.providerId, modelId: pick.modelId }
-        setSelectedProvider(pick.providerId)
-        setSelectedModel(pick.modelId)
-        onModelChangeRef.current?.(pick.providerId, pick.modelId)
-      } catch (error) {
-        console.error('Failed to load models:', error)
-      } finally {
-        setIsLoadingModels(false)
+      return {
+        ...model,
+        providerName: provider?.name || model.providerId,
+        providerLogo: getProviderLogoAsset(model.providerId),
+        displayName: modelInfo?.name || model.modelId,
+        contextWindow,
+        costLabel: modelInfo ? `$${modelInfo.cost.input}/${modelInfo.cost.output} per 1M` : null,
+        reasoning: Boolean(modelInfo?.reasoning),
+        searchText:
+          `${model.modelId} ${modelInfo?.name || ''} ${provider?.name || ''} ${model.providerId}`.toLowerCase()
       }
-    }
-    void loadModels()
-
-    const handleModelsUpdated = (): void => {
-      void loadModels()
-    }
-    eventBus.on('models-updated', handleModelsUpdated)
-
-    return () => {
-      eventBus.off('models-updated', handleModelsUpdated)
-    }
-  }, [])
-
-  // Group models by provider
-  const modelsByProvider = useMemo(() => {
-    const groups: Record<string, ModelConfig[]> = {}
-    configuredModels.forEach((model) => {
-      if (!groups[model.providerId]) {
-        groups[model.providerId] = []
-      }
-      groups[model.providerId].push(model)
     })
-    return groups
-  }, [configuredModels])
+  }, [availableModels])
 
-  // 设置下拉菜单的挂载容器
+  const filteredModels = useMemo(() => {
+    const keyword = deferredModelSearch.trim().toLowerCase()
+    if (!keyword) {
+      return modelEntries
+    }
+
+    return modelEntries.filter((model) => model.searchText.includes(keyword))
+  }, [deferredModelSearch, modelEntries])
+
   useEffect(() => {
     if (inputGroupRef.current) {
       setPortalContainer(inputGroupRef.current)
     }
   }, [])
 
-  const hasConfiguredModels = configuredModels.length > 0
+  const selectedEntry = useMemo(
+    () =>
+      selectedModelId
+        ? (availableModels.find((model) => model.id === selectedModelId) ?? null)
+        : null,
+    [availableModels, selectedModelId]
+  )
+
+  useEffect(() => {
+    if (!isLoadingModels && selectedModelId && !selectedEntry) {
+      onModelChangeRef.current?.(null)
+    }
+  }, [isLoadingModels, selectedEntry, selectedModelId])
+
+  const hasConfiguredModels = availableModels.length > 0
+  const hasValidSelection = selectedEntry !== null
+  const selectedProvider = selectedEntry?.providerId ?? ''
+  const selectedModel = selectedEntry?.modelId ?? ''
+  const requiresExplicitModel = showModelSelector
 
   const selectedModelName = useMemo(() => {
+    if (!showModelSelector) return ''
+    if (isLoadingModels) return t('chat.loading_models')
     if (!hasConfiguredModels) return t('chat.no_model')
-    const modelInfo = getModelInfo(selectedModel, selectedProvider)
-    return modelInfo?.name || selectedModel
-  }, [selectedModel, selectedProvider, hasConfiguredModels, t])
+    if (!selectedEntry) return t('chat.select_model')
+    return selectedEntry.modelId
+  }, [hasConfiguredModels, isLoadingModels, selectedEntry, showModelSelector, t])
 
   const hasContent = value.trim() || pastedImages.length > 0 || attachments.length > 0
   const showStopButton = isSending && onStop && !hasContent
-
-  const handleModelChange = useCallback((provider: string, modelId: string) => {
-    selectionRef.current = { providerId: provider, modelId }
-    setSelectedProvider(provider)
-    setSelectedModel(modelId)
-    onModelChangeRef.current?.(provider, modelId)
-  }, [])
 
   return (
     <div style={minHeight ? { minHeight } : undefined}>
       <InputGroup ref={inputGroupRef} className="[--radius:1.5rem]">
         <RichTextInput
           placeholder={
-            hasConfiguredModels
-              ? (placeholder ?? t('chat.type_message'))
-              : t('chat.configure_model_first')
+            requiresExplicitModel && !hasConfiguredModels
+              ? t('chat.configure_model_first')
+              : requiresExplicitModel && !hasValidSelection
+                ? t('chat.select_model')
+                : (placeholder ?? t('chat.type_message'))
           }
           value={value}
           onChange={onChange}
           onSend={onSend}
-          disabled={disabled || !hasConfiguredModels}
+          disabled={disabled}
           onPastedImagesChange={onPastedImagesChange}
           onAttachmentsChange={onAttachmentsChange}
           autoFocus={autoFocus}
         />
         <InputGroupAddon align="block-end">
-          {/* 模型选择器 */}
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <InputGroupButton
-                variant="ghost"
-                disabled={disabled || isLoadingModels}
-                className={cn(
-                  'flex items-center gap-1.5 transition-colors',
-                  !hasConfiguredModels &&
-                    'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/30'
-                )}
-              >
-                {hasConfiguredModels ? (
-                  getProviderLogo(selectedProvider) && (
-                    <img
-                      src={getProviderLogo(selectedProvider)!}
-                      alt={selectedProvider}
-                      className="size-3.5 dark:invert opacity-60"
-                    />
-                  )
-                ) : (
-                  <AlertCircle className="size-3.5" />
-                )}
-                <span className="text-xs font-medium">{selectedModelName}</span>
-              </InputGroupButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              side="top"
-              align="start"
-              className="w-[380px] max-h-[500px] overflow-y-auto [--radius:0.95rem] -translate-x-32"
-              container={portalContainer}
+          {showModelSelector && (
+            <DropdownMenu
+              modal={false}
+              open={modelPickerOpen}
+              onOpenChange={(open) => {
+                setModelPickerOpen(open)
+                if (!open) {
+                  setModelSearch('')
+                }
+              }}
             >
-              {isLoadingModels ? (
-                <div className="px-3 py-6 text-center text-sm text-muted-foreground">
-                  {t('chat.loading_models')}
-                </div>
-              ) : configuredModels.length === 0 ? (
-                <div className="px-4 py-6 text-center space-y-3">
-                  <p className="text-sm text-muted-foreground">{t('chat.no_models_configured')}</p>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      eventBus.emit('open-settings', { tab: 'models' })
-                    }}
-                    className="mx-auto"
-                  >
-                    {t('chat.open_settings')}
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  {Object.entries(modelsByProvider).map(([providerId, providerModels]) => {
-                    const provider = getProvider(providerId)
-                    if (!provider) return null
+              <DropdownMenuTrigger asChild>
+                <InputGroupButton
+                  variant="ghost"
+                  disabled={disabled || isLoadingModels || isSending}
+                  className={cn(
+                    'flex items-center gap-1.5 transition-colors',
+                    !hasValidSelection &&
+                      'border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400 dark:hover:bg-amber-900/30'
+                  )}
+                >
+                  {hasValidSelection ? (
+                    getProviderLogoAsset(selectedProvider) && (
+                      <img
+                        src={getProviderLogoAsset(selectedProvider)!.src}
+                        alt={selectedProvider}
+                        className={cn(
+                          'size-3.5 object-contain opacity-80',
+                          getProviderLogoAsset(selectedProvider)?.invertInDark && 'dark:invert'
+                        )}
+                      />
+                    )
+                  ) : (
+                    <AlertCircle className="size-3.5" />
+                  )}
+                  <span className="text-xs font-medium">{selectedModelName}</span>
+                </InputGroupButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                side="top"
+                align="start"
+                className="w-[420px] p-0 [--radius:1rem] -translate-x-32"
+                container={portalContainer}
+              >
+                {isLoadingModels ? (
+                  <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+                    {t('chat.loading_models')}
+                  </div>
+                ) : !hasConfiguredModels ? (
+                  <div className="space-y-3 px-4 py-6 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      {t('chat.no_models_configured')}
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mx-auto"
+                      onClick={() => eventBus.emit('open-settings', { tab: 'models' })}
+                    >
+                      {t('chat.open_settings')}
+                    </Button>
+                  </div>
+                ) : (
+                  <Command shouldFilter={false} className="bg-transparent">
+                    <CommandInput
+                      value={modelSearch}
+                      onValueChange={setModelSearch}
+                      autoFocus
+                      placeholder={t('chat.search_models_placeholder')}
+                    />
+                    <CommandList className="max-h-[360px] p-1.5">
+                      <CommandEmpty>{t('chat.no_filtered_models')}</CommandEmpty>
+                      {filteredModels.map((model) => {
+                        const isSelected = selectedModelId === model.id
 
-                    return (
-                      <div key={providerId}>
-                        <DropdownMenuLabel className="flex items-center gap-2 px-3 py-2">
-                          {getProviderLogo(providerId) && (
-                            <img
-                              src={getProviderLogo(providerId)!}
-                              alt={provider.name}
-                              className="size-4 dark:invert opacity-70"
-                            />
-                          )}
-                          <span className="text-xs font-semibold text-foreground">
-                            {provider.name}
-                          </span>
-                        </DropdownMenuLabel>
-                        {providerModels.map((model) => {
-                          const modelInfo = getModelInfo(model.modelId, model.providerId)
-                          const modelName = modelInfo?.name || model.modelId
-                          const contextWindow = modelInfo?.contextWindow
-                            ? modelInfo.contextWindow >= 1000000
-                              ? `${(modelInfo.contextWindow / 1000000).toFixed(1)}M`
-                              : `${Math.round(modelInfo.contextWindow / 1000)}K`
-                            : null
-                          const isSelected =
-                            selectedProvider === model.providerId && selectedModel === model.modelId
-
-                          return (
-                            <DropdownMenuItem
-                              key={model.id}
-                              onSelect={() => handleModelChange(model.providerId, model.modelId)}
-                              className={cn(
-                                'cursor-pointer px-3 py-3 focus:bg-accent/50',
-                                isSelected && 'bg-accent/30'
-                              )}
-                            >
-                              <div className="flex w-full flex-col gap-1.5">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-sm font-medium text-foreground">
-                                    {modelName}
-                                  </span>
-                                  {contextWindow && (
-                                    <span className="text-xs text-muted-foreground">
-                                      {contextWindow}
-                                    </span>
-                                  )}
-                                </div>
-                                {modelInfo && (
-                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                    <span>
-                                      ${modelInfo.cost.input}/{modelInfo.cost.output} per 1M
-                                    </span>
-                                    {modelInfo.reasoning && (
-                                      <span className="rounded bg-primary/10 px-1.5 py-0.5 text-primary">
-                                        Reasoning
-                                      </span>
+                        return (
+                          <CommandItem
+                            key={model.id}
+                            value={model.searchText}
+                            onSelect={() => {
+                              onModelChangeRef.current?.(model.id)
+                              setModelPickerOpen(false)
+                            }}
+                            className={cn(
+                              'cursor-pointer rounded-xl px-3 py-3 data-[selected=true]:bg-accent/50',
+                              isSelected && 'bg-accent/30'
+                            )}
+                          >
+                            <div className="flex w-full items-start gap-3">
+                              <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted/70">
+                                {model.providerLogo ? (
+                                  <img
+                                    src={model.providerLogo.src}
+                                    alt={model.providerName}
+                                    className={cn(
+                                      'size-4 object-contain opacity-90',
+                                      model.providerLogo.invertInDark && 'dark:invert'
                                     )}
-                                  </div>
-                                )}
-                                {model.isDefault && (
-                                  <span className="text-xs text-primary">
-                                    {t('chat.default_model')}
+                                  />
+                                ) : (
+                                  <span className="text-[10px] font-semibold uppercase text-muted-foreground">
+                                    {model.providerId.slice(0, 2)}
                                   </span>
                                 )}
                               </div>
-                            </DropdownMenuItem>
-                          )
-                        })}
-                        <DropdownMenuSeparator className="my-1" />
-                      </div>
-                    )
-                  })}
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
 
-          {/* Context 用量显示 */}
+                              <div className="min-w-0 flex-1 space-y-1.5">
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="truncate font-mono text-sm font-medium text-foreground">
+                                    {model.modelId}
+                                  </span>
+                                  {model.contextWindow && (
+                                    <span className="shrink-0 text-xs text-muted-foreground">
+                                      {model.contextWindow}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                  {!model.providerLogo && (
+                                    <span className="truncate">{model.providerName}</span>
+                                  )}
+                                  {model.displayName !== model.modelId && (
+                                    <span className="truncate">{model.displayName}</span>
+                                  )}
+                                  {model.costLabel && <span>{model.costLabel}</span>}
+                                  {model.reasoning && (
+                                    <span className="rounded bg-primary/10 px-1.5 py-0.5 text-primary">
+                                      Reasoning
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </CommandItem>
+                        )
+                      })}
+                    </CommandList>
+                  </Command>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
           <div className="ml-auto flex items-center gap-1">
-            {usedTokens != null && usedTokens > 0 && maxTokens && usage && (
-              <Context
-                maxTokens={maxTokens}
-                modelId={selectedModel}
-                usage={usage}
-                usedTokens={usedTokens!}
-              >
-                <ContextTrigger />
-                <ContextContent>
-                  <ContextContentHeader />
-                  <ContextContentBody>
-                    <ContextInputUsage />
-                    <ContextOutputUsage />
-                    <ContextReasoningUsage />
-                    <ContextCacheUsage />
-                  </ContextContentBody>
-                  <ContextContentFooter />
-                </ContextContent>
-              </Context>
-            )}
+            {showModelSelector &&
+              hasValidSelection &&
+              usedTokens != null &&
+              usedTokens > 0 &&
+              maxTokens &&
+              usage && (
+                <Context
+                  maxTokens={maxTokens}
+                  modelId={selectedModel}
+                  usage={usage}
+                  usedTokens={usedTokens}
+                >
+                  <ContextTrigger />
+                  <ContextContent>
+                    <ContextContentHeader />
+                    <ContextContentBody>
+                      <ContextInputUsage />
+                      <ContextOutputUsage />
+                      <ContextReasoningUsage />
+                      <ContextCacheUsage />
+                    </ContextContentBody>
+                    <ContextContentFooter />
+                  </ContextContent>
+                </Context>
+              )}
 
-            {/* 发送/停止按钮 */}
             {showStopButton ? (
               <InputGroupButton
                 variant="secondary"
@@ -364,7 +374,7 @@ export function ChatInput({
                 variant="default"
                 className="rounded-full"
                 size="icon-xs"
-                disabled={!hasContent || disabled}
+                disabled={!hasContent || disabled || (requiresExplicitModel && !hasValidSelection)}
                 onClick={onSend}
                 title={isSending ? t('chat.enqueue') : t('chat.send_message')}
               >

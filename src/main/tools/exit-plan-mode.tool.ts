@@ -17,6 +17,7 @@ const pendingPlanApprovals = new Map<string, (result: PlanApprovalResult) => voi
 type PlanApprovalResult =
   | { type: 'approved'; feedback?: string }
   | { type: 'rejected'; feedback: string }
+  | { type: 'cancelled' }
 
 export function resolvePlanApproval(approvalId: string, result: PlanApprovalResult): void {
   const pending = pendingPlanApprovals.get(approvalId)
@@ -26,6 +27,16 @@ export function resolvePlanApproval(approvalId: string, result: PlanApprovalResu
   } else {
     console.warn('[exit_plan_mode] No pending approval for id:', approvalId)
   }
+}
+
+export function cancelPlanApproval(approvalId: string): boolean {
+  const pending = pendingPlanApprovals.get(approvalId)
+  if (!pending) {
+    return false
+  }
+  pendingPlanApprovals.delete(approvalId)
+  pending({ type: 'cancelled' })
+  return true
 }
 
 const inputSchema = z.object({})
@@ -150,9 +161,33 @@ Returns JSON with approval status and user feedback if provided.`,
         planFilePath: relativePath
       }, ctx.senderWebContentsId ? { webContentsId: ctx.senderWebContentsId } : undefined)
 
+      if (ctx.abortSignal?.aborted) {
+        await SessionService.updateToolApprovalStatus(ctx.assistantMessageId, approvalId, {
+          needsApproval: false,
+          approvalStatus: 'skipped'
+        })
+        return JSON.stringify({
+          success: false,
+          cancelled: true,
+          message: 'Plan approval request was cancelled because the current turn was stopped.'
+        })
+      }
+
       // Wait for user decision
       const result = await new Promise<PlanApprovalResult>((resolve) => {
-        pendingPlanApprovals.set(approvalId, resolve)
+        const finalize = (value: PlanApprovalResult) => {
+          ctx.abortSignal?.removeEventListener('abort', handleAbort)
+          resolve(value)
+        }
+
+        const handleAbort = () => {
+          cancelPlanApproval(approvalId)
+        }
+
+        pendingPlanApprovals.set(approvalId, finalize)
+        if (ctx.abortSignal) {
+          ctx.abortSignal.addEventListener('abort', handleAbort, { once: true })
+        }
       })
 
       // 4. Process approval result
@@ -184,7 +219,7 @@ Returns JSON with approval status and user feedback if provided.`,
           userFeedback: result.feedback,
           planFilePath: relativePath
         })
-      } else {
+      } else if (result.type === 'rejected') {
         // Rejected - stay in plan mode
         await SessionService.updateToolApprovalStatus(ctx.assistantMessageId, approvalId, {
           needsApproval: false,
@@ -199,6 +234,17 @@ Returns JSON with approval status and user feedback if provided.`,
             'Plan not approved. User wants adjustments. Please revise your plan based on the feedback below.',
           userFeedback: result.feedback,
           hint: 'Read the user feedback carefully, update the plan file accordingly, and call exit_plan_mode again when ready.'
+        })
+      } else {
+        await SessionService.updateToolApprovalStatus(ctx.assistantMessageId, approvalId, {
+          needsApproval: false,
+          approvalStatus: 'skipped'
+        })
+
+        return JSON.stringify({
+          success: false,
+          cancelled: true,
+          message: 'Plan approval request was cancelled because the current turn was stopped.'
         })
       }
     } catch (error) {

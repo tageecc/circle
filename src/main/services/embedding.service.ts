@@ -4,35 +4,10 @@
  */
 
 import { ConfigService } from './config.service'
-
-export interface EmbeddingProvider {
-  name: string
-  model: string
-  dimensions: number
-}
-
-export const EMBEDDING_PROVIDERS: Record<string, EmbeddingProvider> = {
-  'openai-small': {
-    name: 'OpenAI',
-    model: 'text-embedding-3-small',
-    dimensions: 1536
-  },
-  'openai-large': {
-    name: 'OpenAI',
-    model: 'text-embedding-3-large',
-    dimensions: 3072
-  },
-  'voyage-code': {
-    name: 'Voyage AI',
-    model: 'voyage-code-2',
-    dimensions: 1536
-  },
-  'qwen-embed': {
-    name: 'Alibaba (China)',
-    model: 'text-embedding-v3',
-    dimensions: 1024
-  }
-}
+import {
+  EMBEDDING_PROVIDER_CONFIGS,
+  type EmbeddingProviderConfig
+} from '../../shared/provider-config'
 
 export class EmbeddingService {
   private static instance: EmbeddingService
@@ -61,20 +36,13 @@ export class EmbeddingService {
     if (!this.isEnabled()) return false
 
     const config = this.configService.getServiceSettings()
-    const embeddingConfig = config?.embeddingProvider || 'openai-small'
-    const provider = EMBEDDING_PROVIDERS[embeddingConfig]
+    const embeddingConfig = config?.embeddingProvider
+    if (!embeddingConfig) return false
+    const provider = EMBEDDING_PROVIDER_CONFIGS[embeddingConfig]
 
     if (!provider) return false
 
-    const apiKeys = this.configService.getApiKeys()
-    if (provider.name === 'OpenAI') {
-      return !!apiKeys?.openai
-    } else if (provider.name === 'Voyage AI') {
-      return !!apiKeys?.['voyage']
-    } else if (provider.name === 'Alibaba (China)') {
-      return !!apiKeys?.dashscope
-    }
-    return false
+    return this.configService.hasProviderCredential(provider.providerId)
   }
 
   /**
@@ -82,8 +50,9 @@ export class EmbeddingService {
    */
   getConfig(): { provider: string; model: string; dimensions: number } | null {
     const config = this.configService.getServiceSettings()
-    const embeddingConfig = config?.embeddingProvider || 'openai-small'
-    const provider = EMBEDDING_PROVIDERS[embeddingConfig]
+    const embeddingConfig = config?.embeddingProvider
+    if (!embeddingConfig) return null
+    const provider = EMBEDDING_PROVIDER_CONFIGS[embeddingConfig]
 
     if (!provider) return null
 
@@ -94,10 +63,13 @@ export class EmbeddingService {
     }
   }
 
-  private getProvider(): EmbeddingProvider {
+  private getProvider(): EmbeddingProviderConfig {
     const config = this.configService.getServiceSettings()
-    const embeddingConfig = config?.embeddingProvider || 'openai-small'
-    const provider = EMBEDDING_PROVIDERS[embeddingConfig]
+    const embeddingConfig = config?.embeddingProvider
+    if (!embeddingConfig) {
+      throw new Error('No embedding provider selected in Model Settings')
+    }
+    const provider = EMBEDDING_PROVIDER_CONFIGS[embeddingConfig]
 
     if (!provider) {
       throw new Error(`Unknown embedding provider: ${embeddingConfig}`)
@@ -123,37 +95,39 @@ export class EmbeddingService {
     return results
   }
 
-  private async callProvider(provider: EmbeddingProvider, text: string): Promise<Float32Array> {
-    if (provider.name === 'OpenAI') {
+  private async callProvider(
+    provider: EmbeddingProviderConfig,
+    text: string
+  ): Promise<Float32Array> {
+    if (provider.providerId === 'openai') {
       return await this.callOpenAI(provider.model, text)
-    } else if (provider.name === 'Voyage AI') {
+    } else if (provider.providerId === 'voyage') {
       return await this.callVoyageAI(provider.model, text)
-    } else if (provider.name === 'Alibaba (China)') {
+    } else if (provider.providerId === 'alibaba-cn') {
       return await this.callQwen(provider.model, text)
     }
-    throw new Error(`Unsupported provider: ${provider.name}`)
+    throw new Error(`Unsupported embedding provider: ${provider.providerId}`)
   }
 
   private async callProviderBatch(
-    provider: EmbeddingProvider,
+    provider: EmbeddingProviderConfig,
     texts: string[]
   ): Promise<Float32Array[]> {
-    if (provider.name === 'OpenAI') {
+    if (provider.providerId === 'openai') {
       return await this.callOpenAIBatch(provider.model, texts)
-    } else if (provider.name === 'Voyage AI') {
+    } else if (provider.providerId === 'voyage') {
       return await this.callVoyageAIBatch(provider.model, texts)
-    } else if (provider.name === 'Alibaba (China)') {
+    } else if (provider.providerId === 'alibaba-cn') {
       return await this.callQwenBatch(provider.model, texts)
     }
-    throw new Error(`Unsupported provider: ${provider.name}`)
+    throw new Error(`Unsupported embedding provider: ${provider.providerId}`)
   }
 
   private async callOpenAI(model: string, text: string): Promise<Float32Array> {
-    const apiKeys = this.configService.getApiKeys()
-    const apiKey = apiKeys?.openai
+    const apiKey = this.configService.getProviderApiKey('openai')
 
     if (!apiKey) {
-      throw new Error('OpenAI API key not configured')
+      throw new Error('OpenAI credentials not configured in Model Settings')
     }
 
     const response = await fetch('https://api.openai.com/v1/embeddings', {
@@ -179,11 +153,10 @@ export class EmbeddingService {
   }
 
   private async callOpenAIBatch(model: string, texts: string[]): Promise<Float32Array[]> {
-    const apiKeys = this.configService.getApiKeys()
-    const apiKey = apiKeys?.openai
+    const apiKey = this.configService.getProviderApiKey('openai')
 
     if (!apiKey) {
-      throw new Error('OpenAI API key not configured')
+      throw new Error('OpenAI credentials not configured in Model Settings')
     }
 
     const response = await fetch('https://api.openai.com/v1/embeddings', {
@@ -209,11 +182,10 @@ export class EmbeddingService {
   }
 
   private async callVoyageAI(model: string, text: string): Promise<Float32Array> {
-    const apiKeys = this.configService.getApiKeys()
-    const apiKey = apiKeys?.['voyage']
+    const apiKey = this.configService.getProviderApiKey('voyage')
 
     if (!apiKey) {
-      throw new Error('Voyage AI API key not configured')
+      throw new Error('Voyage AI credentials not configured in Model Settings')
     }
 
     const response = await fetch('https://api.voyageai.com/v1/embeddings', {
@@ -238,11 +210,10 @@ export class EmbeddingService {
   }
 
   private async callVoyageAIBatch(model: string, texts: string[]): Promise<Float32Array[]> {
-    const apiKeys = this.configService.getApiKeys()
-    const apiKey = apiKeys?.['voyage']
+    const apiKey = this.configService.getProviderApiKey('voyage')
 
     if (!apiKey) {
-      throw new Error('Voyage AI API key not configured')
+      throw new Error('Voyage AI credentials not configured in Model Settings')
     }
 
     const response = await fetch('https://api.voyageai.com/v1/embeddings', {
@@ -267,11 +238,10 @@ export class EmbeddingService {
   }
 
   private async callQwen(model: string, text: string): Promise<Float32Array> {
-    const apiKeys = this.configService.getApiKeys()
-    const apiKey = apiKeys?.dashscope
+    const apiKey = this.configService.getProviderApiKey('alibaba-cn')
 
     if (!apiKey) {
-      throw new Error('Alibaba DashScope API key not configured')
+      throw new Error('Alibaba Bailian credentials not configured in Model Settings')
     }
 
     const response = await fetch(
@@ -299,11 +269,10 @@ export class EmbeddingService {
   }
 
   private async callQwenBatch(model: string, texts: string[]): Promise<Float32Array[]> {
-    const apiKeys = this.configService.getApiKeys()
-    const apiKey = apiKeys?.dashscope
+    const apiKey = this.configService.getProviderApiKey('alibaba-cn')
 
     if (!apiKey) {
-      throw new Error('Alibaba DashScope API key not configured')
+      throw new Error('Alibaba Bailian credentials not configured in Model Settings')
     }
 
     const response = await fetch(

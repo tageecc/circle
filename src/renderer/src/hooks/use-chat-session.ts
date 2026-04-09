@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useRef } from 'react'
 import { useChatStore, selectIsSessionLoaded, selectCurrentSession } from '@/stores/chat.store'
 import type { Session, Message } from '@/types/chat'
 import { toast } from '@/components/ui/sonner'
@@ -7,7 +7,7 @@ export function useChatSession(workspaceRoot: string | null) {
   const sessions = useChatStore((state) => state.sessions)
   const currentSessionId = useChatStore((state) => state.currentSessionId)
   const currentSession = useChatStore(selectCurrentSession)
-  const setSessions = useChatStore((state) => state.setSessions)
+  const mergeSessions = useChatStore((state) => state.mergeSessions)
   const updateSession = useChatStore((state) => state.updateSession)
   const removeSession = useChatStore((state) => state.removeSession)
   const markSessionAsLoaded = useChatStore((state) => state.markSessionAsLoaded)
@@ -16,35 +16,8 @@ export function useChatSession(workspaceRoot: string | null) {
   const openSession = useChatStore((state) => state.openSession)
   const closeSessionTab = useChatStore((state) => state.closeSessionTab)
   const openSessionIds = useChatStore((state) => state.openSessionIds)
-
-  const loadHistorySessions = useCallback(async () => {
-    if (!workspaceRoot) return
-
-    try {
-      const sessionsData = await window.api.sessions.getByProject(workspaceRoot)
-
-      if (sessionsData && sessionsData.length > 0) {
-        const historySessions: Session[] = sessionsData.map((session: any) => ({
-          id: session.id,
-          title: session.title,
-          modelId: session.modelId,
-          messages: [],
-          createdAt: new Date(session.createdAt),
-          metadata: session.metadata
-        }))
-
-        const state = useChatStore.getState()
-        const previousSessionsCount = state.sessions.length
-        setSessions(historySessions)
-
-        if (!state.currentSessionId && historySessions.length > 0 && previousSessionsCount === 0) {
-          openSession(historySessions[0].id)
-        }
-      }
-    } catch (error) {
-      console.error('加载历史会话失败:', error)
-    }
-  }, [workspaceRoot, setSessions, openSession])
+  const resetState = useChatStore((state) => state.resetState)
+  const workspaceLoadIdRef = useRef(0)
 
   const loadSessionMessages = useCallback(
     async (sessionId: string) => {
@@ -74,10 +47,48 @@ export function useChatSession(workspaceRoot: string | null) {
   )
 
   useEffect(() => {
-    if (workspaceRoot) {
-      loadHistorySessions()
+    workspaceLoadIdRef.current += 1
+    const currentLoadId = workspaceLoadIdRef.current
+
+    resetState()
+
+    if (!workspaceRoot) {
+      return
     }
-  }, [workspaceRoot, loadHistorySessions])
+
+    let cancelled = false
+
+    const loadHistorySessions = async () => {
+      try {
+        const sessionsData = await window.api.sessions.getByProject(workspaceRoot)
+
+        if (cancelled || currentLoadId !== workspaceLoadIdRef.current || !sessionsData?.length) {
+          return
+        }
+
+        const historySessions: Session[] = sessionsData.map((session: any) => ({
+          id: session.id,
+          title: session.title,
+          modelId: session.modelId,
+          messages: [],
+          createdAt: new Date(session.createdAt),
+          metadata: session.metadata
+        }))
+
+        mergeSessions(historySessions)
+      } catch (error) {
+        if (!cancelled) {
+          console.error('加载历史会话失败:', error)
+        }
+      }
+    }
+
+    void loadHistorySessions()
+
+    return () => {
+      cancelled = true
+    }
+  }, [workspaceRoot, mergeSessions, resetState])
 
   useEffect(() => {
     const isLoaded = selectIsSessionLoaded(useChatStore.getState(), currentSessionId || '')
@@ -126,8 +137,8 @@ export function useChatSession(workspaceRoot: string | null) {
     [sessions, updateSession]
   )
 
-  const createNewSession = useCallback(async (modelId: string) => {
-    if (!workspaceRoot) return
+  const createNewSession = useCallback(async (modelId: string): Promise<string | null> => {
+    if (!workspaceRoot || !modelId.trim()) return null
 
     try {
       const sessionId = await window.api.sessions.create(modelId, workspaceRoot)
@@ -141,11 +152,28 @@ export function useChatSession(workspaceRoot: string | null) {
       }
 
       addSession(newSession)
+      markSessionAsLoaded(sessionId)
+      return sessionId
     } catch (error) {
       console.error('创建新会话失败:', error)
       toast.error('Failed to create session')
+      return null
     }
-  }, [workspaceRoot, addSession])
+  }, [workspaceRoot, addSession, markSessionAsLoaded])
+
+  const updateSessionModel = useCallback(
+    async (sessionId: string, modelId: string) => {
+      try {
+        await window.api.sessions.update(sessionId, { modelId })
+        updateSession(sessionId, { modelId })
+      } catch (error) {
+        console.error('更新会话模型失败:', error)
+        toast.error('Failed to update session model')
+        throw error
+      }
+    },
+    [updateSession]
+  )
 
   return {
     sessions,
@@ -157,6 +185,7 @@ export function useChatSession(workspaceRoot: string | null) {
     openSession,
     closeSessionTab,
     openSessionIds,
-    createNewSession
+    createNewSession,
+    updateSessionModel
   }
 }

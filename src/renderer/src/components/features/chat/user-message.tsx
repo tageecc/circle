@@ -157,6 +157,10 @@ export function UserMessage({ message, sessionId, className, onResubmit }: UserM
               isSending={false}
               pastedImages={[]}
               onPastedImagesChange={() => {}}
+              availableModels={[]}
+              isLoadingModels={false}
+              selectedModelId={null}
+              showModelSelector={false}
               autoFocus
             />
           </div>

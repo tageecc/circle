@@ -1,6 +1,8 @@
 import { app } from 'electron'
 import { getDb } from '../database/db'
 import { DEFAULT_SKILL_SCAN_DIRECTORIES } from '../constants/skills.constants'
+import { ProviderCredentialService } from './provider-credential.service'
+import { getProviderRuntimeConfig, normalizeModelId } from '../../shared/provider-config'
 
 interface WindowState {
   x?: number
@@ -79,7 +81,6 @@ interface FilesExclude {
 
 interface UIState {
   activeView?: string
-  selectedModelId?: string
   skillsActiveTab?: string
   layout?: LayoutState
   codeEditor?: {
@@ -92,15 +93,6 @@ interface UIState {
     }
     expandedDirs?: string[]
   }
-}
-
-interface ApiKeys {
-  openai?: string
-  anthropic?: string
-  google?: string
-  deepseek?: string
-  dashscope?: string
-  [provider: string]: string | undefined
 }
 
 interface ServiceSettings {
@@ -141,7 +133,6 @@ interface AppConfig {
   keymapSettings?: KeymapSettings
   skillsSettings?: SkillsSettings
   filesExclude?: FilesExclude
-  apiKeys?: ApiKeys
   serviceSettings?: ServiceSettings
   preferences: {
     autoSave: boolean
@@ -230,9 +221,11 @@ function parsePreferences(raw: unknown): AppConfig['preferences'] {
  */
 export class ConfigService {
   private db: ReturnType<typeof getDb>
+  private providerCredentialService: ProviderCredentialService
 
   constructor() {
     this.db = getDb()
+    this.providerCredentialService = new ProviderCredentialService(this.db)
   }
 
   /**
@@ -409,14 +402,12 @@ export class ConfigService {
   getUIState(): UIState {
     // UI 状态存储为多个键值对
     const activeView = this.db.getUIState('activeView', undefined)
-    const selectedModelId = this.db.getUIState('selectedModelId', undefined)
     const skillsActiveTab = this.db.getUIState('skillsActiveTab', undefined)
     const layout = this.db.getUIState<LayoutState | undefined>('layout', undefined)
     const codeEditor = this.db.getUIState<UIState['codeEditor']>('codeEditor', undefined)
 
     return {
       activeView,
-      selectedModelId,
       skillsActiveTab,
       layout,
       codeEditor
@@ -426,9 +417,6 @@ export class ConfigService {
   setUIState(state: Partial<UIState>): void {
     if (state.activeView !== undefined) {
       this.db.setUIState('activeView', state.activeView)
-    }
-    if (state.selectedModelId !== undefined) {
-      this.db.setUIState('selectedModelId', state.selectedModelId)
     }
     if (state.skillsActiveTab !== undefined) {
       this.db.setUIState('skillsActiveTab', state.skillsActiveTab)
@@ -447,9 +435,6 @@ export class ConfigService {
 
       if (updates.activeView !== undefined) {
         this.db.setUIState('activeView', updates.activeView)
-      }
-      if (updates.selectedModelId !== undefined) {
-        this.db.setUIState('selectedModelId', updates.selectedModelId)
       }
       if (updates.skillsActiveTab !== undefined) {
         this.db.setUIState('skillsActiveTab', updates.skillsActiveTab)
@@ -577,68 +562,48 @@ export class ConfigService {
     this.db.setUIState('settings.skills', { ...current, ...settings })
   }
 
-  /**
-   * 获取所有 API Keys
-   */
-  getApiKeys(): ApiKeys {
-    return this.db.getUIState<ApiKeys>('settings.apiKeys', {})
+  getProviderCredential(providerId: string) {
+    return this.providerCredentialService.getStoredCredential(providerId)
   }
 
-  /**
-   * 获取指定 provider 的 API Key
-   */
-  getApiKey(provider: string): string | undefined {
-    const keys = this.getApiKeys()
-    return keys?.[provider.toLowerCase()]
+  listProviderCredentials() {
+    return this.providerCredentialService.listCredentials()
   }
 
-  /**
-   * 设置指定 provider 的 API Key
-   */
-  setApiKey(provider: string, apiKey: string): void {
-    const keys = this.getApiKeys()
-    keys[provider.toLowerCase()] = apiKey
-    this.db.setUIState('settings.apiKeys', keys)
+  setProviderCredential(input: { providerId: string; apiKey: string; baseURL?: string }) {
+    return this.providerCredentialService.setCredential(input)
   }
 
-  /**
-   * 删除指定 provider 的 API Key
-   */
-  deleteApiKey(provider: string): void {
-    const keys = this.getApiKeys()
-    delete keys[provider.toLowerCase()]
-    this.db.setUIState('settings.apiKeys', keys)
+  deleteProviderCredential(providerId: string): void {
+    this.providerCredentialService.deleteCredential(providerId)
   }
 
-  /**
-   * 批量设置 API Keys
-   */
-  setApiKeys(apiKeys: ApiKeys): void {
-    this.db.setUIState('settings.apiKeys', apiKeys)
+  getProviderApiKey(providerId: string): string | undefined {
+    return this.providerCredentialService.getApiKey(providerId)
   }
 
-  /**
-   * 获取用户默认模型 (格式: provider/model)
-   */
-  getDefaultModel(): string {
-    return this.db.getUIState<string>(
-      'settings.defaultModel',
-      'Alibaba (China)/qwen3.6-plus-2026-04-02'
-    )
+  getProviderBaseURL(providerId: string): string | undefined {
+    return this.providerCredentialService.getBaseURL(providerId)
   }
 
-  /**
-   * 获取代码补全专用模型（快速模型）
-   */
-  getCompletionModel(): string {
-    return this.db.getUIState<string>('settings.completionModel', 'Alibaba (China)/qwen3.5-flash')
+  hasProviderCredential(providerId: string): boolean {
+    return this.providerCredentialService.isConfigured(providerId)
   }
 
-  /**
-   * 设置用户默认模型
-   */
-  setDefaultModel(modelId: string): void {
-    this.db.setUIState('settings.defaultModel', modelId)
+  isConfiguredModel(modelId: string): boolean {
+    const normalizedModelId = normalizeModelId(modelId)
+    const separatorIndex = normalizedModelId.indexOf('/')
+    if (separatorIndex <= 0 || separatorIndex === normalizedModelId.length - 1) {
+      return false
+    }
+
+    const providerId = normalizedModelId.slice(0, separatorIndex)
+    const runtimeConfig = getProviderRuntimeConfig(providerId)
+    if (!runtimeConfig) {
+      return false
+    }
+
+    return this.providerCredentialService.isConfigured(providerId)
   }
 
   /**
@@ -685,6 +650,5 @@ export type {
   AppearanceSettings,
   KeymapSettings,
   FilesExclude,
-  ApiKeys,
   ServiceSettings
 }

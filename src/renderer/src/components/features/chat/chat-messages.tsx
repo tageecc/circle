@@ -39,7 +39,16 @@ function convertToolCallToData(
       if (typeof toolResult === 'string') {
         try {
           const parsed = JSON.parse(toolResult)
-          isError = parsed.isError === true || parsed.success === false
+          const isNonErrorApprovalOutcome =
+            parsed.rejected === true ||
+            parsed.skipped === true ||
+            parsed.status === 'rejected' ||
+            parsed.status === 'skipped'
+          const isAborted = parsed.status === 'aborted' || parsed.exitCode === 130
+
+          isError =
+            parsed.isError === true ||
+            (!isNonErrorApprovalOutcome && !isAborted && parsed.success === false)
         } catch {
           // 忽略解析错误
         }

@@ -6,7 +6,7 @@ import type { AgentChainId } from './agent-session.types'
 
 export type TaskRunId = string
 
-export type SubAgentTaskStatus = 'pending' | 'running' | 'completed' | 'failed'
+export type SubAgentTaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'stopped'
 
 export type SubAgentTask = {
   id: TaskRunId
@@ -18,6 +18,8 @@ export type SubAgentTask = {
   status: SubAgentTaskStatus
   /** Future: forked message list path or blob ref */
   resultSummary?: string
+  /** Whether the task was launched in detached/background mode */
+  background?: boolean
   /** Subagent type (general, review, security, etc.) */
   subagentType?: string
   subagentName?: string

@@ -13,7 +13,10 @@ const PARALLEL_SAFE = new Set<string>([
   'grep',
   'codebase_search',
   'read_lints',
-  'get_skill_details'
+  'get_skill_details',
+  'task_list',
+  'task_get',
+  'task_stop'
 ])
 
 /** Mutating / side-effect tools: should not race with each other */

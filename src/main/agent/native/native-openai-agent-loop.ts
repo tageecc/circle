@@ -110,13 +110,17 @@ export async function* runNativeOpenAIAgentLoop(
       await trace({ phase: 'openai_fetch_start', round, url: url.replace(/\?.*$/, '') })
 
       const fetchSignal = abortSignalForNativeChatFetch(abortSignal)
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+
+      if (endpoint.apiKey) {
+        headers.Authorization = `Bearer ${endpoint.apiKey}`
+      }
 
       let res = await fetch(url, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${endpoint.apiKey}`,
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify(body),
         signal: fetchSignal
       })
@@ -128,10 +132,7 @@ export async function* runNativeOpenAIAgentLoop(
           delete retryBody.stream_options
           res = await fetch(url, {
             method: 'POST',
-            headers: {
-              Authorization: `Bearer ${endpoint.apiKey}`,
-              'Content-Type': 'application/json'
-            },
+            headers,
             body: JSON.stringify(retryBody),
             signal: fetchSignal
           })
@@ -147,10 +148,7 @@ export async function* runNativeOpenAIAgentLoop(
             delete retryBody.max_tokens
             res = await fetch(url, {
               method: 'POST',
-              headers: {
-                Authorization: `Bearer ${endpoint.apiKey}`,
-                'Content-Type': 'application/json'
-              },
+              headers,
               body: JSON.stringify(retryBody),
               signal: fetchSignal
             })

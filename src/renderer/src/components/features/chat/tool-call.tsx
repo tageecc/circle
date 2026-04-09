@@ -48,6 +48,53 @@ function extractEditContent(result: any): { oldContent: string; newContent: stri
   }
 }
 
+function parseRunTerminalCommandResult(result: unknown): {
+  exitCode: number | null
+  stdout: string
+  stderr: string
+  message: string
+  status: 'completed' | 'rejected' | 'skipped' | 'aborted' | null
+  rejected: boolean
+  skipped: boolean
+} {
+  const fallback = {
+    exitCode: null,
+    stdout: '',
+    stderr: '',
+    message: '',
+    status: null,
+    rejected: false,
+    skipped: false
+  } as const
+
+  if (typeof result !== 'string') {
+    return fallback
+  }
+
+  try {
+    const parsed = JSON.parse(result)
+    const status =
+      parsed.status === 'completed' ||
+      parsed.status === 'rejected' ||
+      parsed.status === 'skipped' ||
+      parsed.status === 'aborted'
+        ? parsed.status
+        : null
+
+    return {
+      exitCode: parsed.exitCode ?? null,
+      stdout: parsed.stdout || '',
+      stderr: parsed.stderr || '',
+      message: parsed.message || '',
+      status,
+      rejected: parsed.rejected === true || status === 'rejected',
+      skipped: parsed.skipped === true || status === 'skipped'
+    }
+  } catch {
+    return fallback
+  }
+}
+
 export interface ToolCallData {
   id: string
   name: string
@@ -396,22 +443,10 @@ export function ToolCall({
     const isCancelled = tool.isCancelled
 
     // 解析结果
-    let exitCode: number | null = null
-    let stdout = ''
-    let stderr = ''
-
-    if (tool.result && typeof tool.result === 'string') {
-      try {
-        const parsed = JSON.parse(tool.result)
-        exitCode = parsed.exitCode ?? null
-        stdout = parsed.stdout || ''
-        stderr = parsed.stderr || ''
-      } catch {
-        // ignore
-      }
-    }
-
-    const hasError = tool.isError || (exitCode !== null && exitCode !== 0)
+    const parsedResult = parseRunTerminalCommandResult(tool.result)
+    const { exitCode, stdout, stderr, message, status, rejected, skipped } = parsedResult
+    const isAborted = status === 'aborted' || exitCode === 130
+    const hasError = tool.isError || (!rejected && !skipped && !isAborted && exitCode !== null && exitCode !== 0)
     // 判断是否有流式输出（无论是否有 terminalId）
     const hasStreamOutput = tool.streamOutput !== undefined && tool.streamOutput !== ''
     const isBackgroundTask = terminalId !== undefined // 只有创建了 terminal tab 才算后台任务
@@ -422,8 +457,8 @@ export function ToolCall({
     }, [tool.streamOutput])
 
     const cleanedFinalOutput = useMemo(() => {
-      return stderr || stdout
-    }, [stdout, stderr])
+      return stderr || stdout || message
+    }, [message, stderr, stdout])
 
     // 提取预览输出（折叠状态下显示最后 3 行）
     const previewOutput = useMemo(() => {
@@ -511,14 +546,24 @@ export function ToolCall({
                 <ExternalLink className="size-2.5" />
               </Button>
             )}
-            {isCancelled ? (
+            {rejected ? (
+              <span className="flex items-center gap-1 text-xs text-destructive">
+                <XCircle className="size-3.5" />
+                <span>Rejected</span>
+              </span>
+            ) : skipped ? (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <SkipForward className="size-3.5" />
+                <span>Skipped</span>
+              </span>
+            ) : isCancelled ? (
               <span className="flex items-center gap-1 text-xs text-orange-500">
                 <XCircle className="size-3.5" />
                 <span>已取消</span>
               </span>
             ) : isRunning ? (
               <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
-            ) : exitCode === 130 ? (
+            ) : isAborted ? (
               <span className="flex items-center gap-1 text-xs text-orange-500">
                 <XCircle className="size-3.5" />
                 <span>已停止</span>
@@ -602,12 +647,14 @@ export function ToolCall({
               /* 同步任务模式：显示完整结果 */
               <>
                 {/* 输出结果 */}
-                {(stdout || stderr) && (
+                {(stdout || stderr || message) && (
                   <div className="mt-3 rounded-md bg-muted/30 p-3">
                     <pre
                       className={cn(
                         'text-xs font-mono whitespace-pre-wrap overflow-x-auto max-h-[300px] overflow-y-auto',
-                        exitCode === 130
+                        rejected || skipped
+                          ? 'text-muted-foreground'
+                          : isAborted
                           ? 'text-orange-500'
                           : hasError
                             ? 'text-destructive'
@@ -632,7 +679,17 @@ export function ToolCall({
                         <Loader2 className="size-3 animate-spin text-muted-foreground" />
                         <span className="text-muted-foreground">正在执行...</span>
                       </>
-                    ) : exitCode === 130 ? (
+                    ) : rejected ? (
+                      <>
+                        <XCircle className="size-3 text-destructive" />
+                        <span className="text-destructive">命令已拒绝，不会执行</span>
+                      </>
+                    ) : skipped ? (
+                      <>
+                        <SkipForward className="size-3 text-muted-foreground" />
+                        <span className="text-muted-foreground">命令已跳过</span>
+                      </>
+                    ) : isAborted ? (
                       <>
                         <XCircle className="size-3 text-orange-500" />
                         <span className="text-orange-500">命令已停止</span>

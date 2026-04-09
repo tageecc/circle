@@ -9,6 +9,7 @@ export interface CompletionContext {
   filePath: string
   fileContent: string
   language: string
+  modelId: string
   cursorPosition: {
     line: number
     column: number

@@ -10,7 +10,11 @@ import type { CircleToolSet } from '../types/circle-tool-set'
 import { getToolContext, type ToolContext } from '../services/tool-context'
 import { getCoreTools } from '../assistant/core-tools'
 import { MCPService } from '../services/mcp.service'
-import { registerTaskRun, updateTaskRun } from '../agent/task-run-registry'
+import {
+  attachTaskRunRuntime,
+  registerTaskRun,
+  updateTaskRun
+} from '../agent/task-run-registry'
 import { logHarnessEvent } from '../services/agent-harness-telemetry'
 import { wrapToolsForExclusiveSerialization } from './wrap-tools-execution'
 import { defineTool } from './define-tool'
@@ -83,6 +87,7 @@ interface ExecuteDelegateParams {
   prompt: string
   t0: number
   isBackground: boolean
+  abortSignal?: AbortSignal
 }
 
 /**
@@ -102,7 +107,8 @@ async function executeDelegateTask(params: ExecuteDelegateParams): Promise<Deleg
     subCtx,
     prompt,
     t0,
-    isBackground
+    isBackground,
+    abortSignal
   } = params
 
   const state: DelegateState = {
@@ -128,7 +134,7 @@ async function executeDelegateTask(params: ExecuteDelegateParams): Promise<Deleg
       toolContext: subCtx,
       temperature: config.getTemperature(),
       maxSteps,
-      abortSignal: ctx.abortSignal,
+      abortSignal,
       prepareStepMessages: stripReasoningFromModelMessages
     })) {
       accumulateDelegateOutput(part, state)
@@ -176,6 +182,7 @@ async function executeDelegateTask(params: ExecuteDelegateParams): Promise<Deleg
     sendToRenderer('delegate:complete', {
       taskId,
       sessionId: ctx.sessionId,
+      status: 'completed',
       result: state.text?.slice(0, 500),
       durationMs,
       progress: {
@@ -203,10 +210,13 @@ async function executeDelegateTask(params: ExecuteDelegateParams): Promise<Deleg
   } catch (e) {
     const errorMsg = e instanceof Error ? e.message : String(e)
     const durationMs = Date.now() - t0
+    const wasStopped = abortSignal?.aborted === true
+    const finalStatus = wasStopped ? 'stopped' : 'failed'
+    const finalSummary = wasStopped ? 'Stopped by user request' : errorMsg
 
     updateTaskRun(taskId, {
-      status: 'failed',
-      resultSummary: errorMsg,
+      status: finalStatus,
+      resultSummary: finalSummary,
       completedAt: Date.now(),
       durationMs
     })
@@ -214,11 +224,18 @@ async function executeDelegateTask(params: ExecuteDelegateParams): Promise<Deleg
     sendToRenderer('delegate:complete', {
       taskId,
       sessionId: ctx.sessionId,
-      error: errorMsg,
-      durationMs
+      status: finalStatus,
+      ...(wasStopped ? { result: finalSummary } : { error: errorMsg }),
+      durationMs,
+      progress: {
+        filesExplored: state.filesRead,
+        searches: state.searches,
+        edits: state.edits,
+        toolCalls: state.toolCalls
+      }
     }, rendererTarget)
 
-    if (isBackground) {
+    if (isBackground && !wasStopped) {
       sendToRenderer('system:notification', {
         title: 'Sub-agent Task Failed',
         body: `${subagentDef.name}: ${errorMsg.slice(0, 80)}`,
@@ -249,7 +266,8 @@ async function executeInBackground(
   tools: CircleToolSet,
   subCtx: ToolContext,
   prompt: string,
-  t0: number
+  t0: number,
+  abortSignal: AbortSignal
 ): Promise<void> {
   await executeDelegateTask({
     taskId,
@@ -264,7 +282,8 @@ async function executeInBackground(
     subCtx,
     prompt,
     t0,
-    isBackground: true
+    isBackground: true,
+    abortSignal
   })
 }
 
@@ -353,35 +372,6 @@ The JSON result includes \`steps_used\`, \`tool_calls\`, and a \`warning\` if th
     const taskId = nanoid()
     const description = task.slice(0, 200)
     const subagentDef = getSubagentDefinition(subagentType)
-
-    registerTaskRun({
-      id: taskId,
-      parentSessionId: ctx.sessionId,
-      description,
-      createdAt: Date.now(),
-      status: 'running',
-      subagentType,
-      subagentName: subagentDef.name,
-      startedAt: Date.now(),
-      progress: {
-        filesExplored: 0,
-        searches: 0,
-        edits: 0,
-        toolCalls: 0
-      }
-    })
-
-    // Notify frontend that delegate task started
-    sendToRenderer('delegate:start', {
-      taskId,
-      sessionId: ctx.sessionId,
-      description,
-      subagentType,
-      subagentName: subagentDef.name,
-      icon: subagentDef.icon,
-      color: subagentDef.color
-    }, getRendererTarget(ctx))
-
     const t0 = Date.now()
     try {
       const { getConfigService } = await import('../index.js')
@@ -394,24 +384,57 @@ The JSON result includes \`steps_used\`, \`tool_calls\`, and a \`warning\` if th
       if (!canUseNativeAgentLoop(modelId, config)) {
         return JSON.stringify({
           success: false,
-          task_id: taskId,
-          error: `No API credentials for native agent (model: ${modelId}). Configure the provider API key in Settings.`
+          error: `No provider credentials for native agent (model: ${modelId}). Configure this provider in Model Settings.`
         })
       }
 
       const prompt = context ? `${task}\n\nContext:\n${context}` : task
+      const maxSteps = maxStepsArg ?? 64
+      const executionAbortController = run_in_background ? new AbortController() : undefined
+      const executionAbortSignal = executionAbortController?.signal ?? ctx.abortSignal
 
       const subCtx: ToolContext = {
         ...ctx,
+        abortSignal: executionAbortSignal,
         delegateDepth: 1
       }
 
       const tools = getSubagentTools()
-      const maxSteps = maxStepsArg ?? 64
+
+      registerTaskRun(
+        {
+          id: taskId,
+          parentSessionId: ctx.sessionId,
+          description,
+          createdAt: Date.now(),
+          status: 'running',
+          background: run_in_background,
+          subagentType,
+          subagentName: subagentDef.name,
+          startedAt: Date.now(),
+          progress: {
+            filesExplored: 0,
+            searches: 0,
+            edits: 0,
+            toolCalls: 0
+          }
+        },
+        executionAbortController ? { abortController: executionAbortController } : undefined
+      )
+
+      sendToRenderer('delegate:start', {
+        taskId,
+        sessionId: ctx.sessionId,
+        description,
+        subagentType,
+        subagentName: subagentDef.name,
+        icon: subagentDef.icon,
+        color: subagentDef.color
+      }, getRendererTarget(ctx))
 
       // If background execution is requested, launch async and return immediately
       if (run_in_background) {
-        executeInBackground(
+        const completionPromise = executeInBackground(
           taskId,
           task,
           subagentType,
@@ -423,10 +446,12 @@ The JSON result includes \`steps_used\`, \`tool_calls\`, and a \`warning\` if th
           tools,
           subCtx,
           prompt,
-          t0
+          t0,
+          executionAbortSignal as AbortSignal
         ).catch((err) => {
           console.error('[delegate-task] Background execution failed:', err)
         })
+        attachTaskRunRuntime(taskId, { completionPromise })
 
         return JSON.stringify({
           success: true,
@@ -452,7 +477,8 @@ The JSON result includes \`steps_used\`, \`tool_calls\`, and a \`warning\` if th
         subCtx,
         prompt,
         t0,
-        isBackground: false
+        isBackground: false,
+        abortSignal: executionAbortSignal
       })
 
       const durationMs = Date.now() - t0
@@ -483,7 +509,6 @@ The JSON result includes \`steps_used\`, \`tool_calls\`, and a \`warning\` if th
       const errorMsg = e instanceof Error ? e.message : String(e)
       return JSON.stringify({
         success: false,
-        task_id: taskId,
         error: errorMsg
       })
     }

@@ -132,7 +132,11 @@ const api = {
     },
 
     // HITL: Resume interrupt
-    resumeInterrupt: (sessionId: string, toolCallId: string, decision: string) =>
+    resumeInterrupt: (
+      sessionId: string,
+      toolCallId: string,
+      decision: 'approve' | 'reject' | 'skip'
+    ) =>
       ipcRenderer.invoke('chat:resume-interrupt', { sessionId, toolCallId, decision }),
 
     onUserQuestion: (
@@ -247,17 +251,6 @@ const api = {
     // Layout State APIs
     getLayoutState: () => ipcRenderer.invoke('config:getLayoutState'),
     setLayoutState: (layout: any) => ipcRenderer.invoke('config:setLayoutState', layout),
-    // API Keys
-    getApiKeys: () => ipcRenderer.invoke('config:getApiKeys'),
-    getApiKey: (provider: string) => ipcRenderer.invoke('config:getApiKey', provider),
-    setApiKey: (provider: string, apiKey: string) =>
-      ipcRenderer.invoke('config:setApiKey', provider, apiKey),
-    deleteApiKey: (provider: string) => ipcRenderer.invoke('config:deleteApiKey', provider),
-    setApiKeys: (apiKeys: Record<string, string>) =>
-      ipcRenderer.invoke('config:setApiKeys', apiKeys),
-    // Default Model
-    getDefaultModel: () => ipcRenderer.invoke('config:getDefaultModel'),
-    setDefaultModel: (modelId: string) => ipcRenderer.invoke('config:setDefaultModel', modelId),
     getServiceSettings: () => ipcRenderer.invoke('config:getServiceSettings'),
     setServiceSettings: (settings: any) => ipcRenderer.invoke('config:setServiceSettings', settings)
   },
@@ -332,6 +325,7 @@ const api = {
   // Project APIs
   project: {
     openDialog: () => ipcRenderer.invoke('project:openDialog'),
+    selectCreateLocation: () => ipcRenderer.invoke('project:selectCreateLocation'),
     getRecent: () => ipcRenderer.invoke('project:getRecent'),
     getCurrent: () => ipcRenderer.invoke('project:getCurrent'),
     setCurrent: (projectPath: string | null) =>
@@ -589,12 +583,6 @@ const api = {
     readFileAsBase64: (filePath: string) => ipcRenderer.invoke('avatar:readFileAsBase64', filePath)
   },
 
-  projectCreate: {
-    selectProjectFolder: () => ipcRenderer.invoke('project-create:selectProjectFolder'),
-    createProject: (userPrompt: string, projectPath: string) =>
-      ipcRenderer.invoke('project-create:createProject', userPrompt, projectPath)
-  },
-
   // Terminal APIs
   terminal: {
     create: (cwd: string) => ipcRenderer.invoke('terminal:create', cwd),
@@ -795,6 +783,7 @@ const api = {
       callback: (data: {
         taskId: string
         sessionId: string
+        status: 'completed' | 'failed' | 'stopped'
         result?: string
         error?: string
         durationMs: number
@@ -811,6 +800,7 @@ const api = {
         data: {
           taskId: string
           sessionId: string
+          status: 'completed' | 'failed' | 'stopped'
           result?: string
           error?: string
           durationMs: number
@@ -1018,6 +1008,7 @@ const api = {
       filePath: string
       fileContent: string
       language: string
+      modelId: string
       cursorPosition: { line: number; column: number }
       lintErrors: Array<{
         line: number
@@ -1041,20 +1032,18 @@ const api = {
   },
 
   modelConfig: {
-    getAll: () => ipcRenderer.invoke('model-config:getAll'),
-    getDefault: () => ipcRenderer.invoke('model-config:getDefault'),
-    add: (input: { providerId: string; modelId: string; isDefault?: boolean }) =>
-      ipcRenderer.invoke('model-config:add', input),
-    setDefault: (id: string) => ipcRenderer.invoke('model-config:setDefault', id),
-    delete: (id: string) => ipcRenderer.invoke('model-config:delete', id),
-    exists: (providerId: string, modelId: string) =>
-      ipcRenderer.invoke('model-config:exists', providerId, modelId)
-  },
-  providerApiKey: {
-    get: (providerId: string) => ipcRenderer.invoke('provider-api-key:get', providerId),
-    set: (input: { providerId: string; apiKey: string; baseURL?: string }) =>
-      ipcRenderer.invoke('provider-api-key:set', input),
-    delete: (providerId: string) => ipcRenderer.invoke('provider-api-key:delete', providerId)
+    listProviderCredentials: () => ipcRenderer.invoke('model-config:listProviderCredentials'),
+    getProviderCredential: (providerId: string) =>
+      ipcRenderer.invoke('model-config:getProviderCredential', providerId),
+    setProviderCredential: (input: { providerId: string; apiKey: string; baseURL?: string }) =>
+      ipcRenderer.invoke('model-config:setProviderCredential', input),
+    deleteProviderCredential: (providerId: string) =>
+      ipcRenderer.invoke('model-config:deleteProviderCredential', providerId),
+    getVectorSearchSettings: () => ipcRenderer.invoke('model-config:getVectorSearchSettings'),
+    setVectorSearchSettings: (settings: {
+      vectorSearchEnabled?: boolean
+      embeddingProvider?: string
+    }) => ipcRenderer.invoke('model-config:setVectorSearchSettings', settings)
   },
 
   // Shell APIs

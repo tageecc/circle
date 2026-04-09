@@ -2,7 +2,17 @@
  * Delegate Task Card - Display running/completed delegate task with progress
  */
 
-import { Bot, FileSearch, Search, Edit, Clock, CheckCircle, XCircle, Loader2 } from 'lucide-react'
+import {
+  Bot,
+  FileSearch,
+  Search,
+  Edit,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Loader2,
+  Square
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface DelegateTaskCardProps {
@@ -13,7 +23,7 @@ interface DelegateTaskCardProps {
     subagentName?: string
     icon?: string
     color?: string
-    status: 'pending' | 'running' | 'completed' | 'failed'
+    status: 'pending' | 'running' | 'completed' | 'failed' | 'stopped'
     createdAt: number
     startedAt?: number
     completedAt?: number
@@ -42,7 +52,8 @@ function formatDuration(ms: number): string {
 const STATUS_COLORS: Record<string, string> = {
   running: 'text-blue-500',
   completed: 'text-green-500',
-  failed: 'text-red-500'
+  failed: 'text-red-500',
+  stopped: 'text-muted-foreground'
 }
 
 const SUBAGENT_COLORS: Record<string, string> = {
@@ -67,6 +78,7 @@ export function DelegateTaskCard({ task }: DelegateTaskCardProps) {
   const isRunning = task.status === 'running'
   const isCompleted = task.status === 'completed'
   const isFailed = task.status === 'failed'
+  const isStopped = task.status === 'stopped'
 
   const duration = task.durationMs
     ? formatDuration(task.durationMs)
@@ -81,6 +93,7 @@ export function DelegateTaskCard({ task }: DelegateTaskCardProps) {
         {isRunning && <Loader2 className="size-4 animate-spin text-blue-500 shrink-0" />}
         {isCompleted && <CheckCircle className="size-4 text-green-500 shrink-0" />}
         {isFailed && <XCircle className="size-4 text-red-500 shrink-0" />}
+        {isStopped && <Square className="size-4 text-muted-foreground shrink-0" />}
         {task.status === 'pending' && <Bot className="size-4 text-muted-foreground shrink-0" />}
 
         <div className="flex-1 min-w-0">
@@ -126,7 +139,7 @@ export function DelegateTaskCard({ task }: DelegateTaskCardProps) {
       )}
 
       {/* Result Preview (completed) */}
-      {isCompleted && task.result && (
+      {(isCompleted || isStopped) && task.result && (
         <div className="mt-2 text-xs text-foreground/80 line-clamp-3 bg-background/50 rounded p-2">
           {task.result}
         </div>
@@ -140,7 +153,7 @@ export function DelegateTaskCard({ task }: DelegateTaskCardProps) {
       )}
 
       {/* Summary Stats (completed/failed) */}
-      {(isCompleted || isFailed) && (
+      {(isCompleted || isFailed || isStopped) && (
         <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
           <span>
             {task.progress.toolCalls} tool calls · {task.progress.filesExplored} files ·{' '}
