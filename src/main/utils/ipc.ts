@@ -10,7 +10,9 @@ export interface RendererTarget {
   windowId?: number
 }
 
-function resolveWebContents(target?: BrowserWindow | WebContents | RendererTarget): WebContents | null {
+function resolveWebContents(
+  target?: BrowserWindow | WebContents | RendererTarget
+): WebContents | null {
   if (!target) {
     const focusedWindow = BrowserWindow.getFocusedWindow()
     if (focusedWindow && !focusedWindow.isDestroyed()) {

@@ -4,7 +4,9 @@ import { preferAsarUnpackedPath, toAsarUnpackedPath } from './asar-path'
 
 test('toAsarUnpackedPath rewrites app.asar segment', () => {
   assert.equal(
-    toAsarUnpackedPath('/Applications/Circle.app/Contents/Resources/app.asar/node_modules/sqlite-vec-darwin-arm64/vec0.dylib'),
+    toAsarUnpackedPath(
+      '/Applications/Circle.app/Contents/Resources/app.asar/node_modules/sqlite-vec-darwin-arm64/vec0.dylib'
+    ),
     '/Applications/Circle.app/Contents/Resources/app.asar.unpacked/node_modules/sqlite-vec-darwin-arm64/vec0.dylib'
   )
 })

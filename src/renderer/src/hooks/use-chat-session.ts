@@ -137,29 +137,32 @@ export function useChatSession(workspaceRoot: string | null) {
     [sessions, updateSession]
   )
 
-  const createNewSession = useCallback(async (modelId: string): Promise<string | null> => {
-    if (!workspaceRoot || !modelId.trim()) return null
+  const createNewSession = useCallback(
+    async (modelId: string): Promise<string | null> => {
+      if (!workspaceRoot || !modelId.trim()) return null
 
-    try {
-      const sessionId = await window.api.sessions.create(modelId, workspaceRoot)
+      try {
+        const sessionId = await window.api.sessions.create(modelId, workspaceRoot)
 
-      const newSession: Session = {
-        id: sessionId,
-        title: 'New Chat',
-        modelId,
-        messages: [],
-        createdAt: new Date()
+        const newSession: Session = {
+          id: sessionId,
+          title: 'New Chat',
+          modelId,
+          messages: [],
+          createdAt: new Date()
+        }
+
+        addSession(newSession)
+        markSessionAsLoaded(sessionId)
+        return sessionId
+      } catch (error) {
+        console.error('创建新会话失败:', error)
+        toast.error('Failed to create session')
+        return null
       }
-
-      addSession(newSession)
-      markSessionAsLoaded(sessionId)
-      return sessionId
-    } catch (error) {
-      console.error('创建新会话失败:', error)
-      toast.error('Failed to create session')
-      return null
-    }
-  }, [workspaceRoot, addSession, markSessionAsLoaded])
+    },
+    [workspaceRoot, addSession, markSessionAsLoaded]
+  )
 
   const updateSessionModel = useCallback(
     async (sessionId: string, modelId: string) => {

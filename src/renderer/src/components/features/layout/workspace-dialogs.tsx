@@ -82,10 +82,7 @@ export function WorkspaceDialogs({
         }}
       />
 
-      <SettingsDialog
-        open={settingsOpen}
-        onOpenChange={onSettingsOpenChange}
-      />
+      <SettingsDialog open={settingsOpen} onOpenChange={onSettingsOpenChange} />
       <BugReportDialog
         open={bugReportOpen}
         onOpenChange={(open) => (open ? openDialog('bugReport') : closeDialog('bugReport'))}

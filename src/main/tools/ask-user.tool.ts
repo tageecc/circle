@@ -231,14 +231,18 @@ When the user rejects to clarify, you receive \`rejected: true\` with their feed
     const sessionMetadata = (session?.metadata as SessionMetadata) || {}
     const isInPlanMode = sessionMetadata.mode === 'plan'
 
-    sendToRenderer('chat:user-question', {
-      questionId,
-      sessionId: ctx.sessionId,
-      assistantMessageId: ctx.assistantMessageId,
-      questions,
-      metadata,
-      isInPlanMode
-    }, ctx.senderWebContentsId ? { webContentsId: ctx.senderWebContentsId } : undefined)
+    sendToRenderer(
+      'chat:user-question',
+      {
+        questionId,
+        sessionId: ctx.sessionId,
+        assistantMessageId: ctx.assistantMessageId,
+        questions,
+        metadata,
+        isInPlanMode
+      },
+      ctx.senderWebContentsId ? { webContentsId: ctx.senderWebContentsId } : undefined
+    )
 
     if (ctx.abortSignal?.aborted) {
       await SessionService.updateToolApprovalStatus(ctx.assistantMessageId, questionId, {

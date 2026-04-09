@@ -199,16 +199,15 @@ export const PROVIDER_RUNTIME_CONFIGS: Record<string, ProviderRuntimeConfig> = {
   }
 }
 
-const PROVIDER_ALIAS_LOOKUP = Object.values(PROVIDER_RUNTIME_CONFIGS).reduce<Record<string, string>>(
-  (lookup, config) => {
-    lookup[config.id.toLowerCase()] = config.id
-    for (const alias of config.aliases ?? []) {
-      lookup[alias.trim().toLowerCase()] = config.id
-    }
-    return lookup
-  },
-  {}
-)
+const PROVIDER_ALIAS_LOOKUP = Object.values(PROVIDER_RUNTIME_CONFIGS).reduce<
+  Record<string, string>
+>((lookup, config) => {
+  lookup[config.id.toLowerCase()] = config.id
+  for (const alias of config.aliases ?? []) {
+    lookup[alias.trim().toLowerCase()] = config.id
+  }
+  return lookup
+}, {})
 
 export const EMBEDDING_PROVIDER_CONFIGS: Record<string, EmbeddingProviderConfig> = {
   'openai-small': {

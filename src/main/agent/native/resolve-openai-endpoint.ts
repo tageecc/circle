@@ -3,7 +3,11 @@
  */
 
 import type { ConfigService } from '../../services/config.service'
-import { getProviderRuntimeConfig, normalizeModelId, normalizeProviderId } from '../../../shared/provider-config'
+import {
+  getProviderRuntimeConfig,
+  normalizeModelId,
+  normalizeProviderId
+} from '../../../shared/provider-config'
 
 export type OpenAICompatibleEndpoint = {
   baseURL: string

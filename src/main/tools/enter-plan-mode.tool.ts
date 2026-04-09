@@ -117,11 +117,15 @@ Returns JSON with success status and plan file path.`,
       })
 
       // 5. Notify frontend
-      sendToRenderer('session:mode-changed', {
-        sessionId: ctx.sessionId,
-        mode: 'plan',
-        planFilePath: relativePath
-      }, ctx.senderWebContentsId ? { webContentsId: ctx.senderWebContentsId } : undefined)
+      sendToRenderer(
+        'session:mode-changed',
+        {
+          sessionId: ctx.sessionId,
+          mode: 'plan',
+          planFilePath: relativePath
+        },
+        ctx.senderWebContentsId ? { webContentsId: ctx.senderWebContentsId } : undefined
+      )
 
       return JSON.stringify({
         success: true,

@@ -253,11 +253,15 @@ todo_write({
       })
 
       // 4. 发送到前端更新 UI
-      sendToRenderer('todo:update', {
-        sessionId,
-        todos: updatedTodos,
-        action: merge ? 'updated' : 'created'
-      }, senderWebContentsId ? { webContentsId: senderWebContentsId } : undefined)
+      sendToRenderer(
+        'todo:update',
+        {
+          sessionId,
+          todos: updatedTodos,
+          action: merge ? 'updated' : 'created'
+        },
+        senderWebContentsId ? { webContentsId: senderWebContentsId } : undefined
+      )
 
       // 5. 日志输出
       console.log(

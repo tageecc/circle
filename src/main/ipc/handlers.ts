@@ -132,15 +132,19 @@ export function registerIpcHandlers(): void {
           throw new Error(`Invalid approval decision: ${params.decision}`)
         }
 
-        await SessionService.updateToolApprovalStatusBySession(params.sessionId, params.toolCallId, {
-          needsApproval: true,
-          approvalStatus:
-            params.decision === 'approve'
-              ? 'approved'
-              : params.decision === 'reject'
-                ? 'rejected'
-                : 'skipped'
-        })
+        await SessionService.updateToolApprovalStatusBySession(
+          params.sessionId,
+          params.toolCallId,
+          {
+            needsApproval: true,
+            approvalStatus:
+              params.decision === 'approve'
+                ? 'approved'
+                : params.decision === 'reject'
+                  ? 'rejected'
+                  : 'skipped'
+          }
+        )
 
         handleApprovalDecision(params.toolCallId, params.decision)
         return { success: true }

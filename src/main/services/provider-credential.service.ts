@@ -25,11 +25,7 @@ export class ProviderCredentialService {
       .get()
   }
 
-  setCredential(input: {
-    providerId: string
-    apiKey: string
-    baseURL?: string
-  }): ProviderApiKey {
+  setCredential(input: { providerId: string; apiKey: string; baseURL?: string }): ProviderApiKey {
     const db = this.db.getDb()
     const now = new Date()
     const providerId = normalizeProviderId(input.providerId)

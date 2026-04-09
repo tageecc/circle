@@ -446,7 +446,8 @@ export function ToolCall({
     const parsedResult = parseRunTerminalCommandResult(tool.result)
     const { exitCode, stdout, stderr, message, status, rejected, skipped } = parsedResult
     const isAborted = status === 'aborted' || exitCode === 130
-    const hasError = tool.isError || (!rejected && !skipped && !isAborted && exitCode !== null && exitCode !== 0)
+    const hasError =
+      tool.isError || (!rejected && !skipped && !isAborted && exitCode !== null && exitCode !== 0)
     // 判断是否有流式输出（无论是否有 terminalId）
     const hasStreamOutput = tool.streamOutput !== undefined && tool.streamOutput !== ''
     const isBackgroundTask = terminalId !== undefined // 只有创建了 terminal tab 才算后台任务
@@ -655,10 +656,10 @@ export function ToolCall({
                         rejected || skipped
                           ? 'text-muted-foreground'
                           : isAborted
-                          ? 'text-orange-500'
-                          : hasError
-                            ? 'text-destructive'
-                            : 'text-foreground/80'
+                            ? 'text-orange-500'
+                            : hasError
+                              ? 'text-destructive'
+                              : 'text-foreground/80'
                       )}
                     >
                       {cleanedFinalOutput}

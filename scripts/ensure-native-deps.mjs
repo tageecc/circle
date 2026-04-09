@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
+
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -9,15 +11,18 @@ const platform = process.platform
 const expectedArch = process.env.npm_config_arch || process.arch
 const packageManagerCommand = platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
 
+/** @returns {void} */
 function log(message) {
   console.log(`[native-deps] ${message}`)
 }
 
+/** @returns {string} */
 function resolvePackageDir(packageName) {
   const packageJsonPath = require.resolve(`${packageName}/package.json`)
   return path.dirname(packageJsonPath)
 }
 
+/** @returns {string[]} */
 function getArchitectureTokens(targetPlatform, arch) {
   if (targetPlatform === 'darwin') {
     return arch === 'arm64' ? ['arm64'] : arch === 'x64' ? ['x86_64'] : [arch]
@@ -30,6 +35,7 @@ function getArchitectureTokens(targetPlatform, arch) {
   return [arch]
 }
 
+/** @returns {string} */
 function describeBinary(filePath) {
   try {
     return execFileSync('file', ['-b', filePath], { encoding: 'utf8' }).trim()
@@ -40,6 +46,7 @@ function describeBinary(filePath) {
   }
 }
 
+/** @returns {boolean} */
 function matchesExpectedArch(description) {
   const normalized = description.toLowerCase()
   return getArchitectureTokens(platform, expectedArch).some((token) =>
@@ -47,6 +54,7 @@ function matchesExpectedArch(description) {
   )
 }
 
+/** @returns {string | null} */
 function safeSqliteVecPath() {
   try {
     const sqliteVec = require('sqlite-vec')
@@ -56,6 +64,7 @@ function safeSqliteVecPath() {
   }
 }
 
+/** @returns {Array<{name: string, path: string}>} */
 function getChecks() {
   const checks = [
     {
@@ -84,6 +93,7 @@ function getChecks() {
   return checks
 }
 
+/** @returns {string[]} */
 function inspectNativeDeps() {
   const issues = []
 
@@ -106,6 +116,7 @@ function inspectNativeDeps() {
   return issues
 }
 
+/** @returns {void} */
 function rebuildNativeDeps() {
   log(`Rebuilding Electron native dependencies for ${platform}/${expectedArch}...`)
   execFileSync(packageManagerCommand, ['exec', 'electron-builder', 'install-app-deps'], {
@@ -113,6 +124,7 @@ function rebuildNativeDeps() {
   })
 }
 
+/** @returns {void} */
 function main() {
   const issues = inspectNativeDeps()
 

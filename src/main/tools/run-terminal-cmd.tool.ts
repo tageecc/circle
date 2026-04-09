@@ -103,11 +103,15 @@ async function requestApproval(
     state: 'pending'
   })
 
-  const sent = sendToRenderer('tool:approval-required', {
-    toolCallId,
-    command,
-    is_background
-  }, targetWebContentsId ? { webContentsId: targetWebContentsId } : undefined)
+  const sent = sendToRenderer(
+    'tool:approval-required',
+    {
+      toolCallId,
+      command,
+      is_background
+    },
+    targetWebContentsId ? { webContentsId: targetWebContentsId } : undefined
+  )
 
   console.log('[requestApproval] 📡 IPC sent:', sent)
 
@@ -360,7 +364,13 @@ async function executeCommand(
 ): Promise<string> {
   try {
     return createTerminalTab
-      ? await executeInTerminal(command, toolCallId, workspaceRoot, abortSignal, targetWebContentsId)
+      ? await executeInTerminal(
+          command,
+          toolCallId,
+          workspaceRoot,
+          abortSignal,
+          targetWebContentsId
+        )
       : await executeInline(command, toolCallId, workspaceRoot, abortSignal, targetWebContentsId)
   } catch (error) {
     return JSON.stringify({

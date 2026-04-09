@@ -153,13 +153,17 @@ Returns JSON with approval status and user feedback if provided.`,
       })
 
       // Send to frontend
-      sendToRenderer('plan:approval-required', {
-        approvalId,
-        sessionId: ctx.sessionId,
-        assistantMessageId: ctx.assistantMessageId,
-        planContent,
-        planFilePath: relativePath
-      }, ctx.senderWebContentsId ? { webContentsId: ctx.senderWebContentsId } : undefined)
+      sendToRenderer(
+        'plan:approval-required',
+        {
+          approvalId,
+          sessionId: ctx.sessionId,
+          assistantMessageId: ctx.assistantMessageId,
+          planContent,
+          planFilePath: relativePath
+        },
+        ctx.senderWebContentsId ? { webContentsId: ctx.senderWebContentsId } : undefined
+      )
 
       if (ctx.abortSignal?.aborted) {
         await SessionService.updateToolApprovalStatus(ctx.assistantMessageId, approvalId, {
@@ -201,11 +205,15 @@ Returns JSON with approval status and user feedback if provided.`,
           }
         })
 
-        sendToRenderer('session:mode-changed', {
-          sessionId: ctx.sessionId,
-          mode: 'default',
-          planFilePath: null
-        }, ctx.senderWebContentsId ? { webContentsId: ctx.senderWebContentsId } : undefined)
+        sendToRenderer(
+          'session:mode-changed',
+          {
+            sessionId: ctx.sessionId,
+            mode: 'default',
+            planFilePath: null
+          },
+          ctx.senderWebContentsId ? { webContentsId: ctx.senderWebContentsId } : undefined
+        )
 
         await SessionService.updateToolApprovalStatus(ctx.assistantMessageId, approvalId, {
           needsApproval: false,

@@ -53,8 +53,7 @@ export function matchesProjectFilePattern(relativePath: string, pattern: string)
 
   // Keep compatibility with simple plain-text filters such as "src" or "config".
   if (!GLOB_MAGIC_RE.test(normalizedPattern)) {
-    const haystack =
-      process.platform === 'win32' ? normalizedPath.toLowerCase() : normalizedPath
+    const haystack = process.platform === 'win32' ? normalizedPath.toLowerCase() : normalizedPath
     const needle =
       process.platform === 'win32' ? normalizedPattern.toLowerCase() : normalizedPattern
     return haystack.includes(needle)
@@ -121,8 +120,7 @@ export async function* walkProjectFiles(
       }
 
       if (supportedExtensions && !supportedExtensions.has(extension)) {
-        const normalizedName =
-          process.platform === 'win32' ? entry.name.toLowerCase() : entry.name
+        const normalizedName = process.platform === 'win32' ? entry.name.toLowerCase() : entry.name
         if (!supportedFileNames?.has(normalizedName)) {
           continue
         }
@@ -139,11 +137,17 @@ export async function* walkProjectFiles(
         }
       }
 
-      if (includePatterns.length > 0 && !matchesAnyProjectFilePattern(relativePath, includePatterns)) {
+      if (
+        includePatterns.length > 0 &&
+        !matchesAnyProjectFilePattern(relativePath, includePatterns)
+      ) {
         continue
       }
 
-      if (excludePatterns.length > 0 && matchesAnyProjectFilePattern(relativePath, excludePatterns)) {
+      if (
+        excludePatterns.length > 0 &&
+        matchesAnyProjectFilePattern(relativePath, excludePatterns)
+      ) {
         continue
       }
 

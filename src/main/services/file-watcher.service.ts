@@ -141,11 +141,7 @@ export class FileWatcherService {
     console.log(`[FileWatcher] Native watcher started (1 FSWatcher created)`)
   }
 
-  private static handleChange(
-    projectPath: string,
-    type: FileChangeType,
-    filePath: string
-  ): void {
+  private static handleChange(projectPath: string, type: FileChangeType, filePath: string): void {
     const state = this.watchers.get(projectPath)
     if (!state) return
 

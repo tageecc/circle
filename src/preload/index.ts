@@ -136,8 +136,7 @@ const api = {
       sessionId: string,
       toolCallId: string,
       decision: 'approve' | 'reject' | 'skip'
-    ) =>
-      ipcRenderer.invoke('chat:resume-interrupt', { sessionId, toolCallId, decision }),
+    ) => ipcRenderer.invoke('chat:resume-interrupt', { sessionId, toolCallId, decision }),
 
     onUserQuestion: (
       callback: (data: {

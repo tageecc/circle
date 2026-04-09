@@ -10,11 +10,7 @@ import type { CircleToolSet } from '../types/circle-tool-set'
 import { getToolContext, type ToolContext } from '../services/tool-context'
 import { getCoreTools } from '../assistant/core-tools'
 import { MCPService } from '../services/mcp.service'
-import {
-  attachTaskRunRuntime,
-  registerTaskRun,
-  updateTaskRun
-} from '../agent/task-run-registry'
+import { attachTaskRunRuntime, registerTaskRun, updateTaskRun } from '../agent/task-run-registry'
 import { logHarnessEvent } from '../services/agent-harness-telemetry'
 import { wrapToolsForExclusiveSerialization } from './wrap-tools-execution'
 import { defineTool } from './define-tool'
@@ -142,15 +138,19 @@ async function executeDelegateTask(params: ExecuteDelegateParams): Promise<Deleg
       const now = Date.now()
       if (part.type === 'tool-call' && now - lastProgressUpdate > 1000) {
         lastProgressUpdate = now
-        sendToRenderer('delegate:progress', {
-          taskId,
-          sessionId: ctx.sessionId,
-          filesExplored: state.filesRead,
-          searches: state.searches,
-          edits: state.edits,
-          toolCalls: state.toolCalls,
-          currentOperation: part.toolName || undefined
-        }, rendererTarget)
+        sendToRenderer(
+          'delegate:progress',
+          {
+            taskId,
+            sessionId: ctx.sessionId,
+            filesExplored: state.filesRead,
+            searches: state.searches,
+            edits: state.edits,
+            toolCalls: state.toolCalls,
+            currentOperation: part.toolName || undefined
+          },
+          rendererTarget
+        )
 
         updateTaskRun(taskId, {
           progress: {
@@ -179,19 +179,23 @@ async function executeDelegateTask(params: ExecuteDelegateParams): Promise<Deleg
       }
     })
 
-    sendToRenderer('delegate:complete', {
-      taskId,
-      sessionId: ctx.sessionId,
-      status: 'completed',
-      result: state.text?.slice(0, 500),
-      durationMs,
-      progress: {
-        filesExplored: state.filesRead,
-        searches: state.searches,
-        edits: state.edits,
-        toolCalls: state.toolCalls
-      }
-    }, rendererTarget)
+    sendToRenderer(
+      'delegate:complete',
+      {
+        taskId,
+        sessionId: ctx.sessionId,
+        status: 'completed',
+        result: state.text?.slice(0, 500),
+        durationMs,
+        progress: {
+          filesExplored: state.filesRead,
+          searches: state.searches,
+          edits: state.edits,
+          toolCalls: state.toolCalls
+        }
+      },
+      rendererTarget
+    )
 
     if (isBackground) {
       sendToRenderer('system:notification', {
@@ -221,19 +225,23 @@ async function executeDelegateTask(params: ExecuteDelegateParams): Promise<Deleg
       durationMs
     })
 
-    sendToRenderer('delegate:complete', {
-      taskId,
-      sessionId: ctx.sessionId,
-      status: finalStatus,
-      ...(wasStopped ? { result: finalSummary } : { error: errorMsg }),
-      durationMs,
-      progress: {
-        filesExplored: state.filesRead,
-        searches: state.searches,
-        edits: state.edits,
-        toolCalls: state.toolCalls
-      }
-    }, rendererTarget)
+    sendToRenderer(
+      'delegate:complete',
+      {
+        taskId,
+        sessionId: ctx.sessionId,
+        status: finalStatus,
+        ...(wasStopped ? { result: finalSummary } : { error: errorMsg }),
+        durationMs,
+        progress: {
+          filesExplored: state.filesRead,
+          searches: state.searches,
+          edits: state.edits,
+          toolCalls: state.toolCalls
+        }
+      },
+      rendererTarget
+    )
 
     if (isBackground && !wasStopped) {
       sendToRenderer('system:notification', {
@@ -422,15 +430,19 @@ The JSON result includes \`steps_used\`, \`tool_calls\`, and a \`warning\` if th
         executionAbortController ? { abortController: executionAbortController } : undefined
       )
 
-      sendToRenderer('delegate:start', {
-        taskId,
-        sessionId: ctx.sessionId,
-        description,
-        subagentType,
-        subagentName: subagentDef.name,
-        icon: subagentDef.icon,
-        color: subagentDef.color
-      }, getRendererTarget(ctx))
+      sendToRenderer(
+        'delegate:start',
+        {
+          taskId,
+          sessionId: ctx.sessionId,
+          description,
+          subagentType,
+          subagentName: subagentDef.name,
+          icon: subagentDef.icon,
+          color: subagentDef.color
+        },
+        getRendererTarget(ctx)
+      )
 
       // If background execution is requested, launch async and return immediately
       if (run_in_background) {

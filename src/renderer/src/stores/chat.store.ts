@@ -99,7 +99,8 @@ export const useChatStore = create<ChatState>((set) => ({
         sessions,
         currentSessionId,
         loadedSessions,
-        openSessionIds: openSessionIds.length > 0 || !fallbackSessionId ? openSessionIds : [fallbackSessionId]
+        openSessionIds:
+          openSessionIds.length > 0 || !fallbackSessionId ? openSessionIds : [fallbackSessionId]
       }
     }),
 

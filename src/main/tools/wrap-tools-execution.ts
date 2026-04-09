@@ -37,7 +37,8 @@ const gates = new Map<string, ExclusiveGate>()
 
 function getExclusiveGateKey(args: unknown[]): string {
   const options = args[args.length - 1] as ToolExecutionOptions | undefined
-  const sessionId = (options?.experimental_context as { sessionId?: unknown } | undefined)?.sessionId
+  const sessionId = (options?.experimental_context as { sessionId?: unknown } | undefined)
+    ?.sessionId
 
   if (typeof sessionId !== 'string' || sessionId.length === 0) {
     throw new Error('Exclusive tool execution requires a valid session-scoped tool context.')
@@ -60,13 +61,16 @@ export function wrapToolsForExclusiveSerialization(tools: CircleToolSet): Circle
         const gate = gates.get(gateKey) ?? new ExclusiveGate()
         gates.set(gateKey, gate)
         const options = args[args.length - 1] as ToolExecutionOptions | undefined
-        const abortSignal = (options?.experimental_context as { abortSignal?: AbortSignal } | undefined)
-          ?.abortSignal
-        return gate.run(() => exec(...args), abortSignal).finally(() => {
-          if (gate.isIdle()) {
-            gates.delete(gateKey)
-          }
-        })
+        const abortSignal = (
+          options?.experimental_context as { abortSignal?: AbortSignal } | undefined
+        )?.abortSignal
+        return gate
+          .run(() => exec(...args), abortSignal)
+          .finally(() => {
+            if (gate.isIdle()) {
+              gates.delete(gateKey)
+            }
+          })
       }
     }
   }
