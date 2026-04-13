@@ -119,7 +119,7 @@
     "shiki": "^3.21.0",
     "simple-git": "^3.30.0",
     "sonner": "^2.0.7",
-    "sqlite-vec": "^0.1.7",
+    "sqlite-vec": "^0.1.9",
     "streamdown": "^1.6.11",
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.16",
