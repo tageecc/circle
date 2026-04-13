@@ -78,7 +78,7 @@
     "@xyflow/react": "^12.10.0",
     "ai-elements": "^1.6.3",
     "ansi-to-react": "^6.1.6",
-    "better-sqlite3": "^12.5.0",
+    "better-sqlite3": "^12.9.0",
     "chokidar": "^4.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
