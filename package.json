@@ -101,7 +101,7 @@
     "lucide-react": "^0.552.0",
     "markdownlint": "^0.39.0",
     "markdownlint-rule-helpers": "^0.30.0",
-    "marked": "^17.0.5",
+    "marked": "^18.0.0",
     "media-chrome": "^4.17.2",
     "minimatch": "^10.1.1",
     "mitt": "^3.0.1",
