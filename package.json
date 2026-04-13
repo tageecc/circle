@@ -68,7 +68,7 @@
     "@tiptap/extension-placeholder": "^2.13.1",
     "@tiptap/pm": "^2.13.1",
     "@tiptap/react": "^2.13.1",
-    "@tiptap/starter-kit": "^2.13.1",
+    "@tiptap/starter-kit": "^3.22.3",
     "@types/dompurify": "^3.2.0",
     "@types/uuid": "^11.0.0",
     "@vscode/ripgrep": "^1.17.1",
