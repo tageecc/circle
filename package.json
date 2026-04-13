@@ -86,7 +86,7 @@
     "diff": "^8.0.2",
     "dompurify": "^3.3.3",
     "dotenv": "^17.2.3",
-    "drizzle-orm": "^0.44.7",
+    "drizzle-orm": "^0.45.2",
     "electron-log": "^5.4.3",
     "electron-updater": "^6.8.3",
     "embla-carousel-react": "^8.6.0",
